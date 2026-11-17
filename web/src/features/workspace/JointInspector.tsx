@@ -4,7 +4,12 @@ import { Button } from "../../components/ui/button";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { Separator } from "../../components/ui/separator";
 import { describeBarFull } from "../../lib/a11y";
-import { formatBarMark, formatClause, formatFindingValue, formatMeasure } from "../../lib/format";
+import {
+  formatBarMark,
+  formatCalloutValue,
+  formatClause,
+  formatFindingValue,
+} from "../../lib/format";
 import { useWorkspaceStore } from "../../stores/workspace";
 import type { Bundle } from "../../types/bundle";
 
@@ -97,7 +102,7 @@ export function JointInspector({ bundle }: { bundle: Bundle }) {
                     className={`w-full rounded-[var(--radius-md)] border p-2.5 text-left transition-colors duration-[var(--dur-1)] cursor-pointer ${
                       active
                         ? "border-fail bg-surface-raised"
-                        : "border-border bg-surface-sunken hover:bg-surface-raised"
+                        : "border-border bg-surface-raised hover:border-border-strong"
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -105,7 +110,7 @@ export function JointInspector({ bundle }: { bundle: Bundle }) {
                         {formatClause(f.clause)}
                       </span>
                       <Badge variant="fail" className="font-num">
-                        {formatFindingValue(f)} · needs {formatMeasure(f.limit, f.unit)}
+                        {formatCalloutValue(f)}
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">{f.message}</p>
@@ -135,7 +140,7 @@ export function JointInspector({ bundle }: { bundle: Bundle }) {
                     className={`flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-left text-xs cursor-pointer ${
                       active
                         ? "border-ring bg-surface-raised"
-                        : "border-border bg-surface-sunken hover:bg-surface-raised"
+                        : "border-border bg-surface-raised hover:border-border-strong"
                     }`}
                   >
                     <span className="sr-only">{describeBarFull(b)}</span>

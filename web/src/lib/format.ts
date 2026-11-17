@@ -115,3 +115,29 @@ export function formatFindingValue(f: {
     status: f.status,
   });
 }
+
+/**
+ * Format primary 3D callout text before the clause suffix:
+ * - "16 mm · needs 25" for clear-spacing or minimum checks
+ * - "18 mm overlap" for geometry clashes
+ */
+export function formatCalloutValue(f: {
+  rule: string;
+  measured: number;
+  limit: number;
+  compare: ">=" | "<=";
+  unit: string;
+  status: "fail" | "pass";
+}): string {
+  const valueStr = formatFindingValue(f);
+  if (f.rule === "GEOM-CLASH" && f.measured < 0) {
+    return valueStr;
+  }
+  const limitDecimals = Number.isInteger(f.limit) ? 0 : 1;
+  const limitStr = formatNumber(f.limit, {
+    minimumFractionDigits: limitDecimals,
+    maximumFractionDigits: limitDecimals,
+  });
+  const verb = f.compare === "<=" ? "max" : "needs";
+  return `${valueStr} · ${verb} ${limitStr}`;
+}

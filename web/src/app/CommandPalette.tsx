@@ -18,7 +18,9 @@ const ROUTE_ITEMS = [
   { label: "To Check Queue", path: "/projects/c4-b12/review", shortcut: "" },
   { label: "Joint Workspace (C4xB12)", path: "/projects/c4-b12/joints/C4xB12", shortcut: "" },
   { label: "Printable Report", path: "/projects/c4-b12/report", shortcut: "" },
-  { label: "Design System Styleguide", path: "/styleguide", shortcut: "" },
+  ...(import.meta.env.DEV
+    ? [{ label: "Design System Styleguide", path: "/styleguide", shortcut: "" }]
+    : []),
 ];
 
 export function CommandPalette() {

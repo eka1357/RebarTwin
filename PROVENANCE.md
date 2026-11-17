@@ -44,6 +44,10 @@ concrete with edge outlines, 100 mm / 500 mm fading floor grid, theme-reactive t
 instant cuts), `ViewportToolbar`, `JointInspector`, lazy-loaded `OpenIfcDialog` (`web-ifc`), Zone II and Zone III
 demo bundles copied into `web/public/demo/`, and retired the unstyled v0 viewer files.
 
+## 17 November 2026: W1-W3 review fixes (`fix/w3-review`)
+
+Fixed workspace height and camera framing on `fix/w3-review`: bounded workspace routes to `100dvh` above `1024 px` with `min-h-0` viewport and inspector internal scrolling, fitted full `sceneBounds` (`concrete` + `bars`) on load, resize, and presets via `camera-controls` `fitToBox`/`getDistanceToFitBox` with 12% padding, added synchronous resize/fullscreen re-rendering and `data-joint-bounds` verification, formatted 3D labels via `lib/format.ts` (`16 mm · needs 25 · IS 456 cl. 26.3.2`, `18 mm overlap · Geometry`), removed duplicate `StatusIsland` count, gated the `Styleguide` link on `import.meta.env.DEV`, added Vite React/Three dedupe, and passed `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run dev -- --force` console verification, and all 9 Playwright + axe checks across `1280x720`, `1440x900`, `1920x1080`, `768x1024`, and `320x720`.
+
 ## Next: built in Google Antigravity
 
 The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

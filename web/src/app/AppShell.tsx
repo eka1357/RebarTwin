@@ -25,7 +25,11 @@ export function AppShell() {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div
+      className={`flex min-h-dvh flex-col bg-background text-foreground ${
+        isWorkspace ? "lg:h-dvh lg:overflow-hidden" : ""
+      }`}
+    >
       <nav
         aria-label="Skip links"
         className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:top-2 focus-within:left-2 focus-within:z-50 focus-within:flex focus-within:gap-2"
@@ -48,7 +52,10 @@ export function AppShell() {
 
       <TopBar />
 
-      <div id="main-content" className="flex flex-1 flex-col min-h-0">
+      <div
+        id="main-content"
+        className={`flex flex-1 flex-col min-h-0 ${isWorkspace ? "lg:overflow-hidden" : ""}`}
+      >
         <Outlet />
       </div>
 

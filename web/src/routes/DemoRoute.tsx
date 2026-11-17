@@ -72,8 +72,8 @@ export function DemoRoute() {
   }, [selectedFindingIndex, searchParams, setSearchParams]);
 
   return (
-    <main className="flex flex-1 flex-col gap-3 p-3 sm:p-4 lg:overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-2.5">
+    <main className="flex flex-1 min-h-0 flex-col gap-3 p-3 sm:p-4 lg:overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-display text-lg font-semibold sm:text-xl">
             Worked Example: C4 × B12
@@ -119,14 +119,14 @@ export function DemoRoute() {
         </div>
       ) : isDesktop ? (
         <div className="flex-1 min-h-0">
-          <ResizablePanelGroup orientation="horizontal" className="h-full gap-2">
-            <ResizablePanel defaultSize={68} minSize={45} className="min-h-0">
+          <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0 gap-2">
+            <ResizablePanel defaultSize={68} minSize={45} className="flex min-h-0 flex-col">
               <Suspense fallback={<Skeleton className="h-full w-full" />}>
                 <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
               </Suspense>
             </ResizablePanel>
             <ResizableHandle />
-            <ResizablePanel defaultSize={32} minSize={24} className="min-h-0">
+            <ResizablePanel defaultSize={32} minSize={24} className="flex min-h-0 flex-col">
               <JointInspector bundle={bundle} />
             </ResizablePanel>
           </ResizablePanelGroup>

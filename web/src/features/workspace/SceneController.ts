@@ -7,6 +7,17 @@ import type { Scene, SceneBar, SceneConcrete, SceneLoop } from "../../types/bund
 CameraControls.install({ THREE });
 
 const UP_Y = new THREE.Vector3(0, 1, 0);
+const FIT_PADDING_RATIO = 0.12;
+const ISO_DIR = new THREE.Vector3(-0.52, 0.34, 0.85).normalize();
+
+export interface ProjectedBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  width: number;
+  height: number;
+}
 
 interface ThemePalette {
   bg: THREE.Color;
@@ -128,6 +139,8 @@ export class SceneController {
   private selectedIds = new Set<string>();
   private hoveredId: string | null = null;
   private concreteMode: ConcreteMode = "translucent";
+  private currentPreset: CameraPreset = "iso";
+  private hasOrbited = false;
   private needsRender = true;
 
   private callbacks: SceneControllerCallbacks;
@@ -165,16 +178,22 @@ export class SceneController {
       powerPreference: "high-performance",
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setSize(width, height);
+    this.renderer.setSize(width, height, false);
+    this.renderer.domElement.style.display = "block";
+    this.renderer.domElement.style.width = "100%";
+    this.renderer.domElement.style.height = "100%";
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     container.appendChild(this.renderer.domElement);
 
     this.controls = new CameraControls(this.camera, this.renderer.domElement);
     this.controls.minDistance = 0.25;
-    this.controls.maxDistance = 10;
+    this.controls.maxDistance = 15;
     this.controls.smoothTime = this.reducedMotion ? 0.001 : 0.22;
     this.controls.draggingSmoothTime = this.reducedMotion ? 0.001 : 0.1;
+    this.controls.addEventListener("controlstart", () => {
+      this.hasOrbited = true;
+    });
 
     // DESIGN_SYSTEM.md: hemisphere plus one soft key light; no hard shadows.
     const hemi = new THREE.HemisphereLight(0xf3f6fb, 0x1a2029, 1.2);
@@ -196,10 +215,7 @@ export class SceneController {
         const w = entry.contentRect.width;
         const h = entry.contentRect.height;
         if (w > 0 && h > 0) {
-          this.camera.aspect = w / h;
-          this.camera.updateProjectionMatrix();
-          this.renderer.setSize(w, h);
-          this.needsRender = true;
+          this.handleContainerResize(w, h);
         }
       }
     });
@@ -255,7 +271,7 @@ export class SceneController {
     };
   }
 
-  private unbindPointerEvents: () => void = () => {};
+  private unbindPointerEvents: () => void = () => { };
 
   private tick = () => {
     if (this.disposed) return;
@@ -509,67 +525,143 @@ export class SceneController {
     }
   }
 
-  setPreset(preset: CameraPreset) {
-    this.needsRender = true;
-    const center = new THREE.Vector3();
-    const size = new THREE.Vector3();
-    if (this.sceneBounds.isEmpty()) {
-      center.set(0, -0.22, 0);
-      size.set(1.5, 1.65, 0.3);
-    } else {
-      this.sceneBounds.getCenter(center);
-      this.sceneBounds.getSize(size);
-    }
-    const radius = Math.max(size.length() * 0.5, 0.5);
-    const dist = radius * 2.65;
-    const animate = !this.reducedMotion;
+  handleContainerResize(width?: number, height?: number) {
+    if (this.disposed) return;
+    const w = width ?? this.container.clientWidth;
+    const h = height ?? this.container.clientHeight;
+    if (w <= 0 || h <= 0) return;
 
-    if (preset === "plan") {
-      void this.controls.setLookAt(
-        center.x,
-        center.y + dist,
-        center.z + 0.001,
-        center.x,
-        center.y,
-        center.z,
-        animate,
-      );
-      return;
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(w, h, false);
+
+    if (!this.sceneBounds.isEmpty()) {
+      this.fitBox(this.sceneBounds, this.hasOrbited ? "keep" : this.currentPreset, false);
     }
-    if (preset === "elevation_x") {
-      void this.controls.setLookAt(
-        center.x,
-        center.y,
-        center.z + dist,
-        center.x,
-        center.y,
-        center.z,
-        animate,
-      );
-      return;
+    this.renderImmediate(w, h);
+  }
+
+  renderImmediate(width?: number, height?: number) {
+    if (this.disposed) return;
+    const w = width ?? this.container.clientWidth;
+    const h = height ?? this.container.clientHeight;
+    if (w <= 0 || h <= 0) return;
+
+    this.controls.update(0);
+    this.camera.updateMatrixWorld();
+    this.needsRender = false;
+    this.renderer.render(this.scene, this.camera);
+    this.callbacks.onCameraUpdate?.(this.camera, { width: w, height: h });
+  }
+
+  private fitBox(
+    box: THREE.Box3,
+    mode: CameraPreset | "keep",
+    animate: boolean,
+    paddingRatio = FIT_PADDING_RATIO,
+  ) {
+    if (box.isEmpty()) return;
+
+    let theta = 0;
+    let phi = Math.PI / 2;
+    let useFitToBox = true;
+
+    if (mode === "plan") {
+      theta = 0;
+      phi = 0.0001;
+    } else if (mode === "elevation_x") {
+      theta = 0;
+      phi = Math.PI / 2;
+    } else if (mode === "elevation_y") {
+      theta = Math.PI / 2;
+      phi = Math.PI / 2;
+    } else if (mode === "iso") {
+      theta = Math.atan2(ISO_DIR.x, ISO_DIR.z);
+      phi = Math.acos(THREE.MathUtils.clamp(ISO_DIR.y, -1, 1));
+      useFitToBox = false;
+    } else {
+      const spherical = this.controls.getSpherical(new THREE.Spherical(), true);
+      theta = spherical.theta;
+      phi = spherical.phi;
+      useFitToBox = false;
     }
-    if (preset === "elevation_y") {
-      void this.controls.setLookAt(
-        center.x + dist,
-        center.y,
-        center.z,
-        center.x,
-        center.y,
-        center.z,
-        animate,
-      );
-      return;
+
+    // Project box extents onto the target view basis for proportional padding on all axes.
+    const forward = new THREE.Vector3().setFromSphericalCoords(1, phi, theta).normalize();
+    const right = new THREE.Vector3().crossVectors(UP_Y, forward);
+    if (right.lengthSq() < 1e-6) {
+      right.set(1, 0, 0);
+    } else {
+      right.normalize();
     }
-    // Default Iso view framing the entire column, beam ends, and joint core cleanly
-    void this.controls.setLookAt(
-      center.x - dist * 0.52,
-      center.y + dist * 0.34,
-      center.z + dist * 0.85,
-      center.x,
-      center.y,
-      center.z,
-      animate,
-    );
+    const camUp = new THREE.Vector3().crossVectors(forward, right).normalize();
+
+    const { min, max } = box;
+    let minU = Infinity;
+    let maxU = -Infinity;
+    let minV = Infinity;
+    let maxV = -Infinity;
+    let minN = Infinity;
+    let maxN = -Infinity;
+
+    const pt = new THREE.Vector3();
+    for (let ix = 0; ix < 2; ix++) {
+      for (let iy = 0; iy < 2; iy++) {
+        for (let iz = 0; iz < 2; iz++) {
+          pt.set(ix ? max.x : min.x, iy ? max.y : min.y, iz ? max.z : min.z);
+          const u = pt.dot(right);
+          const v = pt.dot(camUp);
+          const n = pt.dot(forward);
+          if (u < minU) minU = u;
+          if (u > maxU) maxU = u;
+          if (v < minV) minV = v;
+          if (v > maxV) maxV = v;
+          if (n < minN) minN = n;
+          if (n > maxN) maxN = n;
+        }
+      }
+    }
+
+    const projW = Math.max(maxU - minU, 0.2);
+    const projH = Math.max(maxV - minV, 0.2);
+    const projD = Math.max(maxN - minN, 0.2);
+    const padX = projW * paddingRatio;
+    const padY = projH * paddingRatio;
+
+    if (useFitToBox) {
+      void this.controls.rotateTo(theta, phi, animate);
+      void this.controls.fitToBox(box, animate, {
+        paddingLeft: padX,
+        paddingRight: padX,
+        paddingTop: padY,
+        paddingBottom: padY,
+      });
+    } else {
+      const center = box.getCenter(new THREE.Vector3());
+      const dist = this.controls.getDistanceToFitBox(
+        projW + padX * 2,
+        projH + padY * 2,
+        projD,
+      );
+      void this.controls.moveTo(center.x, center.y, center.z, animate);
+      void this.controls.rotateTo(theta, phi, animate);
+      void this.controls.dollyTo(Math.max(dist, this.controls.minDistance), animate);
+      void this.controls.setFocalOffset(0, 0, 0, animate);
+    }
+
+    if (!animate) {
+      this.renderImmediate();
+    }
+  }
+
+  setPreset(preset: CameraPreset, animate = !this.reducedMotion) {
+    this.currentPreset = preset;
+    this.hasOrbited = false;
+    this.needsRender = true;
+    const targetBox = this.sceneBounds.isEmpty()
+      ? new THREE.Box3(new THREE.Vector3(-0.75, -1.05, -0.225), new THREE.Vector3(0.75, 0.6, 0.225))
+      : this.sceneBounds;
+    this.fitBox(targetBox, preset, animate);
   }
 
   frameBars(barIds: string[]) {
@@ -584,18 +676,14 @@ export class SceneController {
     if (box.isEmpty()) {
       if (this.sceneBounds.isEmpty()) return;
       box.copy(this.sceneBounds);
+    } else {
+      box.expandByScalar(0.18);
     }
-    // Add modest padding around single bars so fitToBox isn't overly tight
-    box.expandByScalar(0.18);
-    void this.controls.fitToBox(box, !this.reducedMotion, {
-      paddingLeft: 0.15,
-      paddingRight: 0.15,
-      paddingTop: 0.15,
-      paddingBottom: 0.15,
-    });
+    this.fitBox(box, this.hasOrbited ? "keep" : this.currentPreset, !this.reducedMotion);
   }
 
   orbit(azimuthRad: number, polarRad: number) {
+    this.hasOrbited = true;
     this.needsRender = true;
     void this.controls.rotate(azimuthRad, polarRad, !this.reducedMotion);
   }
@@ -603,6 +691,45 @@ export class SceneController {
   zoom(delta: number) {
     this.needsRender = true;
     void this.controls.dolly(delta, !this.reducedMotion);
+  }
+
+  getProjectedSceneBounds(): ProjectedBounds | null {
+    if (this.sceneBounds.isEmpty()) return null;
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    if (w <= 0 || h <= 0) return null;
+    this.camera.updateMatrixWorld();
+
+    const { min, max } = this.sceneBounds;
+    const pt = new THREE.Vector3();
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    for (let ix = 0; ix < 2; ix++) {
+      for (let iy = 0; iy < 2; iy++) {
+        for (let iz = 0; iz < 2; iz++) {
+          pt.set(ix ? max.x : min.x, iy ? max.y : min.y, iz ? max.z : min.z);
+          pt.project(this.camera);
+          const px = (pt.x * 0.5 + 0.5) * w;
+          const py = (-pt.y * 0.5 + 0.5) * h;
+          if (px < minX) minX = px;
+          if (px > maxX) maxX = px;
+          if (py < minY) minY = py;
+          if (py > maxY) maxY = py;
+        }
+      }
+    }
+
+    return {
+      minX: Math.round(minX * 10) / 10,
+      maxX: Math.round(maxX * 10) / 10,
+      minY: Math.round(minY * 10) / 10,
+      maxY: Math.round(maxY * 10) / 10,
+      width: w,
+      height: h,
+    };
   }
 
   projectWorld(pointMm: [number, number, number]): { x: number; y: number; visible: boolean } {

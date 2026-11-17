@@ -1,6 +1,6 @@
 import { useReducedMotion } from "motion/react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatClause, formatFindingValue } from "../../lib/format";
+import { formatCalloutValue, formatClause } from "../../lib/format";
 import { useWorkspaceStore } from "../../stores/workspace";
 import type { Bundle, Finding } from "../../types/bundle";
 import { SceneController } from "./SceneController";
@@ -105,6 +105,14 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
           setHoveredBar(barId);
         },
         onCameraUpdate: (_cam, size) => {
+          const wrap = canvasWrapRef.current;
+          if (wrap) {
+            const bounds = ctrl.getProjectedSceneBounds();
+            if (bounds) {
+              wrap.dataset.jointBounds = JSON.stringify(bounds);
+            }
+            wrap.dataset.renderCount = String(Number(wrap.dataset.renderCount ?? "0") + 1);
+          }
           for (const { f, index } of visibleFindingsRef.current) {
             const btn = anchorRefs.current.get(index);
             if (!btn || !f.at) continue;
@@ -133,6 +141,17 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   }, []);
 
   useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+      requestAnimationFrame(() => {
+        controllerRef.current?.handleContainerResize();
+      });
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
     controllerRef.current?.setTheme(theme);
   }, [theme]);
 
@@ -144,8 +163,12 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
     ctrl.setScene(activeScene);
-    ctrl.setPreset(useWorkspaceStore.getState().cameraPreset);
+    ctrl.setPreset(useWorkspaceStore.getState().cameraPreset, false);
   }, [activeScene]);
+
+  useEffect(() => {
+    controllerRef.current?.renderImmediate();
+  }, [visibleFindings]);
 
   useEffect(() => {
     controllerRef.current?.setSelection(highlightedBarIds, hoveredBarId);
@@ -176,11 +199,9 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     const host = hostRef.current;
     if (!host) return;
     if (!document.fullscreenElement) {
-      void host.requestFullscreen?.();
-      setIsFullscreen(true);
+      void host.requestFullscreen?.().catch(() => {});
     } else {
-      void document.exitFullscreen?.();
-      setIsFullscreen(false);
+      void document.exitFullscreen?.().catch(() => {});
     }
   }, []);
 
@@ -221,7 +242,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   return (
     <div
       ref={hostRef}
-      className="flex h-full min-h-[24rem] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface-sunken"
+      className="flex h-full min-h-[20rem] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface-sunken lg:min-h-0"
     >
       <ViewportToolbar
         preset={cameraPreset}
@@ -283,7 +304,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
               }`}
               title={f.message}
             >
-              <span>{formatFindingValue(f)}</span>
+              <span>{formatCalloutValue(f)}</span>{" "}
               <span
                 className={
                   selectedFindingIndex === index

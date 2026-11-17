@@ -94,6 +94,9 @@ function rebartwinAssetsPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), rebartwinAssetsPlugin()],
+  resolve: {
+    dedupe: ["react", "react-dom", "three"],
+  },
   optimizeDeps: {
     exclude: ["web-ifc"],
   },

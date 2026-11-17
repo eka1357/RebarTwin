@@ -21,7 +21,7 @@ const NAV_LINKS = [
   { label: "To check", to: "/projects/c4-b12/review" },
   { label: "Joint", to: "/projects/c4-b12/joints/C4xB12" },
   { label: "Report", to: "/projects/c4-b12/report" },
-  { label: "Styleguide", to: "/styleguide" },
+  ...(import.meta.env.DEV ? [{ label: "Styleguide", to: "/styleguide" }] : []),
 ];
 
 export function TopBar() {

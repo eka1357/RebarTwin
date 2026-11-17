@@ -7,7 +7,7 @@ export function ResizablePanelGroup({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof Group>) {
-  return <Group className={cn("flex h-full w-full", className)} {...props} />;
+  return <Group className={cn("flex h-full min-h-0 w-full", className)} {...props} />;
 }
 
 export const ResizablePanel = Panel;

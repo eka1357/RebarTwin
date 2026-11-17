@@ -14,6 +14,9 @@ export function StatusIsland() {
   const summary = `${status.failCount} fail · ${status.toCheckCount} to check · zone ${status.zone} · IS 13920 ${
     status.is13920 ? "on" : "off"
   }`;
+  const inlineSummary = `${status.toCheckCount} to check · zone ${status.zone} · IS 13920 ${
+    status.is13920 ? "on" : "off"
+  }`;
 
   return (
     <div className="relative">
@@ -36,7 +39,7 @@ export function StatusIsland() {
           />
         )}
         <span className="font-num hidden xl:inline text-muted-foreground">
-          {status.activity ?? summary}
+          {status.activity ?? inlineSummary}
         </span>
         <ChevronDown
           className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-[var(--dur-1)] ${

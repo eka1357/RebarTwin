@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatArea,
   formatBarMark,
+  formatCalloutValue,
   formatClause,
   formatFindingValue,
   formatMeasure,
@@ -55,10 +56,30 @@ describe("format.ts", () => {
     ).toBe(`18${NBSP}mm overlap`);
   });
 
-  it("formats clauses, bar marks, and percent deltas", () => {
+  it("formats clauses, bar marks, callouts, and percent deltas", () => {
     expect(formatClause("IS 456:2000 cl. 26.3.2")).toBe("IS 456 cl. 26.3.2");
     expect(formatClause("IS 13920:2016 cl. 7.1.1")).toBe("IS 13920 cl. 7.1.1");
     expect(formatBarMark("B12/T1-3", 20)).toBe("T1-3 ⌀20");
     expect(formatPercentDelta(2.5)).toBe("+2.5%");
+    expect(
+      formatCalloutValue({
+        rule: "IS456-26.3.2-H",
+        measured: 16,
+        limit: 25,
+        compare: ">=",
+        unit: "mm",
+        status: "fail",
+      }),
+    ).toBe(`16${NBSP}mm · needs 25`);
+    expect(
+      formatCalloutValue({
+        rule: "GEOM-CLASH",
+        measured: -18,
+        limit: 0,
+        compare: ">=",
+        unit: "mm",
+        status: "fail",
+      }),
+    ).toBe(`18${NBSP}mm overlap`);
   });
 });

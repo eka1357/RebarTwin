@@ -22,8 +22,8 @@ export function JointRoute() {
   });
 
   return (
-    <main className="flex flex-1 flex-col gap-3 p-3 sm:p-4 lg:overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-2.5">
+    <main className="flex flex-1 min-h-0 flex-col gap-3 p-3 sm:p-4 lg:overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-2.5">
         <div>
           <p className="font-num text-xs text-muted-foreground">
             Project {id} · Joint {jointId}
@@ -52,8 +52,8 @@ export function JointRoute() {
           {error instanceof Error ? error.message : "Could not load joint bundle."}
         </div>
       ) : (
-        <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-[minmax(0,1fr)_25rem]">
-          <div className="min-h-80 lg:min-h-0">
+        <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-[minmax(0,1fr)_25rem] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+          <div className="min-h-80 lg:h-full lg:min-h-0">
             <Suspense fallback={<Skeleton className="h-full w-full" />}>
               <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl("zone2", "joint.ifc")} />
             </Suspense>

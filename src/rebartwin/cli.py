@@ -134,6 +134,14 @@ def read_command(args) -> int:
     except ReadError as e:
         print(f"Read stopped: {e}")
         return 2
+    except Exception as e:  # noqa: BLE001 - an API refusal (billing, quota, auth) ends the run with a sentence
+        code = getattr(e, "code", None)
+        if not isinstance(code, int):
+            raise
+        status = getattr(e, "status", None) or ""
+        print(f"Read stopped: the model API refused the call ({code} {status}). Replies so far are saved under "
+              f"{args.out / 'replies'} and replay on the next run.")
+        return 2
     a = result.agreement
     live = [c for c in result.calls if not c["cached"]]
     print(f"Read {result.pages} page(s) of {args.pdf.name} in {result.seconds:g} s: {len(a.accepted)} values agreed, "

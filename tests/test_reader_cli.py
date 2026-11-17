@@ -123,3 +123,19 @@ def test_probe_prints_counts_only(tmp_path: Path, capsys):
     assert "0 words, comments: 20 by AutoCAD SHX Text (20 merged as words)" in printed
     assert "needs OCR" not in printed
     assert "230x450" not in printed and "B12" not in printed
+
+
+def test_an_api_refusal_stops_with_a_sentence(tmp_path: Path, monkeypatch, capsys):
+    """A 402 (prepaid credit used up) on every read is not a model the key cannot use; the run stops cleanly and
+    says where the saved replies are, instead of a traceback."""
+    class Refused(Exception):
+        code, status = 402, "RESOURCE_EXHAUSTED"
+
+    class Broke:
+        def generate(self, **kw):
+            raise Refused("402 RESOURCE_EXHAUSTED")
+
+    monkeypatch.setattr(gemini, "GenAITransport", lambda: Broke())
+    code = cli.main(["read", str(make_pdf(tmp_path / "s.pdf")), "--out", str(tmp_path / "p"), "--no-ifc"])
+    printed = capsys.readouterr().out
+    assert code == 2 and "refused the call (402 RESOURCE_EXHAUSTED)" in printed and "replies" in printed

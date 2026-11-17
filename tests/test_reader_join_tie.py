@@ -132,3 +132,28 @@ def test_a_label_beyond_three_heights_does_not_crowd():
     p = plan(word("YB5", 305, 150, 330, 162))
     m = next(m for m in parse_page(p) if m.kind == "section")
     assert [a.member for a in agree([size_read("XB8", m)], parse_page(p), [p]).accepted] == ["XB8"]
+
+
+def test_one_value_on_the_drawing_backs_one_field():
+    """Seen live on sheet 17: Gemini gave XB16's top and its bottom at the same place, and both agreed with the one
+    '2Ø12' there. One value cannot be both faces, so neither is accepted. Two members in one row sharing a value in
+    the same field stay accepted."""
+    nd, o = sheet17()
+    p = page(nd, o, word("XB16", 140, 100, 155, 112))
+    m = next(m for m in parse_page(p) if m.kind == "bars")
+    box = tuple(round(v) for v in m.box)
+    top = Read(Callout(member="XB16", field="top", value="2φ12".replace("12", "16"), box_2d=list(box)), box, "t", "m")
+    bottom = Read(Callout(member="XB16", field="bottom", value="2φ16", box_2d=list(box)), box, "t", "m")
+    result = agree([top, bottom], parse_page(p), [p])
+    assert result.accepted == []
+    assert sorted(t.field for t in result.to_check) == ["bottom", "top"]
+    assert all(t.reason == "ambiguous" and "XB16 bottom and XB16 top" in t.detail for t in result.to_check)
+
+
+def test_two_members_sharing_one_value_in_one_field_stay():
+    """'B1, B2' then '230x450' in one row: the size is both beams' section."""
+    p = page(word("B1,", 100, 100, 115, 112, "text"), word("B2", 118, 100, 130, 112, "text"),
+             word("230x450", 200, 100, 240, 112, "text"))
+    m = next(m for m in parse_page(p) if m.kind == "section")
+    reads = [size_read("B1", m), size_read("B2", m)]
+    assert sorted(a.member for a in agree(reads, parse_page(p), [p]).accepted) == ["B1", "B2"]

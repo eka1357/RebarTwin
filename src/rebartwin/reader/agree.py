@@ -19,6 +19,8 @@ A Gemini callout is accepted only when all of these hold; otherwise it becomes a
    `frames_into` is exempt: a beam meets a column at each end. Each level is separate: a column has a value per
    storey. Zone, exposure and grades are project-wide: two
    values under any scopes conflict.
+8. One value on the drawing backs one field: if callouts for different fields (a beam's top and its bottom) agree
+   with the same parser value, none is accepted (`ambiguous`).
 
 Parser values of the main kinds that no callout claimed are listed too, as unassigned items, so a person can see what
 Gemini missed. They block no joint, since nothing ties them to one.
@@ -315,7 +317,24 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
                                         r.box, r.call, level, raw, joined))
 
-    # Rule 6: one value per member, field and layer; project-wide settings get one value whatever their scope.
+    # Rule 8: one value on the drawing backs one field. Two callouts that agree with the same parser value but
+    # name different fields (XB16's top and its bottom on one '2Ø12') cannot both be right: neither is accepted.
+    # Different members sharing a value in the same field (a 'B1, B2' row) stay.
+    by_source: dict[tuple, list[Accepted]] = {}
+    for a in result.accepted:
+        if a.field != "frames_into":
+            by_source.setdefault((a.page, a.box, a.text), []).append(a)
+    for group in by_source.values():
+        if len({a.field for a in group}) > 1:
+            for a in group:
+                result.accepted.remove(a)
+                n_tc += 1
+                result.to_check.append(ToCheck(
+                    f"tc_{n_tc:04d}", a.member, a.field, a.page, a.box, {"value": a.gemini}, {"value": a.value},
+                    "ambiguous", f"one value on the drawing, {a.text}, was read as "
+                    f"{' and '.join(sorted({f'{x.member} {x.field}' for x in group}))}", a.layer, level=a.level))
+
+    # Rule 7: one value per member, field and layer; project-wide settings get one value whatever their scope.
     groups: dict[tuple, list[Accepted]] = {}
     for a in result.accepted:
         scope = "*" if a.field in PROJECT_WIDE else a.member

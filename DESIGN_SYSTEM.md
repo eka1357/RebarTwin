@@ -211,7 +211,9 @@ Group, Slider, Progress, ScrollArea, Separator, Badge, Skeleton, Sonner, Resizab
 | ReadingLog | Step list in the style of an agent replay: page, what was read, what agreed | Newest at the bottom, auto-follows unless scrolled | Log role |
 | ToCheckCard | The crop, the two readings side by side as large choices, a field to type the value | Keys 1 and 2 choose, E edits, S skips, J and K move | Choices are a radio group; typed values are validated against the callout grammar |
 | SummaryStrip | "6 fail · 0 to check · zone II · IS 13920 off" | Click a count to filter | Counts are text |
+| StatusIsland | Top-bar dynamic island showing fail count, zone and IS 13920 status; expands for quick actions | Expands on click; honours reduced motion | `aria-expanded` and descriptive status label |
 | CommandPalette | Ctrl or Cmd + K: joints, findings, bars, clauses, actions | Fuzzy search, recent items | cmdk with full keyboard support |
+| ShortcutDialog | `?` modal listing viewport and navigation shortcuts | Opens on `?` outside text inputs | Radix Dialog with Escape close |
 | ViewportToolbar | View, Concrete, Labels, Reset, Full screen | Tooltips show shortcuts | Toggle groups with labels |
 | EmptyState | A joint plan drawn in hairlines, one sentence, one action | | Illustration is decorative |
 

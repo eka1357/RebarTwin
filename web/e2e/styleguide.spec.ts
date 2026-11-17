@@ -33,6 +33,6 @@ test.describe("Styleguide W1", () => {
 
     await page.keyboard.press("Tab");
     const activeTag = await page.evaluate(() => document.activeElement?.tagName ?? "");
-    expect(activeTag).toBe("BUTTON");
+    expect(activeTag).toMatch(/^(A|BUTTON)$/);
   });
 });

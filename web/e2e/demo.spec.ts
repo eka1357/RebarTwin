@@ -116,9 +116,43 @@ test.describe("Demo 3D Scene W3", () => {
       await expectNoCalloutOverlaps(presetName);
     }
 
-    // Clicking a 3D callout opens/selects its finding and corresponding bar
+    // Clicking a 3D callout opens/selects its finding card and corresponding bar in reverse
     await page.locator('button[data-callout-index="0"]').click();
     await expect(page.getByText(/B12\/T1-1 · T1-1/i)).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Findings list" })
+        .locator('button[aria-pressed="true"]')
+        .first(),
+    ).toBeVisible();
+
+    // Selecting a FindingCard frames its bars in 3D, renders sentence gauges, ClauseChip popover, and Source tab
+    const findingsRegion = page.getByRole("region", { name: "Findings list" });
+    await expect(
+      findingsRegion.getByRole("img", { name: "16 millimetres; needs at least 25; short by 9" }).first(),
+    ).toBeVisible();
+    await expect(
+      findingsRegion.getByRole("img", { name: "18 millimetres overlap; zero clearance allowed" }).first(),
+    ).toBeVisible();
+
+    const wrapForFrame = page.getByRole("img", { name: /Joint C4xB12:/i });
+    const countBeforeCardFrame = Number((await wrapForFrame.getAttribute("data-render-count")) ?? "0");
+    await page.getByRole("button", { name: /Show in 3D/i }).nth(4).click();
+    await expect
+      .poll(async () => Number((await wrapForFrame.getAttribute("data-render-count")) ?? "0"))
+      .toBeGreaterThan(countBeforeCardFrame);
+
+    await page.getByRole("button", { name: /Clause basis: IS 456 cl\. 26\.3\.2/i }).first().click();
+    await expect(page.getByText(/Clear gap between parallel bars/i).last()).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: "Source" }).first().click();
+    await expect(page.getByRole("button", { name: /Open full sheet/i })).toBeVisible();
+    await page.getByRole("button", { name: /Zoom in crop/i }).click();
+    await page.getByRole("button", { name: /Open full sheet/i }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("tab", { name: "Findings" }).click();
 
     // Switching to Labels: All caps at 8 pills and shows +9 more without overlaps
     await page.getByRole("button", { name: /Labels: Failures/i }).click();
@@ -191,7 +225,10 @@ test.describe("Demo 3D Scene W3", () => {
     expect(darkAxe.violations).toEqual([]);
 
     // Pick a failing bar from the scene bar list and press F to frame inside viewport
-    await page.getByRole("button", { name: /B12 Top bar 3, layer 1, 20 millimetres/i }).click();
+    await page
+      .getByRole("region", { name: "Bars in 3D scene" })
+      .getByRole("button", { name: /B12 Top bar 3, layer 1, 20 millimetres/i })
+      .click();
     await expect(page.getByText(/Selected bar B12\/T1-3/i)).toBeVisible();
 
     const region = page.getByRole("region", { name: "3D joint viewport" });

@@ -31,6 +31,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   const selectedBarId = useWorkspaceStore((s) => s.selectedBarId);
   const hoveredBarId = useWorkspaceStore((s) => s.hoveredBarId);
   const selectedFindingIndex = useWorkspaceStore((s) => s.selectedFindingIndex);
+  const frameVersion = useWorkspaceStore((s) => s.frameVersion);
   const concreteMode = useWorkspaceStore((s) => s.concreteMode);
   const labelMode = useWorkspaceStore((s) => s.labelMode);
   const cameraPreset = useWorkspaceStore((s) => s.cameraPreset);
@@ -38,6 +39,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   const selectBar = useWorkspaceStore((s) => s.selectBar);
   const setHoveredBar = useWorkspaceStore((s) => s.setHoveredBar);
   const selectFinding = useWorkspaceStore((s) => s.selectFinding);
+  const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
   const setConcreteMode = useWorkspaceStore((s) => s.setConcreteMode);
   const setLabelMode = useWorkspaceStore((s) => s.setLabelMode);
   const setCameraPreset = useWorkspaceStore((s) => s.setCameraPreset);
@@ -84,10 +86,20 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   }, [selectedBarId, selectedFindingIndex, activeFindings]);
 
   const highlightedRef = useRef(highlightedBarIds);
+  const activeFindingsRef = useRef(activeFindings);
+  const lastFramedVersionRef = useRef(frameVersion);
+
+  useEffect(() => {
+    activeFindingsRef.current = activeFindings;
+  }, [activeFindings]);
 
   useEffect(() => {
     highlightedRef.current = highlightedBarIds;
-  }, [highlightedBarIds]);
+    if (frameVersion !== lastFramedVersionRef.current) {
+      lastFramedVersionRef.current = frameVersion;
+      controllerRef.current?.frameBars(highlightedBarIds);
+    }
+  }, [highlightedBarIds, frameVersion]);
 
   const failCount = activeFindings.filter((f) => f.status === "fail").length;
   const affectedBars = activeScene.bars.filter((b) => b.status === "fail").length;
@@ -102,8 +114,17 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
       reducedMotion: reduced,
       callbacks: {
         onSelectBar: (barId) => {
-          selectFinding(null);
           selectBar(barId);
+          if (!barId) {
+            selectFinding(null);
+            return;
+          }
+          const findings = activeFindingsRef.current;
+          const failIdx = findings.findIndex((f) => f.status === "fail" && f.bars.includes(barId));
+          const anyIdx = findings.findIndex((f) => f.bars.includes(barId));
+          const targetIdx = failIdx >= 0 ? failIdx : anyIdx;
+          selectFinding(targetIdx >= 0 ? targetIdx : null);
+          setInspectorTab("findings");
         },
         onHoverBar: (barId) => {
           setHoveredBar(barId);
@@ -288,8 +309,10 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
           onSelectFinding={(f, index) => {
             selectBar(f.bars[0] ?? null);
             selectFinding(index);
+            setInspectorTab("findings");
           }}
           onOpenOverflow={() => {
+            setInspectorTab("findings");
             const inspectorEl = document.getElementById("inspector");
             const firstBtn = inspectorEl?.querySelector("button");
             if (firstBtn instanceof HTMLElement) {

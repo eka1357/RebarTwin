@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeToleranceGauge,
   formatArea,
   formatBarMark,
   formatCalloutValue,
@@ -81,5 +82,40 @@ describe("format.ts", () => {
         status: "fail",
       }),
     ).toBe(`18${NBSP}mm overlap`);
+  });
+
+  it("describes tolerance gauges as plain sentences", () => {
+    expect(
+      describeToleranceGauge({
+        rule: "IS456-26.3.2-H",
+        measured: 16,
+        limit: 25,
+        compare: ">=",
+        unit: "mm",
+        status: "fail",
+      }),
+    ).toBe("16 millimetres; needs at least 25; short by 9");
+
+    expect(
+      describeToleranceGauge({
+        rule: "GEOM-CLASH",
+        measured: -18,
+        limit: 0,
+        compare: ">=",
+        unit: "mm",
+        status: "fail",
+      }),
+    ).toBe("18 millimetres overlap; zero clearance allowed");
+
+    expect(
+      describeToleranceGauge({
+        rule: "IS456-26.3.2-H",
+        measured: 33.333,
+        limit: 25,
+        compare: ">=",
+        unit: "mm",
+        status: "pass",
+      }),
+    ).toBe("33 millimetres; needs at least 25; passes with 8 margin");
   });
 });

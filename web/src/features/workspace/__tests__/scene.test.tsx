@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import demoBundleRaw from "../../../../public/demo/C4xB12/bundle.json";
 import { ifcToThree } from "../../../lib/coords";
@@ -26,5 +26,15 @@ describe("W3 Scene & Demo Bundle", () => {
 
     render(<JointInspector bundle={bundle} />);
     expect(screen.getByText(/17 bars · 7 failing/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("img", { name: "16 millimetres; needs at least 25; short by 9" }).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByRole("img", { name: "18 millimetres overlap; zero clearance allowed" }).length,
+    ).toBeGreaterThanOrEqual(1);
+
+    // Clicking Source button inside a FindingCard switches tab and renders warm paper crop
+    fireEvent.click(screen.getAllByRole("button", { name: "Source" })[0]);
+    expect(screen.getByText(/Schedule callout/i)).toBeInTheDocument();
   });
 });

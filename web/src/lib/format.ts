@@ -141,3 +141,64 @@ export function formatCalloutValue(f: {
   const verb = f.compare === "<=" ? "max" : "needs";
   return `${valueStr} · ${verb} ${limitStr}`;
 }
+
+function unitWords(unit: string): string {
+  if (unit === "mm") return "millimetres";
+  if (unit === "mm²") return "square millimetres";
+  return unit;
+}
+
+function numSpeech(value: number, limit?: number, compare?: ">=" | "<=", status?: "fail" | "pass"): string {
+  let decimals = 0;
+  if (status === "fail" && limit !== undefined) {
+    for (let d = 0; d <= 3; d++) {
+      const factor = 10 ** d;
+      const rv = Math.round(value * factor) / factor;
+      const rl = Math.round(limit * factor) / factor;
+      const distinct = compare === "<=" ? rv > rl : rv < rl;
+      decimals = d;
+      if (distinct && rv !== rl) break;
+    }
+  }
+  return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
+/**
+ * Accessibility sentence describing a ToleranceGauge, e.g.:
+ * "16 millimetres; needs at least 25; short by 9"
+ * "18 millimetres overlap; zero clearance allowed"
+ */
+export function describeToleranceGauge(f: {
+  rule: string;
+  measured: number;
+  limit: number;
+  compare: ">=" | "<=";
+  unit: string;
+  status: "fail" | "pass";
+}): string {
+  const unitName = unitWords(f.unit);
+  if (f.rule === "GEOM-CLASH" && f.measured < 0) {
+    const ov = numSpeech(Math.abs(f.measured), 0, "<=", "fail");
+    return `${ov} ${unitName} overlap; zero clearance allowed`;
+  }
+  const mStr = numSpeech(f.measured, f.limit, f.compare, f.status);
+  const lStr = numSpeech(f.limit);
+  const diff = Math.abs(f.measured - f.limit);
+  const diffStr =
+    diff > 0 && diff < 1
+      ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(diff)
+      : numSpeech(Math.round(diff));
+  if (f.compare === "<=") {
+    if (f.status === "fail") {
+      return `${mStr} ${unitName}; limit at most ${lStr}; over by ${diffStr}`;
+    }
+    return `${mStr} ${unitName}; limit at most ${lStr}; passes with ${diffStr} margin`;
+  }
+  if (f.status === "fail") {
+    return `${mStr} ${unitName}; needs at least ${lStr}; short by ${diffStr}`;
+  }
+  return `${mStr} ${unitName}; needs at least ${lStr}; passes with ${diffStr} margin`;
+}

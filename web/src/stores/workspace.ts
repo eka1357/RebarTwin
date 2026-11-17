@@ -6,6 +6,7 @@ export type ConcreteMode = "translucent" | "wireframe" | "hidden";
 export type LabelMode = "failures" | "all" | "hidden";
 export type CameraPreset = "iso" | "plan" | "elevation_x" | "elevation_y";
 export type ReplaySpeed = 0.5 | 1 | 2;
+export type InspectorTab = "findings" | "fix" | "workings" | "source";
 
 export interface StatusIslandSummary {
   jointLabel: string;
@@ -49,6 +50,9 @@ interface WorkspaceState {
   selectedBarId: string | null;
   hoveredBarId: string | null;
   selectedFindingIndex: number | null;
+  inspectorTab: InspectorTab;
+  sourceFocusMember: string | null;
+  frameVersion: number;
   mode: ViewMode;
   optionIndex: number;
   concreteMode: ConcreteMode;
@@ -66,6 +70,9 @@ interface WorkspaceState {
   selectBar: (barId: string | null) => void;
   setHoveredBar: (barId: string | null) => void;
   selectFinding: (index: number | null) => void;
+  setInspectorTab: (tab: InspectorTab) => void;
+  setSourceFocusMember: (member: string | null) => void;
+  triggerFrame: () => void;
   setMode: (mode: ViewMode) => void;
   setOptionIndex: (index: number) => void;
   setConcreteMode: (mode: ConcreteMode) => void;
@@ -97,6 +104,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectedBarId: null,
   hoveredBarId: null,
   selectedFindingIndex: null,
+  inspectorTab: "findings",
+  sourceFocusMember: null,
+  frameVersion: 0,
   mode: "before",
   optionIndex: 0,
   concreteMode: "translucent",
@@ -122,6 +132,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectBar: (selectedBarId) => set({ selectedBarId }),
   setHoveredBar: (hoveredBarId) => set({ hoveredBarId }),
   selectFinding: (selectedFindingIndex) => set({ selectedFindingIndex }),
+  setInspectorTab: (inspectorTab) => set({ inspectorTab }),
+  setSourceFocusMember: (sourceFocusMember) => set({ sourceFocusMember }),
+  triggerFrame: () => set((s) => ({ frameVersion: s.frameVersion + 1 })),
   setMode: (mode) => set({ mode }),
   setOptionIndex: (optionIndex) => set({ optionIndex }),
   setConcreteMode: (concreteMode) => set({ concreteMode }),

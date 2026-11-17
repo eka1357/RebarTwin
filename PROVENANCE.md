@@ -52,6 +52,10 @@ Fixed workspace height and camera framing on `fix/w3-review`: bounded workspace 
 
 Built `web/` W4 on `feature/w4-callouts`: 3D CAD gap dimension lines with extension stems and end ticks between parallel bar surfaces, dual-plane 3D clash rings in `SceneController.ts`, deterministic flush-stack non-overlapping 2D pill layout (`lib/calloutLayout.ts` + Vitest suite), SVG leader lines and anchor dots (`ViewportCallouts.tsx`), `+n more` overflow chip above 8 localized labels, and mirrored screen-reader findings list. Verified across Iso/Plan/Elev views and Labels Failures/All/Off modes.
 
+## 17 November 2026: Inspector, Findings, and Source tabs (W5)
+
+Built `web/` W5 on `feature/w5-inspector`: `ToleranceGauge` (SVG hairline scale, limit tick, diamond marker settling in 160 ms, hatched wrong side and negative overlap zone, plain-sentence `aria-label` via `describeToleranceGauge`), focusable `ClauseChip` (`RuleMeta` basis popover with verification badge and Escape close), `BarChip` (two-way hover/focus highlight and full accessible name), `FindingCard` (two-way selection framing 3D bars and scrolling within inspector `ScrollArea`), warm-paper `SourceCrop` (`data-theme="light" surface-paper`, zoom/pan controls, full-sheet dialog, placeholder drawing crop clearly disclosed until R5), and 4-tab `JointInspector`. Verified with Vitest (13 passed) and Playwright + axe (9 passed across dark/light themes and viewports).
+
 ## Next: built in Google Antigravity
 
 The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

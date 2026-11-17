@@ -24,6 +24,8 @@ LOWER, UPPER = "FOUNDATION TO FIRST FLOOR", "FIRST FLOOR TO TERRACE FLOOR"
 @pytest.mark.parametrize("text, name", [
     ("FIRST FLOOR BEAM LAYOUT", "FIRST"), ("First Floor", "FIRST"), ("TERRACE FLOOR", "TERRACE"),
     ("LMR/OHT LVL", "LMR OHT"), ("", None), (None, None), ("FLOOR", None),
+    ("FIRST FLOOR ▪OR", "FIRST"),               # OCR fragments round a header do not change the floor
+    ("FOUNDATION ON", "FOUNDATION"), ("SERVANT QUARTER", "SERVANT QUARTER"),
 ])
 def test_floor(text, name):
     assert floor(text) == name
@@ -35,6 +37,9 @@ def test_storey_and_ends():
     assert storey("TERRACE FLOOR TO LMR/OHT LVL") == ("TERRACE", "LMR OHT")
     assert storey("FIRST FLOOR") is None
     assert is_storey_header(LOWER) and not is_storey_header("REFER TO NOTES")
+    assert not is_storey_header("1550 SECTION DETAIL TO PLINTH BEAM")     # a floor word on one side only
+    assert not is_storey_header("FOUNDATION @ LIFT PIT RETAINER SECTION X - X")   # a dash is not TO
+    assert same_level("FOUNDATION ON TO FIRST FLOOR ▪OR", LOWER)           # OCR noise, same storey
     assert ends_at(LOWER, "FIRST") and not ends_at(UPPER, "FIRST") and ends_at(UPPER, "TERRACE")
     assert ends_at(None, "FIRST")                          # a value with no storey fits every floor
     assert same_level("foundation to first floor", LOWER) and not same_level(LOWER, UPPER)
@@ -51,7 +56,7 @@ def sheet(tmp_path_factory):
 def at(matches, kind, value, x):
     """The text layer's box of a value, nudged a little as a model's box would be."""
     m = next(m for m in matches if m.kind == kind and m.value == value and abs(m.box[1] - x) < 15)
-    return (m.box[0] - 2, m.box[1] - 1, m.box[2] + 2, m.box[3] + 1)
+    return (round(m.box[0]) - 2, round(m.box[1]) - 1, round(m.box[2]) + 2, round(m.box[3]) + 1)   # model: ints
 
 
 def callouts(matches) -> list[Read]:
@@ -98,7 +103,8 @@ def test_storey_where_the_sheet_has_no_header(tmp_path):
     pages = ingest(make_pdf(tmp_path / "p.pdf"))
     matches = parse_page(pages[0])
     m = next(m for m in matches if m.kind == "bars" and m.value == "8-16")
-    read = Read(Callout(member="C4", field="main", value="8-16", box_2d=list(m.box), level=LOWER), m.box, "t", "m")
+    box = tuple(round(v) for v in m.box)
+    read = Read(Callout(member="C4", field="main", value="8-16", box_2d=list(box), level=LOWER), box, "t", "m")
     result = agree([read], matches, pages)
     assert result.accepted == [] and result.to_check[0].reason == "ambiguous"
     read.callout.level = None                            # and with no storey it is accepted as before

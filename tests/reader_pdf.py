@@ -147,3 +147,29 @@ def make_storey_pdf(path: Path) -> Path:
     doc.save(path)
     doc.close()
     return path
+
+
+def make_grid_pdf(path: Path, ruled: bool = True) -> Path:
+    """A ruled column schedule by storey: each storey header is written on two lines inside its cell ("FOUNDATION TO"
+    over "FIRST FLOOR"), and the bar values of neighbouring cells sit 4 pt apart, closer than a text height. Without
+    the rules (`ruled` False) the same words are on the sheet with no grid."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page(width=842, height=595)
+    xs, ys = [40, 120, 200, 280], [80, 112, 132]
+    if ruled:
+        for y in ys:
+            page.draw_line((xs[0], y), (xs[-1], y))
+        for x in xs:
+            page.draw_line((x, ys[0]), (x, ys[-1]))
+    tw = pymupdf.TextWriter(page.rect)
+    font = pymupdf.Font("cjk")
+    for x, y, text in [(45, 100, "COLUMN"), (125, 93, "FOUNDATION TO"), (125, 105, "FIRST FLOOR"),
+                       (205, 93, "FIRST FLOOR TO"), (205, 105, "TERRACE FLOOR"),
+                       (45, 125, "C4"), (178, 125, "8Ø16"), (202, 125, "8Ø12")]:
+        tw.append((x, y), text, font=font, fontsize=7)
+    tw.write_text(page)
+    doc.save(path)
+    doc.close()
+    return path

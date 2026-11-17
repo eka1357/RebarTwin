@@ -17,9 +17,12 @@ def _word(page, text):
 
 def test_normalise_rect_by_hand():
     """A 100 x 50 pt rectangle at (421, 297.5) on an 842 x 595 pt page:
-    xmin = 1000 * 421 / 842 = 500, ymin = 1000 * 297.5 / 595 = 500, xmax = 1000 * 521 / 842 = 618.8 -> 619,
-    ymax = 1000 * 347.5 / 595 = 584.0 -> 584."""
-    assert normalise_rect(421, 297.5, 521, 347.5, 842, 595) == (500, 500, 584, 619)
+    xmin = 1000 * 421 / 842 = 500, ymin = 1000 * 297.5 / 595 = 500, xmax = 1000 * 521 / 842 = 618.76,
+    ymax = 1000 * 347.5 / 595 = 584.03. Kept as floats; the files round them to 584 and 619."""
+    from rebartwin.reader.ingest import box_2d
+    box = normalise_rect(421, 297.5, 521, 347.5, 842, 595)
+    assert box == pytest.approx((500, 500, 584.034, 618.765), abs=0.001)
+    assert box_2d(box) == [500, 500, 584, 619]
 
 
 def test_renders_pages_and_words(tmp_path: Path):
@@ -32,7 +35,7 @@ def test_renders_pages_and_words(tmp_path: Path):
     pix = pymupdf.Pixmap(str(image))
     assert (pix.width, pix.height) == (2339, 1653)
     b12 = _word(pages[0], "B12")
-    assert b12.box[1] == 48 and b12.page == 1
+    assert b12.box[1] == pytest.approx(47.506, abs=0.001) and b12.page == 1
     assert {"230x450", "5-20", "8φ", "@", "c/c", "300x300"} <= {w.text for w in pages[0].words}
 
 
@@ -51,7 +54,7 @@ def test_rotated_sheet_boxes_land_on_the_ink(tmp_path: Path):
     turned = ingest(make_pdf(tmp_path / "turned.pdf", rotate=90), tmp_path / "out")[0]
     assert (turned.width, turned.height) == (595, 842)
     a, b = _word(flat, "B12").box, _word(turned, "B12").box
-    assert b[0] == a[1] == 48
+    assert b[0] == pytest.approx(a[1]) and round(b[0]) == 48
     assert abs(b[1] - round(1000 * (595 - a[2] * 595 / 1000) / 595)) <= 1
     pix = pymupdf.Pixmap(turned.png)
     assert pix.width < pix.height

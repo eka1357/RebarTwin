@@ -52,7 +52,7 @@ _ZONE = re.compile(r"(?i)(?<![\w.])(?:seismic\s+)?zone\s*[-:–]?\s*(III|II|IV|V
 _EXPOSURE = re.compile(
     r"(?i)(?<![\w.])(?:(very\s+severe|mild|moderate|severe|extreme)\s+exposure"
     r"|exposure(?:\s+condition)?\s*[:=\-–]?\s*(very\s+severe|mild|moderate|severe|extreme))(?![\w.])")
-_MEMBER = re.compile(rf"(?<![\w.#/-])(FB|PB|RB|GB|TB|LB|SB|CB|B|C|F){_DASH}?(\d{{1,3}}[A-Z]?)(?![\w.])")
+_MEMBER = re.compile(rf"(?<![\w.#/-])(XB|YB|FB|PB|RB|GB|TB|LB|SB|CB|B|C|F){_DASH}?(\d{{1,3}}[A-Z]?)(?![\w.])")
 
 # Bare values, accepted only when normalising Gemini's value for a known kind, never when scanning a page: on a sheet
 # a lone "III" or "25" means nothing.
@@ -172,9 +172,15 @@ def visual_lines(page: Page) -> list[list[Word]]:
 
     CAD exports often write "8φ", "@", "150" and "c/c" as separate text objects, so PyMuPDF's own lines would split a
     callout. Two words join when their vertical centres are within half a text height and the gap between them is
-    under one text height, measured in points (box units differ in x and y on a non-square sheet)."""
+    under one text height, measured in points (box units differ in x and y on a non-square sheet).
+
+    On a page with drawn table rules, words inside one small table cell are one run instead, whatever their lines
+    (cells.py): a two-line header reads whole and neighbouring cells never run together."""
+    from .cells import cell_lines
+
+    in_cells, loose = cell_lines(page)
     sx, sy = page.width / 1000, page.height / 1000
-    words = sorted(page.words, key=lambda w: ((w.box[0] + w.box[2]) / 2, w.box[1]))
+    words = sorted(loose, key=lambda w: ((w.box[0] + w.box[2]) / 2, w.box[1]))
     rows: list[list[Word]] = []
     for w in words:
         cy, h = (w.box[0] + w.box[2]) / 2 * sy, (w.box[2] - w.box[0]) * sy
@@ -200,7 +206,7 @@ def visual_lines(page: Page) -> list[list[Word]]:
                 lines.append(current)
                 current = [w]
         lines.append(current)
-    return lines
+    return in_cells + lines
 
 
 def parse_page(page: Page) -> list[Match]:

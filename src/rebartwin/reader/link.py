@@ -241,9 +241,17 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         notes.append(f"{beam.id} cover measured to the {'main bars' if beam.cover_to == 'main' else 'stirrups'} "
                      "(the linking model's reading of the notes).")
         meets = [a for a in of(beam.id, "frames_into") if a.value == col.id]
+        stated = direction_of(beam.id)
+        if stated and beam.direction != stated:
+            issues.append(Issue(f"{p}.direction", "disagree", f"{beam.id} runs along {stated.upper()} by its prefix "
+                                f"{beam.id[:2]}; the linking model put it along {beam.direction.upper()}"))
         if use(f"{p}.frames_into", meets, ("frames_into",), lambda got: None):
-            notes.append(f"{beam.id} meets {col.id} on the plan; it runs along {beam.direction.upper()} "
-                         "(the linking model's reading of the plan).")
+            if stated:
+                notes.append(f"{beam.id} meets {col.id} on the plan; it runs along {stated.upper()}, as its prefix "
+                             f"{beam.id[:2]} states (checked by code).")
+            else:
+                notes.append(f"{beam.id} meets {col.id} on the plan; it runs along {beam.direction.upper()} "
+                             "(the linking model's reading of the plan).")
         if len(beam.top) > 1 or len(beam.bottom) > 1:
             if beam.spacer == db["spacer"].default:
                 defaults[f"{p}.spacer"] = f"{beam.spacer:g} mm"
@@ -275,6 +283,11 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         if len(face) == 1 and isinstance(provenance[key], dict):
             provenance[f"{key}[0].bars"] = provenance.pop(key)
     return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults, at_floor)
+
+
+def direction_of(beam_id: str) -> str | None:
+    """XB12 runs along X and YB3 along Y: the drawing states it in the id. Other ids say nothing."""
+    return {"XB": "x", "YB": "y"}.get(beam_id[:2])
 
 
 def _members(j: Joint) -> set[str]:

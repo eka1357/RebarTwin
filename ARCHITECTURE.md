@@ -73,7 +73,7 @@ scene            { units: "mm", up: "z", concrete[{id, kind, min, max}],
 option_scenes[]  a scene per fix option, same order
 attempt_scenes[] { concrete[], bars[] } per attempt (first 60); a bar's findings index that attempt's failures
 provenance[]     { path, member, field, layer, page, box_2d, text, gemini, parser, status: agreed|resolved|default,
-                   page_image }   only in bundles written by `rebartwin read`
+                   ocr_raw, page_image }   only in bundles written by `rebartwin read`
 pages            { "<n>": "pages/page-<n>.png" }   page images copied beside bundle.json; paths relative to it
 ```
 
@@ -101,7 +101,8 @@ A list, one entry per linked joint:
 [{ "joint": "C4xB12",
    "fields": { "beams[0].top[0].bars": { "page": 3, "box_2d": [ymin, xmin, ymax, xmax], "text": "5-20",
                "gemini": "5-20", "parser": "5-20", "status": "agreed", "field_id": "f0012",
-               "level": "FIRST FLOOR" | "FOUNDATION TO FIRST FLOOR" | null },
+               "level": "FIRST FLOOR" | "FOUNDATION TO FIRST FLOOR" | null,
+               "ocr_raw": "4016" | null },
                "beams[0].top": [ {...}, {...} ] },
    "link_notes": ["what the linking model said, kept for a person; never copied into the joint"] }]
 ```
@@ -146,8 +147,16 @@ page (words, annotations by author, whether annotations were read), counts, toke
    merged as words, AutoCAD codes translated (%%C Ø, %%D °, %%P ±, %%% %, %%U and %%O dropped); a comment repeating a
    text-layer word in the same place is dropped. A page with no comments and fewer than 20 words (text exported as
    lines) is read by Cloud Vision DOCUMENT_TEXT_DETECTION (`VISION_API_KEY`), tiled like Gemini, replies saved and
-   replayed; those OCR words feed the parser only, never Gemini's prompt. `--probe` prints words, comments by author,
-   comments merged, vector paths and whether OCR is needed, per page; never the text.
+   replayed; those OCR words feed the parser only, never Gemini's prompt. A Ø that OCR misread (0, O, Q, •, θ) is
+   repaired in OCR words only, when exactly one split gives a standard callout: bars n-Ø-d (n 1 to 24, d 8 to 40)
+   and links Ø-d @ s (d 6 to 12, s a multiple of 5 from 50 to 300); the raw text is kept as `ocr_raw` and repairs
+   are counted in reading.json. A repaired value is accepted only if Gemini reads the same. `--probe` prints words,
+   comments by author, comments merged, vector paths and whether OCR is needed, per page; never the text.
+   Boxes are floats in box units everywhere inside the reader; only the output files hold integer `box_2d`.
+   Drawn horizontal and vertical segments of at least 10 pt are ruling lines, minus strokes that lie inside a word
+   (lettering exported as lines). Words in one small table cell (at most 8% of the page high, 30% wide) are one text
+   run (`cells.py`): two-line headers read whole and neighbouring cells never run together. Pages with no grid group
+   words by line as before.
 2. **Gemini channel** (`gemini.py`). `REBARTWIN_MODEL_READ` (default `gemini-3.8-flash`), no sampling parameters
    (Gemini 3.6+ ignores and will reject temperature, top_p, top_k), JSON
    schema `PageReading`: callouts with member, field, layer, level, value as written, `box_2d`, page. `level` is
@@ -160,7 +169,9 @@ page (words, annotations by author, whether annotations were read), counts, toke
    to 60 s); the reader retries only invalid replies. 403, 404 or a 429 with "limit: 0" means the key cannot use
    the model: no retry, linking falls back. Every reply is saved in `out/<project>/replies/` by a hash of model and
    parts and replayed on a re-run (`--replay` never calls the API). Logs ids, model, tokens and latency, never text.
-3. **Parser channel** (`parser.py`). A grammar over the text layer for Indian notation ("5-20", "2-25+1-20", "2#25",
+3. **Parser channel** (`parser.py`). Member ids include XB and YB beams (XB12 runs along X, YB3 along Y: code checks
+   the linking model's direction against the prefix, a mismatch is To check, and the note says so). A grammar over
+   the text for Indian notation ("5-20", "2-25+1-20", "2#25",
    "8-T16", "3 nos 16φ", "230x450", "8φ @ 150 c/c", "2L-8 @ 100", "clear cover 25 mm", "C.C. 40", "M25",
    "Fe500", "zone III", member ids), on visual lines (CAD often splits one callout into several text objects),
    mapped to word boxes. Canonical values: bars "2-25 + 1-20", sections "230x450" (b x D), links "2L-8@100". No

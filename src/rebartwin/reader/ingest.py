@@ -21,7 +21,15 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-Box = tuple[int, int, int, int]          # ymin, xmin, ymax, xmax, 0..1000
+Box = tuple[float, float, float, float]  # ymin, xmin, ymax, xmax, 0..1000; floats inside, integers in files
+Rule = tuple[float, float, float]        # a ruling line: (y, x0, x1) horizontal or (x, y0, y1) vertical, box units
+
+MIN_RULE_PT = 10.0                       # shorter strokes are letters or hatching, not table rules
+
+
+def box_2d(b: Box) -> list[int]:
+    """A box as written to the output files: integer box_2d."""
+    return [round(v) for v in b]
 
 OCR_BELOW_WORDS = 20                     # a page with no comments and fewer text words than this is read by OCR
 
@@ -33,6 +41,7 @@ class Word:
     page: int                            # 1-based, as people number sheets
     line: tuple[int, int]                # PyMuPDF (block, line): words of one text entity share it
     source: str = "text"                 # "text" (the PDF text layer), "annotation" (a comment) or "ocr"
+    raw: str | None = None               # OCR only: the text as Vision read it, when a misread Ø was repaired
 
 
 @dataclass
@@ -48,6 +57,9 @@ class Page:
     comments: int = 0                    # comments merged as words (after dropping repeats)
     needs_ocr: bool = False
     ocr_words: int = 0
+    ocr_repairs: int = 0
+    h_rules: list[Rule] = field(default_factory=list, repr=False)   # drawn horizontal lines (table rules)
+    v_rules: list[Rule] = field(default_factory=list, repr=False)
 
     def lines(self) -> list[list[Word]]:
         """Words grouped by text entity, in reading order inside each entity."""
@@ -58,11 +70,46 @@ class Page:
 
 
 def normalise_rect(x0: float, y0: float, x1: float, y1: float, width: float, height: float) -> Box:
-    """Points to box_2d. Clamped, and never zero-height, so overlap tests stay defined."""
-    def scale(v: float, size: float) -> int:
-        return max(0, min(1000, round(1000 * v / size)))
+    """Points to box units (0 to 1000), as floats: on an A0 sheet one unit is 3.4 pt and small text is 2 units tall,
+    so rounding here would blur which word sits where. Clamped, and never zero-height, so overlaps stay defined."""
+    def scale(v: float, size: float) -> float:
+        return max(0.0, min(1000.0, 1000 * v / size))
     ymin, xmin, ymax, xmax = scale(y0, height), scale(x0, width), scale(y1, height), scale(x1, width)
-    return ymin, xmin, max(ymax, ymin + 1), max(xmax, xmin + 1)
+    return ymin, xmin, max(ymax, ymin + 0.1), max(xmax, xmin + 0.1)
+
+
+def rulings(page) -> tuple[list[Rule], list[Rule]]:
+    """Horizontal and vertical drawn segments at least MIN_RULE_PT long, in box units after rotation: the ruling
+    lines that make table cells. Rectangles and quads count as their four edges."""
+    import pymupdf
+
+    rect, matrix = page.rect, page.rotation_matrix
+    hs: list[Rule] = []
+    vs: list[Rule] = []
+
+    def add(a, b):
+        a, b = pymupdf.Point(a) * matrix, pymupdf.Point(b) * matrix
+        dx, dy = abs(a.x - b.x), abs(a.y - b.y)
+        if dy <= 0.5 and dx >= MIN_RULE_PT:
+            hs.append((1000 * (a.y + b.y) / 2 / rect.height, 1000 * min(a.x, b.x) / rect.width,
+                       1000 * max(a.x, b.x) / rect.width))
+        elif dx <= 0.5 and dy >= MIN_RULE_PT:
+            vs.append((1000 * (a.x + b.x) / 2 / rect.width, 1000 * min(a.y, b.y) / rect.height,
+                       1000 * max(a.y, b.y) / rect.height))
+
+    for path in page.get_drawings():
+        for item in path["items"]:
+            if item[0] == "l":
+                add(item[1], item[2])
+            elif item[0] == "re":
+                r = item[1]
+                for a, b in ((r.tl, r.tr), (r.bl, r.br), (r.tl, r.bl), (r.tr, r.br)):
+                    add(a, b)
+            elif item[0] == "qu":
+                q = item[1]
+                for a, b in ((q.ul, q.ur), (q.ll, q.lr), (q.ul, q.ll), (q.ur, q.lr)):
+                    add(a, b)
+    return hs, vs
 
 
 _CODES = {"c": "Ø", "d": "°", "p": "±", "%": "%", "u": "", "o": ""}
@@ -140,8 +187,10 @@ def ingest(pdf: Path, out: Path | None = None, dpi: int = 200, pages: list[int] 
                 image = out / "pages" / f"page-{number}.png"
                 image.write_bytes(png)
             n_text = sum(w.source == "text" for w in words)
+            hs, vs = rulings(page)
             result.append(Page(number, page.rect.width, page.rect.height, words, image, png, text_words=n_text,
-                               annotations=by_author, comments=kept, needs_ocr=needs_ocr(n_text, kept)))
+                               annotations=by_author, comments=kept, needs_ocr=needs_ocr(n_text, kept),
+                               h_rules=hs, v_rules=vs))
     return result
 
 

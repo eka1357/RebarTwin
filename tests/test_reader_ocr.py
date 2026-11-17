@@ -56,16 +56,17 @@ def test_a_sheet_of_lines_needs_ocr(vector):
 
 
 def test_ocr_words_by_hand(vector):
-    """One tile, 2339 x 1653 px. 'C4' spans x 300 to 340, y 400 to 430 px: xmin = 1000 x 300 / 2339 = 128.3 -> 128,
-    xmax = 1000 x 340 / 2339 = 145.4 -> 145, ymin = 1000 x 400 / 1653 = 242.0 -> 242, ymax = 1000 x 430 / 1653 =
-    260.1 -> 260. The rotated '8Ø' quadrilateral (x 900 to 940, y 400 to 430) becomes its bounding box. 'TOP' has
+    """One tile, 2339 x 1653 px. 'C4' spans x 300 to 340, y 400 to 430 px: xmin = 1000 x 300 / 2339 = 128.26,
+    xmax = 1000 x 340 / 2339 = 145.36, ymin = 1000 x 400 / 1653 = 241.98, ymax = 1000 x 430 / 1653 = 260.13 (floats;
+    the files round them to 128, 145, 242, 260). The rotated '8Ø' quadrilateral (x 900 to 940, y 400 to 430) becomes its bounding box. 'TOP' has
     x omitted where it is 0. The whole-text entry is skipped."""
     [tile] = tiles(vector)
     body = json.loads((FIXTURES / "ocr-p1-t0.json").read_text(encoding="utf-8"))
     words = words_from(body, tile, 1)
     assert [w.text for w in words] == ["C4", "300x450", "8-16", "8Ø", "@", "150", "c/c", "TOP"]
-    assert words[0].box == (242, 128, 260, 145) and words[0].source == "ocr"
-    assert words[3].box == (242, round(1000 * 900 / 2339), 260, round(1000 * 940 / 2339))
+    assert words[0].box == pytest.approx((241.984, 128.260, 260.133, 145.361), abs=0.001)
+    assert words[0].source == "ocr"
+    assert words[3].box == pytest.approx((1000 * 400 / 1653, 1000 * 900 / 2339, 1000 * 430 / 1653, 1000 * 940 / 2339))
     assert words[-1].box[1] == 0
 
 

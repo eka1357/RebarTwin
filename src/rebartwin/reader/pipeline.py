@@ -20,7 +20,7 @@ from pathlib import Path
 
 from .agree import Accepted, Agreement, agree
 from .gemini import READ_PROMPT, CachingTransport, Transport, read_pages
-from .ingest import ingest
+from .ingest import box_2d, ingest
 from .ocr import CachingOcr, OcrTransport, ocr_pages
 from .link import LINK_PROMPT, Linked, Verified, blocks, link
 from .parser import parse_page
@@ -75,15 +75,17 @@ def read(pdf: Path, out: Path, transport: Transport | None, *, ocr: OcrTransport
         "pdf": pdf.name, "pages": [p.number for p in sheets], "dpi": dpi, "tile_px": tile_px,
         "prompts": {"read": READ_PROMPT, "link": LINK_PROMPT}, "link_model": linked.model, "seconds": seconds,
         "text_layer": [{"page": p.number, "words": p.text_words, "annotations": p.annotations,
-                        "comments": p.comments, "ocr": p.needs_ocr, "ocr_words": p.ocr_words} for p in sheets],
+                        "comments": p.comments, "ocr": p.needs_ocr, "ocr_words": p.ocr_words,
+                        "ocr_repairs": p.ocr_repairs} for p in sheets],
         "ocr_skipped": ocr_skipped,
         "counts": {"callouts": len(reads), "parser_matches": len(matches), "accepted": len(agreement.accepted),
                    "to_check": len(linked.to_check), "unassigned": len(agreement.unassigned),
-                   "joints": len(linked.joints)},
+                   "joints": len(linked.joints), "ocr_repairs": sum(p.ocr_repairs for p in sheets)},
         "tokens": {"prompt": sum(c["prompt_tokens"] or 0 for c in calls if not c["cached"]),
                    "output": sum(c["output_tokens"] or 0 for c in calls if not c["cached"])},
         "calls": calls,
-        "accepted": [{**asdict(a), "box": list(a.box), "gemini_box": list(a.gemini_box)} for a in agreement.accepted],
+        "accepted": [{**asdict(a), "box": box_2d(a.box), "gemini_box": box_2d(a.gemini_box)}
+                     for a in agreement.accepted],
         "unassigned": [t.to_json() for t in agreement.unassigned],
     }
     (out / "reading.json").write_text(json.dumps(reading, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -101,10 +103,11 @@ def source_entries(v: Verified, fields: dict[str, Accepted]) -> list[dict]:
                 "path": path, "member": a.member if a else None, "field": a.field if a else None,
                 "layer": a.layer if a else None, "page": p["page"], "box_2d": p["box_2d"], "text": p["text"],
                 "gemini": p["gemini"], "parser": p["parser"], "status": p["status"],
-                "page_image": f"pages/page-{p['page']}.png"})
+                "ocr_raw": p.get("ocr_raw"), "page_image": f"pages/page-{p['page']}.png"})
     for path, value in v.defaults.items():
         entries.append({"path": path, "member": None, "field": None, "layer": None, "page": None, "box_2d": None,
-                        "text": None, "gemini": None, "parser": value, "status": "default", "page_image": None})
+                        "text": None, "gemini": None, "parser": value, "status": "default", "ocr_raw": None,
+                        "page_image": None})
     return entries
 
 

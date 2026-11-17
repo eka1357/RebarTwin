@@ -16,15 +16,19 @@ _FILLER = {"FLOOR", "FLOORS", "FLR", "FL", "LVL", "LEVEL", "LEVELS", "SLAB", "BE
 _FLOOR_WORD = re.compile(
     r"\b(FOUNDATION|FOOTING|PLINTH|GROUND|STILT|BASEMENT|CELLAR|FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|TERRACE|ROOF|"
     r"LMR|OHT|MUMTY|HEADROOM|\d+(?:ST|ND|RD|TH))\b")
-_TO = re.compile(r"\s+(?:TO|UPTO|UP TO)\s+|\s*[-–]\s*(?=[A-Z])")
+_TO = re.compile(r"\s+(?:TO|UPTO|UP TO)\s+")
 
 
 def floor(text: str | None) -> str | None:
-    """'FIRST FLOOR BEAM LAYOUT' -> 'FIRST'; 'LMR/OHT LVL' -> 'LMR OHT'; None or empty -> None."""
+    """'FIRST FLOOR BEAM LAYOUT' -> 'FIRST'; 'LMR/OHT LVL' -> 'LMR OHT'; None or empty -> None.
+
+    When the text holds floor words (FIRST, TERRACE, LMR...), only they count, so OCR fragments around a header
+    ('FIRST FLOOR ▪OR') do not change the floor; otherwise the words left after dropping FLOOR, LVL and the like."""
     if not text:
         return None
     words = re.sub(r"[^A-Z0-9 ]+", " ", text.upper().replace("/", " ")).split()
-    kept = [w for w in words if w not in _FILLER]
+    named = [w for w in words if _FLOOR_WORD.fullmatch(w)]
+    kept = named or [w for w in words if w not in _FILLER]
     return " ".join(kept) or None
 
 
@@ -48,9 +52,10 @@ def same_level(a: str | None, b: str | None) -> bool:
 
 
 def is_storey_header(text: str) -> bool:
-    """Text that reads as a storey range: two floor names joined by TO."""
-    s = storey(text)
-    return bool(s and _FLOOR_WORD.search(text.upper()))
+    """Text that reads as a storey range: a floor word on each side of TO ('FOUNDATION TO FIRST FLOOR'), so
+    'SECTION DETAIL TO PLINTH BEAM' is not one."""
+    parts = _TO.split(" ".join(text.upper().split()), maxsplit=1)
+    return len(parts) == 2 and all(_FLOOR_WORD.search(part) for part in parts)
 
 
 def ends_at(level: str | None, at_floor: str | None) -> bool:

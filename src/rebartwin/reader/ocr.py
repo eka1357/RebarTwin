@@ -11,6 +11,8 @@ the feature) and replayed on a re-run. The REST call uses the standard library: 
 from __future__ import annotations
 
 import base64
+import re
+from dataclasses import replace
 import hashlib
 import json
 import logging
@@ -23,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Protocol
 
-from .gemini import CallRecord, ReadError, Tile, tiles, to_page
+from .gemini import CallRecord, ReadError, Tile, tiles
 from .ingest import Page, Word
 
 log = logging.getLogger("rebartwin.reader")
@@ -121,11 +123,61 @@ def words_from(body: dict, tile: Tile, page_number: int) -> list[Word]:
         if not vs or not ann.get("description", "").strip():
             continue
         xs, ys = [v.get("x", 0) for v in vs], [v.get("y", 0) for v in vs]
-        in_tile = (round(1000 * min(ys) / pix.height), round(1000 * min(xs) / pix.width),
-                   round(1000 * max(ys) / pix.height), round(1000 * max(xs) / pix.width))
-        y0, x0, y1, x1 = to_page(in_tile, tile.box)
-        out.append(Word(ann["description"].strip(), (y0, x0, max(y1, y0 + 1), max(x1, x0 + 1)), page_number,
+        th, tw = tile.box[2] - tile.box[0], tile.box[3] - tile.box[1]
+        y0, y1 = tile.box[0] + th * min(ys) / pix.height, tile.box[0] + th * max(ys) / pix.height
+        x0, x1 = tile.box[1] + tw * min(xs) / pix.width, tile.box[1] + tw * max(xs) / pix.width
+        out.append(Word(ann["description"].strip(), (y0, x0, max(y1, y0 + 0.1), max(x1, x0 + 0.1)), page_number,
                         (-2, tile.index * 100000 + k), "ocr"))
+    return repair(out)
+
+
+# --- Ø misreads -----------------------------------------------------------------------------------------------------
+# OCR reads the diameter sign as 0, O, Q, •, θ (or Θ). A repair is made only when exactly one reading gives a standard
+# callout, only on OCR words (never the text layer or comments), and the raw text is kept. Agreement is unchanged: a
+# repaired value is accepted only if Gemini, reading the image alone, gives the same value at the same place.
+
+MISREAD = "0OQ•θΘ"
+REPAIR_BAR_DIAS = {8, 10, 12, 16, 20, 25, 28, 32, 36, 40}
+REPAIR_LINK_DIAS = {6, 8, 10, 12}
+_LINK = re.compile(rf"[{MISREAD}](\d{{1,2}})(?:@(\d{{2,3}})(.*))?")
+_SPACING = re.compile(r"(\d{2,3})(?![\d.])")
+
+
+def bar_reading(token: str) -> str | None:
+    """'4016' -> '4Ø16': count 1 to 24, a misread Ø, a standard bar size; None unless exactly one split works."""
+    if not re.fullmatch(rf"\d[\d{MISREAD}]*\d", token):
+        return None
+    found = []
+    for i in range(1, len(token) - 1):
+        n, d = token[:i], token[i + 1:]
+        if token[i] in MISREAD and n.isdigit() and d.isdigit() and n[0] != "0" and d[0] != "0" \
+                and 1 <= int(n) <= 24 and int(d) in REPAIR_BAR_DIAS:
+            found.append(f"{int(n)}Ø{int(d)}")
+    return found[0] if len(found) == 1 else None
+
+
+def _spacing_ok(text: str) -> bool:
+    m = _SPACING.match(text)
+    return bool(m) and 50 <= int(m.group(1)) <= 300 and int(m.group(1)) % 5 == 0
+
+
+def repair(words: list[Word]) -> list[Word]:
+    """Repair misread Ø in bars ('4016' -> '4Ø16') and links ('Q8 @ 200', '08@200' -> 'Ø8 @ 200'), in Vision's
+    reading order so a link's '@' and spacing are the next words. Each repaired word keeps `raw`."""
+    out = list(words)
+    for i, w in enumerate(out):
+        fixed = bar_reading(w.text)
+        if fixed is None:
+            m = _LINK.fullmatch(w.text)
+            if m and int(m.group(1)) in REPAIR_LINK_DIAS and m.group(1)[0] != "0":
+                if m.group(2):
+                    ok = _spacing_ok(m.group(2) + (m.group(3) or ""))
+                else:
+                    ok = i + 2 < len(out) and out[i + 1].text == "@" and _spacing_ok(out[i + 2].text)
+                if ok:
+                    fixed = "Ø" + w.text[1:]
+        if fixed is not None:
+            out[i] = replace(w, text=fixed, raw=w.text)
     return out
 
 
@@ -157,4 +209,5 @@ def ocr_pages(pages: list[Page], transport: OcrTransport, tile_px: int = 3000, c
                 page.words.append(w)
                 mine.append(w)
         page.ocr_words = len(mine)
+        page.ocr_repairs = sum(1 for w in mine if w.raw)
     return sorted(skipped)

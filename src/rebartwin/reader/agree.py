@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 
 from .gemini import FIELD_KIND, GLOBAL_MEMBERS, Read
-from .ingest import Box, Page
+from .ingest import Box, Page, box_2d
 from .levels import floor, is_storey_header, same_level, storey
 from .parser import Match, normalise, union, visual_lines
 
@@ -78,10 +78,12 @@ class Accepted:
     gemini_box: Box
     call: str = ""
     level: str | None = None      # as written on the drawing: the storey header or the sheet's floor
+    ocr_raw: str | None = None    # what OCR read before a misread Ø was repaired; None when nothing was repaired
 
     def provenance(self) -> dict:
-        return {"page": self.page, "box_2d": list(self.box), "text": self.text, "gemini": self.gemini,
-                "parser": self.value, "status": "agreed", "field_id": self.id, "level": self.level}
+        return {"page": self.page, "box_2d": box_2d(self.box), "text": self.text, "gemini": self.gemini,
+                "parser": self.value, "status": "agreed", "field_id": self.id, "level": self.level,
+                "ocr_raw": self.ocr_raw}
 
 
 @dataclass
@@ -102,7 +104,7 @@ class ToCheck:
 
     def to_json(self) -> dict:
         d = asdict(self)
-        d["box_2d"] = list(self.box_2d) if self.box_2d else None
+        d["box_2d"] = box_2d(self.box_2d) if self.box_2d else None
         return d
 
 
@@ -275,8 +277,9 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
             flag(r, reason, detail, value)
             continue
         m = here[0]
+        raw = " ".join(w.raw or w.text for w in m.words) if any(w.raw for w in m.words) else None
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
-                                        r.box, r.call, level))
+                                        r.box, r.call, level, raw))
 
     # Rule 6: one value per member, field and layer; project-wide settings get one value whatever their scope.
     groups: dict[tuple, list[Accepted]] = {}

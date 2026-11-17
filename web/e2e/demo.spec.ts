@@ -328,4 +328,82 @@ test.describe("Demo 3D Scene W3", () => {
     const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });
     await expect(wrap).toHaveAttribute("data-replay-attempt", "7");
   });
+
+  for (const reducedMotion of ["no-preference", "reduce"] as const) {
+    test(`runs W13 guided demo tour offline via Space (${reducedMotion})`, async ({
+      page,
+      context,
+    }) => {
+      await page.emulateMedia({ reducedMotion });
+      await page.setViewportSize({ width: 1440, height: 900 });
+
+      // Abort any external host requests to prove self-hosted offline operation
+      await page.route("**/*", (route) => {
+        const host = new URL(route.request().url()).hostname;
+        return host === "127.0.0.1" || host === "localhost" ? route.continue() : route.abort();
+      });
+
+      await page.goto("/demo", { waitUntil: "networkidle" });
+      await expect(page.getByText(/17 bars · 7 failing/i)).toBeVisible();
+
+      // Disconnect network completely before stepping through Finding -> Source -> Fix -> Replay -> Zone III
+      await context.setOffline(true);
+
+      await page.getByRole("button", { name: /Guided tour/i }).click();
+      await expect(page.getByRole("region", { name: "Guided demo tour" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: /Six failing checks in Zone II/i }),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole("region", { name: "Findings list" })
+          .locator('article > button[aria-pressed="true"]'),
+      ).toHaveCount(1);
+
+      const tourAxe = await new AxeBuilder({ page }).analyze();
+      expect(tourAxe.violations).toEqual([]);
+
+      // No page scroll while tour banner is open
+      const noScrollWithTour = await page.evaluate(
+        () => document.documentElement.scrollHeight <= window.innerHeight + 1,
+      );
+      expect(noScrollWithTour).toBe(true);
+
+      // Step 2: Source
+      await page.keyboard.press(" ");
+      await expect(
+        page.getByRole("heading", { name: /Traced to the drawing schedule crop/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/Schedule callout/i)).toBeVisible();
+
+      // Step 3: Fix (After morph)
+      await page.keyboard.press(" ");
+      await expect(
+        page.getByRole("heading", { name: /Validated 3D fix: 2-25 over 2-20/i }),
+      ).toBeVisible();
+      const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });
+      await expect(wrap).toHaveAttribute("data-scene-mode", "after");
+
+      // Step 4: Replay (Workings)
+      await page.keyboard.press(" ");
+      await expect(
+        page.getByRole("heading", { name: /Every solver attempt explained/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/Attempt 1 of 34 · Round 1/i)).toBeVisible();
+
+      // Step 5: Zone III (works offline via prefetched cache)
+      await page.keyboard.press(" ");
+      await expect(
+        page.getByRole("heading", { name: /Seismic Zone III triggers IS 13920/i }),
+      ).toBeVisible();
+      await expect(page.getByText(/7 Fails/i).first()).toBeVisible();
+      await expect(page.getByText(/4-16 over 4-16; C4 325 × 300/i)).toBeVisible();
+
+      // Finish tour cleanly on Space
+      await page.keyboard.press(" ");
+      await expect(page.getByRole("region", { name: "Guided demo tour" })).toHaveCount(0);
+
+      await context.setOffline(false);
+    });
+  }
 });

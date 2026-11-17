@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Compass } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { StatusPill } from "../components/StatusPill";
@@ -6,6 +7,7 @@ import { Button } from "../components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../components/ui/resizable";
 import { Skeleton } from "../components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
+import { DemoTour } from "../features/demo/DemoTour";
 import { JointInspector } from "../features/workspace/JointInspector";
 import { ReplayUrlSync } from "../features/workspace/ReplayUrlSync";
 import { demoAssetUrl, fetchDemoBundle, type DemoVariant } from "../lib/demoData";
@@ -16,13 +18,17 @@ const LazyViewport = lazy(() => import("../features/workspace/Viewport"));
 
 export function DemoRoute() {
   const [variant, setVariant] = useState<DemoVariant>("zone2");
+  const [tourOpen, setTourOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const setStatus = useWorkspaceStore((s) => s.setStatus);
   const selectedFindingIndex = useWorkspaceStore((s) => s.selectedFindingIndex);
   const selectFinding = useWorkspaceStore((s) => s.selectFinding);
   const selectBar = useWorkspaceStore((s) => s.selectBar);
+  const setMode = useWorkspaceStore((s) => s.setMode);
+  const setReplay = useWorkspaceStore((s) => s.setReplay);
   const clearSelection = useWorkspaceStore((s) => s.clearSelection);
 
   const {
@@ -32,7 +38,18 @@ export function DemoRoute() {
   } = useQuery({
     queryKey: ["demo-bundle", variant],
     queryFn: () => fetchDemoBundle(variant),
+    staleTime: Infinity,
   });
+
+  // Prefetch the sibling seismic zone so full guided demo runs seamlessly with network off.
+  useEffect(() => {
+    const other: DemoVariant = variant === "zone2" ? "zone3" : "zone2";
+    void queryClient.prefetchQuery({
+      queryKey: ["demo-bundle", other],
+      queryFn: () => fetchDemoBundle(other),
+      staleTime: Infinity,
+    });
+  }, [queryClient, variant]);
 
   useEffect(() => {
     if (!bundle) return;
@@ -65,10 +82,14 @@ export function DemoRoute() {
     const current = searchParams.get("f");
     if (selectedFindingIndex !== null) {
       if (current !== String(selectedFindingIndex)) {
-        setSearchParams({ f: String(selectedFindingIndex) }, { replace: true });
+        const next = new URLSearchParams(searchParams);
+        next.set("f", String(selectedFindingIndex));
+        setSearchParams(next, { replace: true });
       }
     } else if (current !== null) {
-      setSearchParams({}, { replace: true });
+      const next = new URLSearchParams(searchParams);
+      next.delete("f");
+      setSearchParams(next, { replace: true });
     }
   }, [selectedFindingIndex, searchParams, setSearchParams]);
 
@@ -94,6 +115,8 @@ export function DemoRoute() {
             onValueChange={(v) => {
               if (v === "zone2" || v === "zone3") {
                 clearSelection();
+                setMode("before");
+                setReplay({ replayPlaying: false, replayIndex: 0 });
                 setVariant(v);
               }
             }}
@@ -103,11 +126,29 @@ export function DemoRoute() {
             <ToggleGroupItem value="zone3">Zone III</ToggleGroupItem>
           </ToggleGroup>
 
+          <Button
+            variant={tourOpen ? "secondary" : "outline"}
+            size="sm"
+            aria-expanded={tourOpen}
+            onClick={() => setTourOpen((o) => !o)}
+          >
+            <Compass className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Guided tour</span>
+          </Button>
+
           <Button variant="outline" size="sm" asChild>
             <Link to="/projects/c4-b12/report">Report</Link>
           </Button>
         </div>
       </div>
+
+      <DemoTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        variant={variant}
+        onVariantChange={setVariant}
+        bundle={bundle}
+      />
 
       {bundle && <ReplayUrlSync totalAttempts={bundle.fix.attempts.length} />}
 

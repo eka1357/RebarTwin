@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import demoBundleRaw from "../../../../public/demo/C4xB12/bundle.json";
 import { ifcToThree } from "../../../lib/coords";
 import { formatFixToastSummary, NBSP } from "../../../lib/format";
 import type { Bundle } from "../../../types/bundle";
+import { DemoTour } from "../../demo/DemoTour";
 import { FixPanel } from "../../fixes/FixPanel";
 import { SectionGlyph } from "../../fixes/SectionGlyph";
 import { WorkingsTimeline } from "../../workings/WorkingsTimeline";
@@ -95,5 +96,34 @@ describe("W3 Scene & Demo Bundle", () => {
     fireEvent.click(screen.getByRole("button", { name: /Failed only/i }));
     fireEvent.click(screen.getByRole("button", { name: /Next attempt/i }));
     expect(screen.queryByText(/Passes every/i)).not.toBeInTheDocument();
+  });
+
+  it("advances DemoTour cleanly through all 5 beats including Zone III switch", () => {
+    const bundle = demoBundleRaw as unknown as Bundle;
+    const onVariantChange = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <DemoTour
+        open={true}
+        onClose={onClose}
+        variant="zone2"
+        onVariantChange={onVariantChange}
+        bundle={bundle}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: /Six failing checks in Zone II/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Next \(Space\)/i }));
+    expect(screen.getByRole("heading", { name: /Traced to the drawing schedule crop/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Next \(Space\)/i }));
+    expect(screen.getByRole("heading", { name: /Validated 3D fix: 2-25 over 2-20/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Next \(Space\)/i }));
+    expect(screen.getByRole("heading", { name: /Every solver attempt explained/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Next \(Space\)/i }));
+    expect(screen.getByRole("heading", { name: /Seismic Zone III triggers IS 13920/i })).toBeInTheDocument();
+    expect(onVariantChange).toHaveBeenCalledWith("zone3");
+    fireEvent.click(screen.getByRole("button", { name: /Finish \(Space\)/i }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

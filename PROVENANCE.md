@@ -64,6 +64,10 @@ Built `web/` W6 on `feature/w6-fixes`: `SectionGlyph` SVG beam cross-sections dr
 
 Built `web/` W7 on `feature/w7-workings`: `WorkingsTimeline` grouped by round (`filled` passed ticks, `hollow` failed ticks), Radix `Slider`, Play/Pause/step, speed (`0.5×`/`1×`/`2×`), `Failed only` filter, polite step announcements, rejecting clause cards with `ClauseChip` and mini `ToleranceGauge`, 400 ms `attempt_scenes` 3D morph (instant under reduced motion) with live rejecting callouts, and `ReplayUrlSync` (`?a=` deep link). Verified with Vitest (15 passed) and Playwright + axe (10 passed).
 
+## 17 November 2026: Offline Demo Mode and Guided Tour (W13)
+
+Built `web/` W13 on `feature/w13-demo-tour`: 5-beat `DemoTour` (Finding -> Source -> Fix -> Replay -> Zone III) with `Space` advance and `Escape` close, prefetching both `zone2` and `zone3` offline bundles under `/demo/` (`staleTime: Infinity`) so the entire 3-minute story runs offline (`context.setOffline(true)`), and full normal and reduced-motion verification. Verified with Vitest (16 passed), ESLint/TypeScript clean, production build, and Playwright + axe (12 passed).
+
 ## Next: built in Google Antigravity
 
 The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

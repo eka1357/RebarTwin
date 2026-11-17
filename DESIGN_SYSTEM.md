@@ -216,6 +216,7 @@ Group, Slider, Progress, ScrollArea, Separator, Badge, Skeleton, Sonner, Resizab
 | ShortcutDialog | `?` modal listing viewport and navigation shortcuts | Opens on `?` outside text inputs | Radix Dialog with Escape close |
 | ViewportToolbar | View, Concrete, Labels, Reset, Full screen | Tooltips show shortcuts | Toggle groups with labels |
 | ViewportCallouts | Stacked HTML callouts with SVG leaders, anchor dots, `+n more` chip, plus 3D gap dimension lines and clash rings | Caps at 8 visible pills without overlap; clicking selects finding and bars | Mirrored `sr-only` findings list; each callout is a keyboard-reachable button |
+| DemoTour | Docked 5-step guided tour bar (Finding, Source, Fix, Replay, Zone III) over pre-cached `/demo/` bundles | `Space` advances step by step; `Escape` exits; adapts transitions under reduced motion | Polite step announcements and `aria-current="step"` indicators |
 | EmptyState | A joint plan drawn in hairlines, one sentence, one action | | Illustration is decorative |
 
 Use outside components only after a review: copy the source in, check keyboard and screen-reader behaviour, replace

@@ -44,7 +44,7 @@ export function FixPanel({ bundle }: { bundle: Bundle }) {
               onClick={() => {
                 setMode("after");
                 const opt = options[optionIndex];
-                if (opt) toast.success(formatFixToastSummary(opt.faces));
+                if (opt) toast.success(formatFixToastSummary(opt.faces), { id: "fix-morph", duration: 2400 });
               }}
             >
               After
@@ -66,7 +66,7 @@ export function FixPanel({ bundle }: { bundle: Bundle }) {
           onPreviewAfter={() => {
             setOptionIndex(idx);
             setMode("after");
-            toast.success(formatFixToastSummary(opt.faces));
+            toast.success(formatFixToastSummary(opt.faces), { id: "fix-morph", duration: 2400 });
           }}
           onShowBefore={() => setMode("before")}
           onUseInReport={() => {

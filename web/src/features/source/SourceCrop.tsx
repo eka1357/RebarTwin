@@ -202,7 +202,11 @@ export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) 
           {active.pageImageUrl && (
             <div
               ref={scrollWrapRef}
-              className="relative mt-3 h-52 overflow-auto rounded-[var(--radius-md)] border border-paper-border bg-paper"
+              role="region"
+              aria-label={`Drawing sheet excerpt for ${active.member ?? active.path}`}
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+              tabIndex={0}
+              className="relative mt-3 h-52 overflow-auto rounded-[var(--radius-md)] border border-paper-border bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="relative" style={{ width: `${zoom * 100}%` }}>
                 <img
@@ -353,7 +357,11 @@ export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) 
             </DialogHeader>
             <div
               data-theme="light"
-              className="surface-paper mt-2 max-h-[70vh] overflow-auto rounded-[var(--radius-md)] border p-2"
+              role="region"
+              aria-label={`Full sheet page ${active.page ?? ""}`}
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+              tabIndex={0}
+              className="surface-paper mt-2 max-h-[70vh] overflow-auto rounded-[var(--radius-md)] border p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="relative w-full">
                 <img

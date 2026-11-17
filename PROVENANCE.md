@@ -112,6 +112,10 @@ Built `src/rebartwin/api.py` on `feature/a1-api` (optional `[api]` deps `fastapi
 
 Built `web/` W8 on `feature/w8-upload`: typed API client (`lib/api.ts`), Manus-style centered `DropZone` with optional page filter, paste-joint JSON check dialog, and starter chips (`features/reading/DropZone.tsx`), warm-paper `ReadingBoard` with 1.2 s scan line (`Progress` fallback under reduced motion) and polite live announcements (`features/reading/ReadingBoard.tsx`), auto-scrolling `ReadingLog` with `role="log"` (`features/reading/ReadingLog.tsx`), live SSE `UploadRoute.tsx`, and live project/joint routes (`ProjectRoute.tsx`, `JointRoute.tsx`) encoding `@` joint ids and resolving real drawing crops relative to the joint bundle URL. Verified with `eslint`, `tsc`, Vitest (21 passed), and production build.
 
+## 17 November 2026: To check queue and callout grammar (W9, `feature/w9-review`)
+
+Built `web/` W9 on `feature/w9-review`: client callout grammar validator and project-level-first queue sorter (`lib/calloutGrammar.ts`), `ToCheckCard` (`features/review/ToCheckCard.tsx`) on `surface-paper` with live `/pages/{n}.png?crop=` images, Gemini/Parser radio group, quick zone/exposure chips, keys `1`, `2`, `E`, `S`, `J`, `K`, grammar-validated inline editing, and `ReviewRoute.tsx` unlocking and linking directly to checked `@`-encoded joints (`C4xB12@FIRST`). Verified with ESLint, TypeScript, Vitest (24 passed), Vite production build, and Playwright + axe across dark/light themes, reduced motion, and 320 px width (13 passed).
+
 ## Next: built in Google Antigravity
 
 The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

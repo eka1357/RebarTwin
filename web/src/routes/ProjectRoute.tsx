@@ -18,9 +18,11 @@ export function ProjectRoute() {
   const { id = "c4-b12" } = useParams();
   const setStatus = useWorkspaceStore((s) => s.setStatus);
 
+  const isOfflineDemo = id === "c4-b12";
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
     queryFn: () => getProject(id),
+    enabled: !isOfflineDemo,
     retry: false,
     refetchInterval: (q) => (q.state.data?.status === "reading" ? 1500 : false),
   });

@@ -45,9 +45,12 @@ export function ReadingLog({ entries }: ReadingLogProps) {
       <div
         ref={scrollRef}
         role="log"
+        aria-label="Reading steps"
         aria-live="off"
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={0}
         onScroll={handleScroll}
-        className="max-h-56 overflow-y-auto rounded-[var(--radius-md)] border border-border bg-surface-sunken p-2.5 space-y-1.5"
+        className="max-h-56 overflow-y-auto rounded-[var(--radius-md)] border border-border bg-surface-sunken p-2.5 space-y-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {entries.length === 0 ? (
           <p className="text-xs text-muted-foreground">Waiting for sheet events.</p>

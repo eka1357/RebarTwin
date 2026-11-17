@@ -29,6 +29,9 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   const theme = useWorkspaceStore((s) => s.theme);
   const mode = useWorkspaceStore((s) => s.mode);
   const optionIndex = useWorkspaceStore((s) => s.optionIndex);
+  const inspectorTab = useWorkspaceStore((s) => s.inspectorTab);
+  const replayIndex = useWorkspaceStore((s) => s.replayIndex);
+  const replayPlaying = useWorkspaceStore((s) => s.replayPlaying);
   const selectedBarId = useWorkspaceStore((s) => s.selectedBarId);
   const hoveredBarId = useWorkspaceStore((s) => s.hoveredBarId);
   const selectedFindingIndex = useWorkspaceStore((s) => s.selectedFindingIndex);
@@ -46,17 +49,57 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   const setCameraPreset = useWorkspaceStore((s) => s.setCameraPreset);
   const clearSelection = useWorkspaceStore((s) => s.clearSelection);
 
+  const isWorkingsActive =
+    (inspectorTab === "workings" || replayPlaying) &&
+    bundle.fix.attempts.length > 0 &&
+    Boolean(bundle.attempt_scenes?.length);
+
+  const activeAttempt = useMemo(() => {
+    if (!isWorkingsActive) return null;
+    const idx = Math.min(Math.max(0, replayIndex), bundle.fix.attempts.length - 1);
+    return bundle.fix.attempts[idx] ?? null;
+  }, [bundle.fix.attempts, isWorkingsActive, replayIndex]);
+
   const activeScene = useMemo(() => {
+    if (isWorkingsActive && bundle.attempt_scenes?.length) {
+      const idx = Math.min(Math.max(0, replayIndex), bundle.attempt_scenes.length - 1);
+      const att = bundle.attempt_scenes[idx];
+      if (att) {
+        return {
+          units: "mm" as const,
+          up: "z" as const,
+          concrete: att.concrete,
+          bars: att.bars,
+          loops: bundle.scene.loops,
+        };
+      }
+    }
     if (mode === "after" && bundle.option_scenes[optionIndex]) {
       return bundle.option_scenes[optionIndex];
     }
     return bundle.scene;
-  }, [bundle, mode, optionIndex]);
+  }, [bundle, isWorkingsActive, mode, optionIndex, replayIndex]);
 
-  const activeFindings = useMemo(() => {
+  const activeFindings = useMemo<Finding[]>(() => {
+    if (isWorkingsActive && activeAttempt) {
+      return activeAttempt.failures.map((f) => ({
+        rule: f.rule,
+        clause: f.clause,
+        title: bundle.rules[f.rule]?.title ?? f.clause,
+        status: "fail",
+        measured: f.measured,
+        limit: f.limit,
+        compare: f.rule === "GEOM-CLASH" || f.measured < f.limit ? ">=" : "<=",
+        unit: f.unit,
+        members: [],
+        bars: f.bars ?? [],
+        at: f.at ?? null,
+        message: f.message,
+      }));
+    }
     if (mode === "after") return [];
     return bundle.report.findings;
-  }, [bundle.report.findings, mode]);
+  }, [activeAttempt, bundle.report.findings, bundle.rules, isWorkingsActive, mode]);
 
   const { visibleFindings, mirroredFindings, overflowCount } = useMemo(() => {
     const indexed = activeFindings.map((f, index) => ({ f, index }));
@@ -185,10 +228,12 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
       prevBundleKeyRef.current = bundleKey;
       ctrl.setScene(activeScene);
       ctrl.setPreset(useWorkspaceStore.getState().cameraPreset, false);
+    } else if (isWorkingsActive) {
+      ctrl.morphToScene(activeScene, { durationMs: reduced ? 0 : 400, instant: reduced });
     } else {
       ctrl.morphToScene(activeScene, { durationMs: DURATION_MS.morph });
     }
-  }, [activeScene, bundle.joint.id, bundle.report.seismic_zone]);
+  }, [activeScene, bundle.joint.id, bundle.report.seismic_zone, isWorkingsActive, reduced]);
 
   useEffect(() => {
     const ctrl = controllerRef.current;
@@ -313,12 +358,21 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
           ref={canvasWrapRef}
           role="img"
           aria-label={summaryText}
-          data-scene-mode={mode}
+          data-scene-mode={isWorkingsActive ? "workings" : mode}
+          data-replay-attempt={isWorkingsActive ? String(replayIndex + 1) : undefined}
           data-scene-bar-ids={activeScene.bars.map((b) => b.id).join(",")}
           className="h-full w-full"
         />
 
-        {mode === "after" && (
+        {isWorkingsActive && activeAttempt && (
+          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-strong bg-surface-raised/95 px-2.5 py-1 text-xs shadow-[var(--shadow-overlay)]">
+            <span className="font-num font-medium text-foreground">
+              Workings · Attempt {replayIndex + 1} / {bundle.fix.attempts.length}
+            </span>
+          </div>
+        )}
+
+        {!isWorkingsActive && mode === "after" && (
           <div className="pointer-events-auto absolute top-3 left-3 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-strong bg-surface-raised/95 px-2.5 py-1 text-xs shadow-[var(--shadow-overlay)]">
             <span className="font-num font-medium text-foreground">
               After · Option #{optionIndex + 1}

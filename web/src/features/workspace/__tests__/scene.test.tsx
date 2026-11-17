@@ -6,6 +6,7 @@ import { formatFixToastSummary, NBSP } from "../../../lib/format";
 import type { Bundle } from "../../../types/bundle";
 import { FixPanel } from "../../fixes/FixPanel";
 import { SectionGlyph } from "../../fixes/SectionGlyph";
+import { WorkingsTimeline } from "../../workings/WorkingsTimeline";
 import { partitionSceneBars } from "../sceneMorph";
 import { JointInspector } from "../JointInspector";
 
@@ -76,5 +77,23 @@ describe("W3 Scene & Demo Bundle", () => {
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/2-25 over 2-20/i)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Use in report/i })).toHaveLength(3);
+  });
+
+  it("replays all 34 attempts with rejecting clauses, Failed-only filter, and passing step", () => {
+    const bundle = demoBundleRaw as unknown as Bundle;
+    render(<WorkingsTimeline bundle={bundle} />);
+
+    expect(screen.getByText(/Attempt 1 of 34 · Round 1/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Geometry/i).length).toBeGreaterThanOrEqual(1);
+
+    // Jump to attempt 7 (first passing option in Zone II)
+    fireEvent.click(screen.getByRole("button", { name: /Attempt 7 \(Round 1\): passes/i }));
+    expect(screen.getByText(/Attempt 7 of 34 · Round 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Passes every IS 456, IS 13920, and geometry check/i)).toBeInTheDocument();
+
+    // Turn on Failed only and step Next -> skips passing steps to next failing step
+    fireEvent.click(screen.getByRole("button", { name: /Failed only/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Next attempt/i }));
+    expect(screen.queryByText(/Passes every/i)).not.toBeInTheDocument();
   });
 });

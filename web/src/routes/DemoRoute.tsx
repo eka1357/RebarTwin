@@ -7,6 +7,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../compone
 import { Skeleton } from "../components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { JointInspector } from "../features/workspace/JointInspector";
+import { ReplayUrlSync } from "../features/workspace/ReplayUrlSync";
 import { demoAssetUrl, fetchDemoBundle, type DemoVariant } from "../lib/demoData";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { useWorkspaceStore } from "../stores/workspace";
@@ -107,6 +108,8 @@ export function DemoRoute() {
           </Button>
         </div>
       </div>
+
+      {bundle && <ReplayUrlSync totalAttempts={bundle.fix.attempts.length} />}
 
       {isLoading ? (
         <div className="grid flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_25rem]">

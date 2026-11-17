@@ -12,6 +12,7 @@ import { BarChip } from "../findings/BarChip";
 import { FindingCard } from "../findings/FindingCard";
 import { FixPanel } from "../fixes/FixPanel";
 import { SourceCrop } from "../source/SourceCrop";
+import { WorkingsTimeline } from "../workings/WorkingsTimeline";
 
 type FindingFilter = "fail" | "pass" | "all";
 
@@ -253,8 +254,8 @@ export function JointInspector({ bundle }: { bundle: Bundle }) {
             <FixPanel bundle={bundle} />
           </TabsContent>
 
-          <TabsContent value="workings" className="mt-0 text-xs text-muted-foreground">
-            Attempt-by-attempt solver replay ({bundle.fix.attempts.length} attempts) arrives in W7.
+          <TabsContent value="workings" className="mt-0">
+            <WorkingsTimeline bundle={bundle} />
           </TabsContent>
 
           <TabsContent value="source" className="mt-0">

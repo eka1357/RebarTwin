@@ -175,6 +175,23 @@ test.describe("Demo 3D Scene W3", () => {
     await page.getByRole("button", { name: /Show Before/i }).first().click();
     await expect(wrapForFrame).toHaveAttribute("data-scene-mode", "before");
 
+    // W7: Workings tab drives attempt_scenes with Play, speed, Failed only, and ?a= URL sync
+    await page.getByRole("tab", { name: "Workings" }).click();
+    await expect(wrapForFrame).toHaveAttribute("data-scene-mode", "workings");
+    await expect(wrapForFrame).toHaveAttribute("data-replay-attempt", "1");
+    await expect(page.getByText(/Attempt 1 of 34 · Round 1/i)).toBeVisible();
+    await expect(page.getByText(/18\s+mm overlap · Geometry/i).first()).toBeVisible();
+
+    await page.getByRole("button", { name: /2×/i }).click();
+    await page.getByRole("button", { name: /Play replay/i }).click();
+    await expect
+      .poll(async () => Number((await wrapForFrame.getAttribute("data-replay-attempt")) ?? "1"), {
+        timeout: 4000,
+      })
+      .toBeGreaterThan(1);
+    await page.getByRole("button", { name: /Pause replay/i }).click();
+    await page.getByRole("button", { name: /Failed only/i }).click();
+
     await page.getByRole("tab", { name: "Findings" }).click();
 
     // Switching to Labels: All caps at 8 pills and shows +9 more without overlaps
@@ -299,5 +316,16 @@ test.describe("Demo 3D Scene W3", () => {
     expect(hasHorizOverflow).toBe(false);
 
     await page.getByRole("button", { name: /Fit \(F\)|Frame \(F\)/i }).click();
+  });
+
+  test("deep-links Workings replay via ?a=7 query parameter", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/demo?a=7");
+    await expect(page.getByText(/Attempt 7 of 34 · Round 1/i)).toBeVisible();
+    await expect(
+      page.getByText(/Passes every IS 456, IS 13920, and geometry check/i),
+    ).toBeVisible();
+    const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });
+    await expect(wrap).toHaveAttribute("data-replay-attempt", "7");
   });
 });

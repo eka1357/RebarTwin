@@ -60,6 +60,10 @@ Built `web/` W5 on `feature/w5-inspector`: `ToleranceGauge` (SVG hairline scale,
 
 Built `web/` W6 on `feature/w6-fixes`: `SectionGlyph` SVG beam cross-sections drawn to scale from scene bar coordinates (`aria-label` listing layers in words), `FixOptionCard` (rank, plain title, Recheck/Redesign pills, Before/After glyphs, steel area and effective depth metrics, flag list, Preview After, Use in report), `FixPanel` with Before/After switcher and Sonner summary toast (`+39 mm², 4 bars instead of 5`), and `SceneController.morphToScene` matching bars by `bar.id` (700 ms tween/shrink/grow; 120 ms crossfade under reduced motion; Zone III column concrete resize tweening). Verified with Vitest (14 passed) and Playwright + axe (9 passed).
 
+## 17 November 2026: Workings solver replay and ?a= deep links (W7)
+
+Built `web/` W7 on `feature/w7-workings`: `WorkingsTimeline` grouped by round (`filled` passed ticks, `hollow` failed ticks), Radix `Slider`, Play/Pause/step, speed (`0.5×`/`1×`/`2×`), `Failed only` filter, polite step announcements, rejecting clause cards with `ClauseChip` and mini `ToleranceGauge`, 400 ms `attempt_scenes` 3D morph (instant under reduced motion) with live rejecting callouts, and `ReplayUrlSync` (`?a=` deep link). Verified with Vitest (15 passed) and Playwright + axe (10 passed).
+
 ## Next: built in Google Antigravity
 
 The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

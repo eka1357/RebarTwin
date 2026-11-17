@@ -23,7 +23,7 @@ function findMatchingProvenance(
     const f = e.field.toLowerCase();
     if (!f.includes(memberLower)) return false;
     if (roleLower === "top" || roleLower === "bottom") {
-      return f.includes(roleLower) || !f.includes("bottom") && !f.includes("top");
+      return f.includes(roleLower) || (!f.includes("bottom") && !f.includes("top"));
     }
     return true;
   });
@@ -35,11 +35,11 @@ function CropCanvas({ entry, imageSrc }: { entry: ProvenanceEntry; imageSrc: str
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       if (cancelled) return;
+      setError(null);
       const canvas = canvasRef.current;
       if (!canvas) return;
       const [ymin, xmin, ymax, xmax] = entry.box_2d;
@@ -60,10 +60,10 @@ function CropCanvas({ entry, imageSrc }: { entry: ProvenanceEntry; imageSrc: str
       ctx.drawImage(img, x0, y0, sw, sh, 0, 0, canvas.width, canvas.height);
 
       // Highlight exact box_2d inside the padded crop
-      const bx = (((xmin / 1000) * img.naturalWidth) - x0) * scale;
-      const by = (((ymin / 1000) * img.naturalHeight) - y0) * scale;
-      const bw = (((xmax - xmin) / 1000) * img.naturalWidth) * scale;
-      const bh = (((ymax - ymin) / 1000) * img.naturalHeight) * scale;
+      const bx = ((xmin / 1000) * img.naturalWidth - x0) * scale;
+      const by = ((ymin / 1000) * img.naturalHeight - y0) * scale;
+      const bw = ((xmax - xmin) / 1000) * img.naturalWidth * scale;
+      const bh = ((ymax - ymin) / 1000) * img.naturalHeight * scale;
       ctx.strokeStyle = "#ffb74d";
       ctx.lineWidth = 2;
       ctx.strokeRect(bx, by, bw, bh);
@@ -89,9 +89,9 @@ export function ProvenanceCrop({ bar, provenance, pages, notes }: ProvenanceCrop
       <div className="provenance-empty">
         <div className="provenance-title">Drawing Provenance</div>
         <p className="muted-note">
-          No PDF drawing crop attached for <code>{bar.member}</code> (this joint was loaded from a JSON spec).
-          When PDF drawings are processed by the reader, the source page cropped to <code>box_2d</code> will
-          render here.
+          No PDF drawing crop attached for <code>{bar.member}</code> (this joint was loaded from a
+          JSON spec). When PDF drawings are processed by the reader, the source page cropped to{" "}
+          <code>box_2d</code> will render here.
         </p>
         {notes.length > 0 && (
           <ul className="notes-list">

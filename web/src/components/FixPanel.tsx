@@ -15,7 +15,9 @@ export function FixPanel({ bundle, isAfterMode, hasFixedIfc, onToggleMode }: Fix
     <div className="panel-body">
       <div className="card">
         <div className="card-header">
-          <span className={`pill ${fix.status === "fixed" || fix.status === "clean" ? "pill-pass" : "pill-warn"}`}>
+          <span
+            className={`pill ${fix.status === "fixed" || fix.status === "clean" ? "pill-pass" : "pill-warn"}`}
+          >
             {fix.status.toUpperCase()}
           </span>
           <span className="muted-note">
@@ -58,7 +60,10 @@ export function FixPanel({ bundle, isAfterMode, hasFixedIfc, onToggleMode }: Fix
               <div key={idx} className={`card option-card ${idx === 0 ? "option-best" : ""}`}>
                 <div className="option-head">
                   <div>
-                    <span className="option-rank">Option {idx + 1}{idx === 0 ? " · Best (in fixed.ifc)" : ""}</span>
+                    <span className="option-rank">
+                      Option {idx + 1}
+                      {idx === 0 ? " · Best (in fixed.ifc)" : ""}
+                    </span>
                     <div className="option-title">{opt.candidate.title}</div>
                   </div>
                   <span className="source-badge">{opt.candidate.source}</span>
@@ -68,7 +73,10 @@ export function FixPanel({ bundle, isAfterMode, hasFixedIfc, onToggleMode }: Fix
                   <div key={fIdx} className="face-change">
                     <div className="face-change-row">
                       <span>
-                        <strong>{fc.beam} {fc.face}</strong> (layers outermost first)
+                        <strong>
+                          {fc.beam} {fc.face}
+                        </strong>{" "}
+                        (layers outermost first)
                       </span>
                       <span className="mono">
                         {fc.before} → <strong>{fc.after}</strong>
@@ -80,7 +88,10 @@ export function FixPanel({ bundle, isAfterMode, hasFixedIfc, onToggleMode }: Fix
                         {Math.round(fc.area_required)} mm² (+{fc.overshoot_pct}%)
                       </span>
                       <span>
-                        Effective depth d: <strong>{Math.round(fc.depth_before)} → {Math.round(fc.depth_after)} mm</strong>
+                        Effective depth d:{" "}
+                        <strong>
+                          {Math.round(fc.depth_before)} → {Math.round(fc.depth_after)} mm
+                        </strong>
                       </span>
                     </div>
                   </div>

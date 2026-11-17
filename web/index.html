@@ -1,9 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RebarTwin — 3D Beam-Column Joint Checker</title>
+    <script>
+      try {
+        var t = localStorage.getItem("rebartwin-theme");
+        if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

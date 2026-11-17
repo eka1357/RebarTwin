@@ -41,6 +41,44 @@ interface LabelDomRefs {
 const DEFAULT_CAM_POS = new THREE.Vector3(-1.35, 0.65, 2.05);
 const DEFAULT_TARGET = new THREE.Vector3(-0.06, -0.22, 0.0);
 
+function applyConcreteVisibility(loaded: LoadedIfcModel, mode: ConcreteMode) {
+  for (const m of loaded.concreteMeshes) {
+    m.visible = mode === "translucent";
+  }
+  for (const o of loaded.concreteOutlines) {
+    o.visible = mode !== "hidden";
+  }
+}
+
+function applyBarHighlight(
+  loaded: LoadedIfcModel,
+  selectedBarTag: string | null,
+  selectedFindingIndex: number | null,
+  findings: Finding[],
+) {
+  const highlighted = new Set<string>();
+  if (selectedBarTag) highlighted.add(selectedBarTag);
+  if (selectedFindingIndex != null && findings[selectedFindingIndex]) {
+    for (const b of findings[selectedFindingIndex].bars) {
+      highlighted.add(b);
+    }
+  }
+  for (const mesh of loaded.barMeshes) {
+    const meta = mesh.userData?.barMeta as BarMetadata | undefined;
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    const isMatch = Boolean(meta && (highlighted.has(meta.tag) || highlighted.has(meta.globalId)));
+    if (isMatch) {
+      mat.color.setHex(0xffb74d);
+      mat.emissive.setHex(0xe67e00);
+      mat.emissiveIntensity = 0.75;
+    } else {
+      mat.color.setHex(mesh.userData.baseColor ?? 0x8896a6);
+      mat.emissive.setHex(mesh.userData.baseEmissive ?? 0x000000);
+      mat.emissiveIntensity = mesh.userData.baseEmissiveIntensity ?? 0;
+    }
+  }
+}
+
 export function Viewport3D({
   ifcBuffer,
   findings,
@@ -63,7 +101,6 @@ export function Viewport3D({
   const labelDomMapRef = useRef<Map<string, LabelDomRefs>>(new Map());
   const hoveredMeshRef = useRef<THREE.Mesh | null>(null);
   const concreteModeRef = useRef<ConcreteMode>(concreteMode);
-  concreteModeRef.current = concreteMode;
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
 
@@ -87,10 +124,19 @@ export function Viewport3D({
   }, [findings, labelMode, isAfterMode]);
 
   const visibleFindingsRef = useRef<LabelEntry[]>(visibleFindings);
-  visibleFindingsRef.current = visibleFindings;
-
   const onSelectBarRef = useRef(onSelectBar);
-  onSelectBarRef.current = onSelectBar;
+
+  useEffect(() => {
+    concreteModeRef.current = concreteMode;
+  }, [concreteMode]);
+
+  useEffect(() => {
+    visibleFindingsRef.current = visibleFindings;
+  }, [visibleFindings]);
+
+  useEffect(() => {
+    onSelectBarRef.current = onSelectBar;
+  }, [onSelectBar]);
 
   // Initialize Three.js scene once
   useEffect(() => {
@@ -107,7 +153,10 @@ export function Viewport3D({
     camera.position.copy(DEFAULT_CAM_POS);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+    });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -269,7 +318,8 @@ export function Viewport3D({
         const upper = vis[i];
         for (let j = i + 1; j < vis.length; j++) {
           const lower = vis[j];
-          const horizOverlap = upper.lx < lower.lx + lower.pillW + 10 && upper.lx + upper.pillW + 10 > lower.lx;
+          const horizOverlap =
+            upper.lx < lower.lx + lower.pillW + 10 && upper.lx + upper.pillW + 10 > lower.lx;
           if (!horizOverlap) continue;
           const minGap = upper.pillH + 8;
           if (upper.ly > lower.ly - minGap) {
@@ -282,7 +332,8 @@ export function Viewport3D({
         vis[i].ly = Math.max(12, vis[i].ly);
         for (let j = 0; j < i; j++) {
           const prev = vis[j];
-          const horizOverlap = vis[i].lx < prev.lx + prev.pillW + 10 && vis[i].lx + vis[i].pillW + 10 > prev.lx;
+          const horizOverlap =
+            vis[i].lx < prev.lx + prev.pillW + 10 && vis[i].lx + vis[i].pillW + 10 > prev.lx;
           if (horizOverlap && vis[i].ly < prev.ly + prev.pillH + 8) {
             vis[i].ly = prev.ly + prev.pillH + 8;
           }
@@ -349,8 +400,6 @@ export function Viewport3D({
     if (!scene || !ifcBuffer) return;
 
     let cancelled = false;
-    setIsLoadingModel(true);
-    setLoadError(null);
 
     loadIfcModel(ifcBuffer, findings, !isAfterMode)
       .then((loaded) => {
@@ -364,12 +413,7 @@ export function Viewport3D({
         }
         modelRef.current = loaded;
         scene.add(loaded.root);
-        for (const m of loaded.concreteMeshes) {
-          m.visible = concreteModeRef.current === "translucent";
-        }
-        for (const o of loaded.concreteOutlines) {
-          o.visible = concreteModeRef.current !== "hidden";
-        }
+        applyConcreteVisibility(loaded, concreteModeRef.current);
 
         if (onBarsLoaded) {
           const seen = new Set<string>();
@@ -383,6 +427,7 @@ export function Viewport3D({
           }
           onBarsLoaded(uniqueBars);
         }
+        setLoadError(null);
         setIsLoadingModel(false);
       })
       .catch((err) => {
@@ -399,13 +444,8 @@ export function Viewport3D({
 
   // Apply concrete visibility mode without reloading IFC
   useEffect(() => {
-    const loaded = modelRef.current;
-    if (!loaded) return;
-    for (const m of loaded.concreteMeshes) {
-      m.visible = concreteMode === "translucent";
-    }
-    for (const o of loaded.concreteOutlines) {
-      o.visible = concreteMode !== "hidden";
+    if (modelRef.current) {
+      applyConcreteVisibility(modelRef.current, concreteMode);
     }
   }, [concreteMode, ifcBuffer, isAfterMode]);
 
@@ -437,29 +477,7 @@ export function Viewport3D({
   useEffect(() => {
     const loaded = modelRef.current;
     if (!loaded) return;
-
-    const highlighted = new Set<string>();
-    if (selectedBarTag) highlighted.add(selectedBarTag);
-    if (selectedFindingIndex != null && findings[selectedFindingIndex]) {
-      for (const b of findings[selectedFindingIndex].bars) {
-        highlighted.add(b);
-      }
-    }
-
-    for (const mesh of loaded.barMeshes) {
-      const meta = mesh.userData?.barMeta as BarMetadata | undefined;
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      const isMatch = Boolean(meta && (highlighted.has(meta.tag) || highlighted.has(meta.globalId)));
-      if (isMatch) {
-        mat.color.setHex(0xffb74d);
-        mat.emissive.setHex(0xe67e00);
-        mat.emissiveIntensity = 0.75;
-      } else {
-        mat.color.setHex(mesh.userData.baseColor ?? 0x8896a6);
-        mat.emissive.setHex(mesh.userData.baseEmissive ?? 0x000000);
-        mat.emissiveIntensity = mesh.userData.baseEmissiveIntensity ?? 0;
-      }
-    }
+    applyBarHighlight(loaded, selectedBarTag, selectedFindingIndex, findings);
   }, [selectedBarTag, selectedFindingIndex, findings, isAfterMode, ifcBuffer]);
 
   // Reset camera when requested
@@ -489,11 +507,7 @@ export function Viewport3D({
       <svg className="labels-svg" aria-hidden="true">
         {visibleFindings.map((entry) => {
           const isSelected = selectedFindingIndex === entry.findingIndex;
-          const cls = isSelected
-            ? "leader-selected"
-            : entry.isFail
-              ? "leader-fail"
-              : "leader-pass";
+          const cls = isSelected ? "leader-selected" : entry.isFail ? "leader-fail" : "leader-pass";
           return (
             <g key={entry.key} className={cls}>
               <line ref={registerRef(entry.key, "line")} className="leader-line" />
@@ -538,9 +552,7 @@ export function Viewport3D({
         <span className="legend-hint">Drag to orbit · Scroll to zoom · Click bar to inspect</span>
       </div>
 
-      {isLoadingModel && (
-        <div className="viewport-status">Loading IFC geometry via web-ifc…</div>
-      )}
+      {isLoadingModel && <div className="viewport-status">Loading IFC geometry via web-ifc…</div>}
       {loadError && <div className="viewport-error">IFC error: {loadError}</div>}
     </div>
   );

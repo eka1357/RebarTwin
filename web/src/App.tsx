@@ -4,6 +4,7 @@ import { FixPanel } from "./components/FixPanel";
 import { Viewport3D, type ConcreteMode, type LabelMode } from "./components/Viewport3D";
 import { WorkingsPanel } from "./components/WorkingsPanel";
 import type { BarMetadata, Bundle } from "./types";
+import "./styles.css";
 
 type TabId = "findings" | "fixes" | "workings";
 
@@ -29,7 +30,10 @@ function downloadBlob(data: ArrayBuffer | Blob, filename: string, mime: string) 
 
 export function App() {
   const [availableJoints, setAvailableJoints] = useState<string[]>([]);
-  const [activeJointDir, setActiveJointDir] = useState<string>("C4xB12");
+  const [activeJointDir, setActiveJointDir] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("joint") || "C4xB12";
+  });
   const [loaded, setLoaded] = useState<LoadedFiles | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +54,6 @@ export function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paramJoint = params.get("joint");
-    if (paramJoint) setActiveJointDir(paramJoint);
 
     fetch("/out-index.json")
       .then((res) => (res.ok ? res.json() : null))
@@ -71,12 +74,6 @@ export function App() {
   useEffect(() => {
     if (!activeJointDir) return;
     let cancelled = false;
-    setIsLoading(true);
-    setLoadError(null);
-    setSelectedBar(null);
-    setSelectedFindingIndex(null);
-    setIsAfterMode(false);
-
     const base = `/out/${encodeURIComponent(activeJointDir)}`;
     Promise.all([
       fetch(`${base}/bundle.json`).then((r) => {
@@ -96,6 +93,10 @@ export function App() {
     ])
       .then(([bundle, jointIfc, fixedIfc, bcfBlob]) => {
         if (cancelled) return;
+        setLoadError(null);
+        setSelectedBar(null);
+        setSelectedFindingIndex(null);
+        setIsAfterMode(false);
         setLoaded({
           bundle,
           jointIfc,
@@ -129,7 +130,9 @@ export function App() {
     const bundleFile = byName.get("bundle.json");
     const jointIfcFile = byName.get("joint.ifc");
     if (!bundleFile || !jointIfcFile) {
-      setLoadError("Please select at least bundle.json and joint.ifc (optionally fixed.ifc, issues.bcf, provenance.json).");
+      setLoadError(
+        "Please select at least bundle.json and joint.ifc (optionally fixed.ifc, issues.bcf, provenance.json).",
+      );
       return;
     }
 
@@ -198,7 +201,9 @@ export function App() {
   }, []);
 
   const cycleConcreteMode = () => {
-    setConcreteMode((m) => (m === "translucent" ? "wireframe" : m === "wireframe" ? "hidden" : "translucent"));
+    setConcreteMode((m) =>
+      m === "translucent" ? "wireframe" : m === "wireframe" ? "hidden" : "translucent",
+    );
   };
 
   const cycleLabelMode = () => {
@@ -227,12 +232,16 @@ export function App() {
             <div className="brand-title">
               RebarTwin <span className="joint-chip">{jointId}</span>
               {loaded && (
-                <span className={`pill ${isAfterMode || failCount === 0 ? "pill-pass" : "pill-fail"}`}>
+                <span
+                  className={`pill ${isAfterMode || failCount === 0 ? "pill-pass" : "pill-fail"}`}
+                >
                   {isAfterMode ? "AFTER FIX · 0 FAIL" : `${failCount} FAIL`}
                 </span>
               )}
             </div>
-            <div className="brand-sub">Geometry decides · Advisory only (engineer of record decides)</div>
+            <div className="brand-sub">
+              Geometry decides · Advisory only (engineer of record decides)
+            </div>
           </div>
         </div>
 
@@ -272,7 +281,12 @@ export function App() {
           </div>
 
           <button type="button" className="btn-tool" onClick={cycleConcreteMode}>
-            Concrete: {concreteMode === "translucent" ? "See-through" : concreteMode === "wireframe" ? "Outline" : "Off"}
+            Concrete:{" "}
+            {concreteMode === "translucent"
+              ? "See-through"
+              : concreteMode === "wireframe"
+                ? "Outline"
+                : "Off"}
           </button>
 
           <button type="button" className="btn-tool" onClick={cycleLabelMode}>
@@ -304,7 +318,9 @@ export function App() {
               <button
                 type="button"
                 className="btn-download"
-                onClick={() => downloadBlob(loaded.fixedIfc!, `${jointId}-fixed.ifc`, "application/x-step")}
+                onClick={() =>
+                  downloadBlob(loaded.fixedIfc!, `${jointId}-fixed.ifc`, "application/x-step")
+                }
                 title="Download fixed IFC model"
               >
                 ↓ fixed.ifc
@@ -352,7 +368,8 @@ export function App() {
               <p>{loadError}</p>
               <p className="muted-note">
                 Run <code>rebartwin check examples/c4_b12.json</code> to generate{" "}
-                <code>out/C4xB12/bundle.json</code> and <code>joint.ifc</code>, or click <strong>Load Files</strong>.
+                <code>out/C4xB12/bundle.json</code> and <code>joint.ifc</code>, or click{" "}
+                <strong>Load Files</strong>.
               </p>
             </div>
           ) : isLoading || !loaded ? (

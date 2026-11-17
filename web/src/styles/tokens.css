@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+:root {
+  /* primitives */
+  --graphite-950: #0e1116;
+  --graphite-900: #15191f;
+  --graphite-850: #1b2028;
+  --graphite-800: #222833;
+  --graphite-700: #2e3542;
+  --graphite-600: #3d4450;
+  --graphite-500: #5f6875;
+  --graphite-400: #8a94a3;
+  --graphite-300: #a9b2bf;
+  --graphite-200: #c9ced6;
+  --graphite-100: #e6e9ed;
+  --paper-50: #fffdf9;
+  --paper-100: #f4f2ee;
+  --paper-200: #eae6df;
+  --paper-300: #ddd8cf;
+  --paper-400: #bfb8ac;
+  --orange-500: #f97316;
+  --orange-700: #c2410c;
+
+  /* semantic, dark (default) */
+  --background: var(--graphite-950);
+  --surface: #151a21;
+  --surface-raised: #1b2129;
+  --surface-sunken: #0a0d11;
+  --border: #2a313c;
+  --border-strong: #3a4351;
+  --control-border: #667183; /* inputs, toggles, checkboxes: at least 3:1 */
+  --foreground: #eef1f4;
+  --muted-foreground: var(--graphite-300);
+  --subtle-foreground: #7f8a99;
+  --primary: #eef1f4; /* primary buttons are neutral, inverted */
+  --primary-foreground: var(--graphite-950);
+  --ring: #ffffff;
+  --signal: var(--orange-500); /* brand mark and landing only */
+  --fail: #ff6a3d;
+  --fail-surface: rgb(255 106 61 / 0.12);
+  --pass: #3dd68c;
+  --pass-surface: rgb(61 214 140 / 0.12);
+  --check: #8c9eff;
+  --check-surface: rgb(140 158 255 / 0.14);
+  --advisory: #f5b83d;
+  --advisory-surface: rgb(245 184 61 / 0.12);
+  --paper: var(--paper-50);
+  --paper-foreground: var(--graphite-900);
+  --paper-border: var(--paper-300);
+  --steel: #9aa6b5;
+  --concrete: #cfc9bf;
+  --grid: rgb(255 255 255 / 0.04);
+  --shadow-overlay: 0 12px 32px -8px rgb(0 0 0 / 0.55), 0 0 0 1px var(--border);
+
+  /* motion */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-morph: 700ms;
+  --dur-camera: 900ms;
+}
+
+[data-theme="light"] {
+  --background: var(--paper-100);
+  --surface: var(--paper-50);
+  --surface-raised: #ffffff;
+  --surface-sunken: var(--paper-200);
+  --border: var(--paper-300);
+  --border-strong: var(--paper-400);
+  --control-border: #857e73;
+  --foreground: var(--graphite-900);
+  --muted-foreground: var(--graphite-600);
+  --subtle-foreground: #59626f;
+  --primary: var(--graphite-900);
+  --primary-foreground: var(--paper-50);
+  --ring: var(--graphite-900);
+  --signal: #b03a0a;
+  --fail: #b42318;
+  --fail-surface: rgb(180 35 24 / 0.08);
+  --pass: #126b43;
+  --pass-surface: rgb(18 107 67 / 0.08);
+  --check: #4338ca;
+  --check-surface: rgb(67 56 202 / 0.08);
+  --advisory: #8a5a00;
+  --advisory-surface: rgb(138 90 0 / 0.08);
+  --grid: rgb(21 25 31 / 0.05);
+  --shadow-overlay: 0 12px 32px -12px rgb(21 25 31 / 0.18), 0 0 0 1px var(--border);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-control-border: var(--control-border);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-signal: var(--signal);
+  --color-fail: var(--fail);
+  --color-fail-surface: var(--fail-surface);
+  --color-pass: var(--pass);
+  --color-pass-surface: var(--pass-surface);
+  --color-check: var(--check);
+  --color-check-surface: var(--check-surface);
+  --color-advisory: var(--advisory);
+  --color-advisory-surface: var(--advisory-surface);
+  --color-paper: var(--paper);
+  --color-paper-foreground: var(--paper-foreground);
+  --color-paper-border: var(--paper-border);
+  --color-steel: var(--steel);
+  --color-concrete: var(--concrete);
+  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --shadow-overlay: var(--shadow-overlay);
+}

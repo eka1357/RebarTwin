@@ -3,6 +3,7 @@ import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.resolve(ROOT, "out");
@@ -92,7 +93,7 @@ function rebartwinAssetsPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), rebartwinAssetsPlugin()],
+  plugins: [react(), tailwindcss(), rebartwinAssetsPlugin()],
   optimizeDeps: {
     exclude: ["web-ifc"],
   },

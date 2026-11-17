@@ -25,10 +25,11 @@ export function WorkingsPanel({ attempts }: WorkingsPanelProps) {
   const passedCount = useMemo(() => attempts.filter((a) => a.passed).length, [attempts]);
   const failedCount = attempts.length - passedCount;
 
-  useEffect(() => {
+  const handleFilterChange = (nextFilter: FilterMode) => {
+    setFilter(nextFilter);
     setCursor(0);
     setPlaying(false);
-  }, [attempts, filter]);
+  };
 
   useEffect(() => {
     if (!playing || filtered.length === 0) return;
@@ -47,7 +48,9 @@ export function WorkingsPanel({ attempts }: WorkingsPanelProps) {
   if (attempts.length === 0) {
     return (
       <div className="panel-body">
-        <div className="hint-box">No fix attempts recorded — the joint already passed every checked rule.</div>
+        <div className="hint-box">
+          No fix attempts recorded — the joint already passed every checked rule.
+        </div>
       </div>
     );
   }
@@ -57,8 +60,8 @@ export function WorkingsPanel({ attempts }: WorkingsPanelProps) {
       <div className="workings-banner">
         <strong>Workings Replay (ORCA loop)</strong>
         <p className="muted-note">
-          Every candidate proposal — whether enumerator or Gemini — is tested by the deterministic geometry &amp;
-          code checker. Nothing passes unless every rule holds.
+          Every candidate proposal — whether enumerator or Gemini — is tested by the deterministic
+          geometry &amp; code checker. Nothing passes unless every rule holds.
         </p>
       </div>
 
@@ -67,21 +70,21 @@ export function WorkingsPanel({ attempts }: WorkingsPanelProps) {
         <button
           type="button"
           className={`filter-chip ${filter === "all" ? "filter-active" : ""}`}
-          onClick={() => setFilter("all")}
+          onClick={() => handleFilterChange("all")}
         >
           All ({attempts.length})
         </button>
         <button
           type="button"
           className={`filter-chip ${filter === "passed" ? "filter-active" : ""}`}
-          onClick={() => setFilter("passed")}
+          onClick={() => handleFilterChange("passed")}
         >
           Passed ({passedCount})
         </button>
         <button
           type="button"
           className={`filter-chip ${filter === "failed" ? "filter-active" : ""}`}
-          onClick={() => setFilter("failed")}
+          onClick={() => handleFilterChange("failed")}
         >
           Rejected ({failedCount})
         </button>
@@ -196,16 +199,21 @@ export function WorkingsPanel({ attempts }: WorkingsPanelProps) {
           </div>
 
           {active.passed ? (
-            <div className="pass-confirm">All rules satisfied: spacing, cover, clashes, and detailing checks pass.</div>
+            <div className="pass-confirm">
+              All rules satisfied: spacing, cover, clashes, and detailing checks pass.
+            </div>
           ) : (
             <div className="reject-list">
-              <div className="subhead">Clauses that rejected this candidate ({active.failures.length})</div>
+              <div className="subhead">
+                Clauses that rejected this candidate ({active.failures.length})
+              </div>
               {active.failures.map((fail, idx) => (
                 <div key={idx} className="reject-item">
                   <div className="finding-row-top">
                     <span className="clause-tag">{fail.clause}</span>
                     <span className="measure-chip">
-                      {formatNumber(fail.measured)} {fail.unit} vs {formatNumber(fail.limit)} {fail.unit}
+                      {formatNumber(fail.measured)} {fail.unit} vs {formatNumber(fail.limit)}{" "}
+                      {fail.unit}
                     </span>
                   </div>
                   <div className="finding-msg">{fail.message}</div>

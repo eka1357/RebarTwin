@@ -50,7 +50,11 @@ function readNumberAttr(attr: unknown): number | null {
   return typeof attr === "number" && Number.isFinite(attr) ? attr : null;
 }
 
-async function readBarPset(api: WebIFC.IfcAPI, modelID: number, expressID: number): Promise<RawPsetData> {
+async function readBarPset(
+  api: WebIFC.IfcAPI,
+  modelID: number,
+  expressID: number,
+): Promise<RawPsetData> {
   const out: RawPsetData = {};
   try {
     const psets = await api.properties.getPropertySets(modelID, expressID, true);
@@ -69,7 +73,12 @@ async function readBarPset(api: WebIFC.IfcAPI, modelID: number, expressID: numbe
           if (s === "FAIL" || s === "OK") out.status = s;
         } else if (key === "FailedClauses") {
           const raw = readStringAttr(val);
-          out.failedClauses = raw ? raw.split(";").map((x) => x.trim()).filter(Boolean) : [];
+          out.failedClauses = raw
+            ? raw
+                .split(";")
+                .map((x) => x.trim())
+                .filter(Boolean)
+            : [];
         }
       }
     }
@@ -120,7 +129,10 @@ function makeConcreteMaterial(): THREE.MeshPhysicalMaterial {
   });
 }
 
-function makeBarMaterial(status: "FAIL" | "OK", predefinedType: string): THREE.MeshStandardMaterial {
+function makeBarMaterial(
+  status: "FAIL" | "OK",
+  predefinedType: string,
+): THREE.MeshStandardMaterial {
   if (status === "FAIL") {
     return new THREE.MeshStandardMaterial({
       color: new THREE.Color(0xe03a34),

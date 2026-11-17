@@ -51,7 +51,9 @@ export function FindingsPanel({
   return (
     <div className="panel-body">
       {/* Verdict banner */}
-      <div className={`verdict-card ${isAfterMode || failures.length === 0 ? "verdict-pass" : "verdict-fail"}`}>
+      <div
+        className={`verdict-card ${isAfterMode || failures.length === 0 ? "verdict-pass" : "verdict-fail"}`}
+      >
         <div className="verdict-title">
           {isAfterMode
             ? `${joint.id}: passes every rule checked (After Fix)`
@@ -59,7 +61,8 @@ export function FindingsPanel({
         </div>
         <div className="verdict-sub">
           Seismic zone {report.seismic_zone} · IS 13920 {report.is13920 ? "on" : "off"} ·{" "}
-          {joint.settings.exposure.replace("_", " ")} exposure · {joint.settings.aggregate} mm aggregate
+          {joint.settings.exposure.replace("_", " ")} exposure · {joint.settings.aggregate} mm
+          aggregate
         </div>
       </div>
 
@@ -68,7 +71,9 @@ export function FindingsPanel({
         <section className="card selected-bar-card">
           <div className="card-header">
             <div>
-              <span className={`pill ${selectedBar.status === "FAIL" && !isAfterMode ? "pill-fail" : "pill-pass"}`}>
+              <span
+                className={`pill ${selectedBar.status === "FAIL" && !isAfterMode ? "pill-fail" : "pill-pass"}`}
+              >
                 {isAfterMode ? "OK" : selectedBar.status}
               </span>{" "}
               <strong>{selectedBar.tag || selectedBar.name}</strong>
@@ -104,7 +109,9 @@ export function FindingsPanel({
 
           <div className="subhead">Findings on this bar</div>
           {isAfterMode ? (
-            <p className="muted-note">In After Fix mode (`fixed.ifc`), every bar satisfies all checked rules.</p>
+            <p className="muted-note">
+              In After Fix mode (`fixed.ifc`), every bar satisfies all checked rules.
+            </p>
           ) : barFindings.length === 0 ? (
             <p className="muted-note">No direct findings recorded against this bar.</p>
           ) : (
@@ -124,7 +131,8 @@ export function FindingsPanel({
                     </span>
                     <span className="clause-tag">{f.clause}</span>
                     <span className="measure-chip">
-                      {formatNumber(f.measured)} {f.unit} ({f.compare} {formatNumber(f.limit)} {f.unit})
+                      {formatNumber(f.measured)} {f.unit} ({f.compare} {formatNumber(f.limit)}{" "}
+                      {f.unit})
                     </span>
                   </div>
                   <div className="finding-msg">{f.message}</div>
@@ -142,14 +150,17 @@ export function FindingsPanel({
         </section>
       ) : (
         <div className="hint-box">
-          Click any bar in the 3D joint (or a gap label) to inspect its GlobalId, rule findings, and drawing provenance.
+          Click any bar in the 3D joint (or a gap label) to inspect its GlobalId, rule findings, and
+          drawing provenance.
         </div>
       )}
 
       {/* Failing checks list */}
       <section className="section">
         <div className="section-title">
-          {isAfterMode ? "Original Failures Resolved (Before)" : `Failing Checks (${failures.length})`}
+          {isAfterMode
+            ? "Original Failures Resolved (Before)"
+            : `Failing Checks (${failures.length})`}
         </div>
         <div className="findings-list">
           {failures.map(({ f, index }) => (
@@ -164,13 +175,12 @@ export function FindingsPanel({
               <div className="finding-row-top">
                 <span className="clause-tag">{f.clause}</span>
                 <span className="measure-chip">
-                  {formatNumber(f.measured)} {f.unit} · needs {f.compare} {formatNumber(f.limit)} {f.unit}
+                  {formatNumber(f.measured)} {f.unit} · needs {f.compare} {formatNumber(f.limit)}{" "}
+                  {f.unit}
                 </span>
               </div>
               <div className="finding-msg">{f.message}</div>
-              {f.bars.length > 0 && (
-                <div className="finding-bars">Bars: {f.bars.join(", ")}</div>
-              )}
+              {f.bars.length > 0 && <div className="finding-bars">Bars: {f.bars.join(", ")}</div>}
             </button>
           ))}
         </div>
@@ -196,7 +206,8 @@ export function FindingsPanel({
                 <div className="finding-row-top">
                   <span className="clause-tag">{f.clause}</span>
                   <span className="measure-chip">
-                    {formatNumber(f.measured)} {f.unit} ({f.compare} {formatNumber(f.limit)} {f.unit})
+                    {formatNumber(f.measured)} {f.unit} ({f.compare} {formatNumber(f.limit)}{" "}
+                    {f.unit})
                   </span>
                 </div>
                 <div className="finding-msg">{f.message}</div>
@@ -219,7 +230,8 @@ export function FindingsPanel({
               return (
                 <div key={id} className="audit-item">
                   <div className="audit-head">
-                    <strong>{r?.clause ?? id}</strong> — {r?.title} ({report.passed[id] ?? 0} passed)
+                    <strong>{r?.clause ?? id}</strong> — {r?.title} ({report.passed[id] ?? 0}{" "}
+                    passed)
                   </div>
                   {r?.basis && <div className="muted-note">Basis: {r.basis}</div>}
                 </div>

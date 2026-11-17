@@ -108,6 +108,10 @@ Applied review fixes on `fix/w13-review`: removed UI arithmetic (`summarizeLayer
 
 Built `src/rebartwin/api.py` on `feature/a1-api` (optional `[api]` deps `fastapi`, `uvicorn`, `python-multipart`; dev test client `httpx`): stateless `POST /joints/check`, `GET/POST /projects`, `POST /projects/{id}/drawings` multipart PDF upload launching background reader streaming per-page `page_started`, `page_read`, `joint_ready`, `done`, and `error` SSE via `GET /projects/{id}/events`, `GET /projects/{id}` joint/sheet summary, `GET /projects/{id}/to-check` (ordering unresolved project-level items first), `POST .../to-check/{item}/resolve` validating callouts, cascading derived linking items, re-checking unlocked joints, and attaching `resolved` provenance + `level`, `GET .../bundle` + IFC/BCF/report.md exports + PyMuPDF `?crop=ymin,xmin,ymax,xmax` crops, `application/problem+json` error responses, `@` joint id URL encoding support, and Vite `/api` proxy. Verified with `uv run pytest` (238 passed).
 
+## 17 November 2026: Upload, ReadingBoard, ReadingLog, and live project views (W8, `feature/w8-upload`)
+
+Built `web/` W8 on `feature/w8-upload`: typed API client (`lib/api.ts`), Manus-style centered `DropZone` with optional page filter, paste-joint JSON check dialog, and starter chips (`features/reading/DropZone.tsx`), warm-paper `ReadingBoard` with 1.2 s scan line (`Progress` fallback under reduced motion) and polite live announcements (`features/reading/ReadingBoard.tsx`), auto-scrolling `ReadingLog` with `role="log"` (`features/reading/ReadingLog.tsx`), live SSE `UploadRoute.tsx`, and live project/joint routes (`ProjectRoute.tsx`, `JointRoute.tsx`) encoding `@` joint ids and resolving real drawing crops relative to the joint bundle URL. Verified with `eslint`, `tsc`, Vitest (21 passed), and production build.
+
 ## Next: built in Google Antigravity
 
 The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

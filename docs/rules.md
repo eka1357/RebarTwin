@@ -28,5 +28,8 @@ relaxation for groups of bars, and exterior or corner joints where beam bars sto
 ## Adding a rule
 
 Write the function, add a `Rule` with its clause and basis to `RULES`, and add a test with a hand-checked number.
+Every finding carries a signed `margin` (positive passes) computed in `_finding`; a rule whose measurement is a
+dimension the viewer should draw passes it as `span` (two points, mm) with `at` its midpoint, as IS 13920 cl. 7.1.1
+does. Numbers in messages go through `numbers.fmt` (half away from zero), never `:.0f`.
 A rule that a different element must change to satisfy (a column size, the other face of a beam) sets
 `knock_on=True`, so the fix loop knows to make that change in round 2.

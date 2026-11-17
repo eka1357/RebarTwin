@@ -2,6 +2,7 @@
 engineer must recheck, and every assumption. Markdown for people, JSON (`bundle`) for the viewer."""
 from __future__ import annotations
 
+from .numbers import fmt
 from .check import Report, check
 from .fixes import FixResult, apply
 from .layout import EXTENT, Cage, build
@@ -89,9 +90,9 @@ def markdown(joint: Joint, report: Report, fix: FixResult) -> str:
         lines.append("")
         for c in o.faces:
             lines.append(f"- {c.beam} {c.face} (layers outermost first): {c.before} becomes {c.after}; "
-                         f"{c.area_provided:.0f} mm² against "
-                         f"{c.area_required:.0f} mm² needed (+{c.overshoot_pct:g}%); effective depth {c.depth_before:.0f} "
-                         f"to {c.depth_after:.0f} mm")
+                         f"{fmt(c.area_provided)} mm² against "
+                         f"{fmt(c.area_required)} mm² needed (+{c.overshoot_pct:g}%); effective depth {fmt(c.depth_before)} "
+                         f"to {fmt(c.depth_after)} mm")
         if o.column:
             lines.append(f"- Column: {o.column} mm")
         for flag in o.flags:

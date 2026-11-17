@@ -76,6 +76,15 @@ prompts `read_v1` and `link_v1`, agreement, linking with code-side verification 
 stand-ins for Gemini replies in `tests/fixtures/reader/` (no real drawing, no live model output). Not yet run on a
 real drawing or a live model.
 
+## 17 November 2026: reader ready for a live run, engine numbers for the web (`feature/R-live`)
+
+Claude Code. Reader: no sampling parameters, one retry layer, fast fallback when a key cannot use a model,
+`--probe` and AutoCAD SHX annotations as text, project-level To check items for an unstated zone or exposure, saved
+and replayed replies, concurrent tiles, and the Source contract (`provenance`, `pages`) in each checked bundle.
+Engine: `Finding.margin` and `span` (IS 13920 cl. 7.1.1), face `area_before`, `n_bars_before`, `n_layers_before`,
+and half-up rounding for numbers in text; no rule's limit changed. Demo bundles in `web/public/demo/` regenerated.
+167 tests, no key needed; still not run on a real drawing.
+
 ## Next: built in Google Antigravity
 
 The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

@@ -80,6 +80,8 @@
      -54.0,
      -43.0
     ],
+    "span": null,
+    "margin": -9.0,
     "message": "B12 top bars 1 and 2 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm"
    },
    {
@@ -103,6 +105,8 @@
      -18.0,
      -43.0
     ],
+    "span": null,
+    "margin": -9.0,
     "message": "B12 top bars 2 and 3 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm"
    },
    {
@@ -126,6 +130,8 @@
      18.0,
      -43.0
     ],
+    "span": null,
+    "margin": -9.0,
     "message": "B12 top bars 3 and 4 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm"
    },
    {
@@ -149,6 +155,8 @@
      54.0,
      -43.0
     ],
+    "span": null,
+    "margin": -9.0,
     "message": "B12 top bars 4 and 5 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm"
    },
    {
@@ -172,6 +180,8 @@
      -49.33333333333333,
      -409.0
     ],
+    "span": null,
+    "margin": 8.333,
     "message": "B12 bottom bars 1 and 2 are 33 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm"
    },
    {
@@ -195,6 +205,8 @@
      3.552713678800501e-15,
      -409.0
     ],
+    "span": null,
+    "margin": 8.333,
     "message": "B12 bottom bars 2 and 3 are 33 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm"
    },
    {
@@ -218,6 +230,8 @@
      49.333333333333336,
      -409.0
     ],
+    "span": null,
+    "margin": 8.333,
     "message": "B12 bottom bars 3 and 4 are 33 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm"
    },
    {
@@ -241,6 +255,8 @@
      -102.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 1 and 2 on face y- are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -264,6 +280,8 @@
      -102.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 2 and 3 on face y- are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -287,6 +305,8 @@
      -51.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 3 and 4 on face x+ are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -310,6 +330,8 @@
      51.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 4 and 5 on face x+ are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -333,6 +355,8 @@
      102.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 7 and 6 on face y+ are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -356,6 +380,8 @@
      102.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 6 and 5 on face y+ are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -379,6 +405,8 @@
      -51.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 1 and 8 on face x- are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -402,6 +430,8 @@
      51.0,
      -1050.0
     ],
+    "span": null,
+    "margin": 61.0,
     "message": "C4 column bars 8 and 7 on face x- are 86 mm apart; the code needs 25 mm"
    },
    {
@@ -418,6 +448,8 @@
     ],
     "bars": [],
     "at": null,
+    "span": null,
+    "margin": 12.0,
     "message": "C4 has 32 mm of concrete outside its ties; mild exposure needs 20 mm"
    },
    {
@@ -434,6 +466,8 @@
     ],
     "bars": [],
     "at": null,
+    "span": null,
+    "margin": 5.0,
     "message": "B12 has 25 mm of concrete outside its stirrups; mild exposure needs 20 mm"
    },
    {
@@ -450,6 +484,8 @@
     ],
     "bars": [],
     "at": null,
+    "span": null,
+    "margin": 0.0,
     "message": "C4 has 40 mm of concrete outside its main bars; the code needs 40 mm"
    },
    {
@@ -474,6 +510,8 @@
      0.0,
      -42.99999999999994
     ],
+    "span": null,
+    "margin": -18.0,
     "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn"
    },
    {
@@ -498,6 +536,8 @@
      0.0,
      -42.99999999999994
     ],
+    "span": null,
+    "margin": -18.0,
     "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn"
    },
    {
@@ -513,7 +553,24 @@
      "C4"
     ],
     "bars": [],
-    "at": null,
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "span": [
+     [
+      -150.0,
+      0.0,
+      0.0
+     ],
+     [
+      150.0,
+      0.0,
+      0.0
+     ]
+    ],
+    "margin": 0.0,
     "message": "C4's smaller side is 300 mm; the code needs at least 300 mm"
    },
    {
@@ -530,7 +587,24 @@
      "B12"
     ],
     "bars": [],
-    "at": null,
+    "at": [
+     0.0,
+     0.0,
+     -43.0
+    ],
+    "span": [
+     [
+      -150.0,
+      0.0,
+      -43.0
+     ],
+     [
+      150.0,
+      0.0,
+      -43.0
+     ]
+    ],
+    "margin": -100.0,
     "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm"
    },
    {
@@ -547,6 +621,8 @@
     ],
     "bars": [],
     "at": null,
+    "span": null,
+    "margin": 18.85,
     "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1571 mm\u00b2 at the top; the code needs at least half, 785 mm\u00b2"
    }
   ],
@@ -604,18 +680,21 @@
       "face": "top",
       "before": "5-20",
       "after": "4-16 / 4-16",
+      "area_before": 1570.8,
       "area_required": 1570.8,
       "area_provided": 1608.5,
       "overshoot_pct": 2.4,
       "depth_before": 407.0,
       "depth_after": 388.5,
+      "n_bars_before": 5,
+      "n_layers_before": 1,
       "n_bars": 8,
       "n_layers": 2
      }
     ],
     "column": "300 \u00d7 300 -> 325 \u00d7 300",
     "flags": [
-     "B12 top steel's effective depth drops from 407 to 388 mm: recheck the section's strength",
+     "B12 top steel's effective depth drops from 407 to 389 mm: recheck the section's strength",
      "C4 grows from 300 \u00d7 300 to 325 \u00d7 300 mm: a redesign for the engineer of record (frame analysis, column design, the drawings around it)"
     ]
    },
@@ -656,11 +735,14 @@
       "face": "top",
       "before": "5-20",
       "after": "4-20 / 2-16",
+      "area_before": 1570.8,
       "area_required": 1570.8,
       "area_provided": 1658.8,
       "overshoot_pct": 5.6,
       "depth_before": 407.0,
       "depth_after": 396.6,
+      "n_bars_before": 5,
+      "n_layers_before": 1,
       "n_bars": 6,
       "n_layers": 2
      },
@@ -669,11 +751,14 @@
       "face": "bottom",
       "before": "4-16",
       "after": "2-20 / 2-12",
+      "area_before": 804.2,
       "area_required": 829.4,
       "area_provided": 854.5,
       "overshoot_pct": 3.0,
       "depth_before": 409.0,
       "depth_after": 396.1,
+      "n_bars_before": 4,
+      "n_layers_before": 1,
       "n_bars": 4,
       "n_layers": 2
      }
@@ -722,11 +807,14 @@
       "face": "top",
       "before": "5-20",
       "after": "4-20 / 4-12",
+      "area_before": 1570.8,
       "area_required": 1570.8,
       "area_provided": 1709.0,
       "overshoot_pct": 8.8,
       "depth_before": 407.0,
       "depth_after": 396.1,
+      "n_bars_before": 5,
+      "n_layers_before": 1,
       "n_bars": 8,
       "n_layers": 2
      },
@@ -735,11 +823,14 @@
       "face": "bottom",
       "before": "4-16",
       "after": "2-20 / 2-12",
+      "area_before": 804.2,
       "area_required": 854.5,
       "area_provided": 854.5,
       "overshoot_pct": 0.0,
       "depth_before": 409.0,
       "depth_after": 396.1,
+      "n_bars_before": 4,
+      "n_layers_before": 1,
       "n_bars": 4,
       "n_layers": 2
      }
@@ -778,6 +869,8 @@
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -788,13 +881,16 @@
        101.99999999999994,
        0.0,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -805,17 +901,36 @@
        -102.0,
        0.0,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      }
     ]
    },
@@ -844,6 +959,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 24.0,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -24.0,
       "unit": "mm",
       "message": "B12 top bar 1 of layer 2 is 24 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -854,13 +971,16 @@
        -750.0,
        -12.0,
        -65.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -871,13 +991,16 @@
        101.99999999999994,
        0.0,
        -88.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -888,17 +1011,36 @@
        -102.0,
        0.0,
        -88.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      }
     ]
    },
@@ -926,6 +1068,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 16.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -9.0,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -936,13 +1080,16 @@
        -750.0,
        -54.0,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 16.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -9.0,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -953,13 +1100,16 @@
        -750.0,
        -18.0,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 16.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -9.0,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -970,13 +1120,16 @@
        -750.0,
        18.0,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 16.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -9.0,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 16 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -987,13 +1140,16 @@
        -750.0,
        54.0,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1004,13 +1160,16 @@
        101.99999999999994,
        0.0,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1021,17 +1180,36 @@
        -102.0,
        0.0,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      }
     ]
    },
@@ -1060,6 +1238,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1070,13 +1250,16 @@
        -750.0,
        -55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1087,13 +1270,16 @@
        -750.0,
        -18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1104,13 +1290,16 @@
        -750.0,
        18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1121,13 +1310,16 @@
        -750.0,
        55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1138,13 +1330,16 @@
        101.99999999999994,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1155,13 +1350,16 @@
        101.99999999999994,
        0.0,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1172,13 +1370,16 @@
        -102.0,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1189,17 +1390,36 @@
        -102.0,
        0.0,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      }
     ]
    },
@@ -1228,6 +1448,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1238,13 +1460,16 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1255,15 +1480,18 @@
        101.99999999999994,
        0.0,
        -89.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -1272,13 +1500,16 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1289,17 +1520,36 @@
        -102.0,
        0.0,
        -89.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      }
     ]
    },
@@ -1328,6 +1578,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 24.0,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -24.0,
       "unit": "mm",
       "message": "B12 top bar 2 of layer 2 is 24 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -1338,13 +1590,16 @@
        -750.0,
        -12.0,
        -63.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1355,13 +1610,16 @@
        101.99999999999994,
        0.0,
        -84.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1372,17 +1630,36 @@
        -102.0,
        0.0,
        -84.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      }
     ]
    },
@@ -1411,10 +1688,28 @@
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      }
     ]
    },
@@ -1443,6 +1738,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1453,13 +1750,16 @@
        -750.0,
        -55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1470,13 +1770,16 @@
        -750.0,
        -18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1487,13 +1790,16 @@
        -750.0,
        18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1504,13 +1810,16 @@
        -750.0,
        55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1521,13 +1830,16 @@
        101.99999999999994,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1538,13 +1850,16 @@
        101.99999999999994,
        0.0,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1555,13 +1870,16 @@
        -102.0,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1572,17 +1890,36 @@
        -102.0,
        0.0,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      }
     ]
    },
@@ -1611,6 +1948,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1621,13 +1960,16 @@
        -750.0,
        -59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1638,13 +1980,16 @@
        -750.0,
        -29.599999999999998,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1655,13 +2000,16 @@
        -750.0,
        0.0,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1672,13 +2020,16 @@
        -750.0,
        29.6,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 5 and 6 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1689,13 +2040,16 @@
        -750.0,
        59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1706,13 +2060,16 @@
        101.99999999999994,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1723,13 +2080,16 @@
        101.99999999999994,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1740,13 +2100,16 @@
        -102.0,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -1757,17 +2120,36 @@
        -102.0,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      }
     ]
    },
@@ -1796,20 +2178,41 @@
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 805.033,
+      "compare": ">=",
+      "margin": -0.785,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1610 mm\u00b2 at the top; the code needs at least half, 805 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -1838,20 +2241,41 @@
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 829.38,
+      "compare": ">=",
+      "margin": -25.133,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1659 mm\u00b2 at the top; the code needs at least half, 829 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -1880,6 +2304,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1890,13 +2316,16 @@
        -750.0,
        -59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1907,13 +2336,16 @@
        -750.0,
        -29.599999999999998,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1924,13 +2356,16 @@
        -750.0,
        0.0,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1941,13 +2376,16 @@
        -750.0,
        29.6,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 5 and 6 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -1958,13 +2396,16 @@
        -750.0,
        59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 1 and 2 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -1975,13 +2416,16 @@
        -750.0,
        -59.2,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 3 and 4 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -1992,13 +2436,16 @@
        -750.0,
        59.2,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2009,13 +2456,16 @@
        101.99999999999994,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2026,13 +2476,16 @@
        101.99999999999994,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2043,13 +2496,16 @@
        -102.0,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2060,27 +2516,49 @@
        -102.0,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 829.38,
+      "compare": ">=",
+      "margin": -25.133,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1659 mm\u00b2 at the top; the code needs at least half, 829 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -2109,6 +2587,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2119,13 +2599,16 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2136,15 +2619,18 @@
        101.99999999999994,
        0.0,
        -91.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -2153,13 +2639,16 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2170,27 +2659,49 @@
        -102.0,
        0.0,
        -91.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 836.842,
+      "compare": ">=",
+      "margin": -32.594,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1674 mm\u00b2 at the top; the code needs at least half, 837 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -2219,6 +2730,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2229,15 +2742,18 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -2246,27 +2762,49 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 849.408,
+      "compare": ">=",
+      "margin": -45.16,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1699 mm\u00b2 at the top; the code needs at least half, 849 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -2295,20 +2833,41 @@
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 854.513,
+      "compare": ">=",
+      "margin": -50.265,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1709 mm\u00b2 at the top; the code needs at least half, 855 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -2337,6 +2896,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2347,13 +2908,16 @@
        -750.0,
        -59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2364,13 +2928,16 @@
        -750.0,
        -29.599999999999998,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2381,13 +2948,16 @@
        -750.0,
        0.0,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2398,13 +2968,16 @@
        -750.0,
        29.6,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 5 and 6 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2415,13 +2988,16 @@
        -750.0,
        59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 1 and 2 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -2432,13 +3008,16 @@
        -750.0,
        -59.2,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 4 and 5 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -2449,13 +3028,16 @@
        -750.0,
        59.2,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-L",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 14.8,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -14.8,
       "unit": "mm",
       "message": "B12 top bar 3 of layer 2 is 15 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -2466,13 +3048,16 @@
        -750.0,
        -7.399999999999999,
        -60.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2483,13 +3068,16 @@
        101.99999999999994,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2500,13 +3088,16 @@
        101.99999999999994,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2517,13 +3108,16 @@
        101.99999999999994,
        0.0,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2534,13 +3128,16 @@
        -102.0,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2551,13 +3148,16 @@
        -102.0,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2568,27 +3168,49 @@
        -102.0,
        0.0,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 885.929,
+      "compare": ">=",
+      "margin": -81.681,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1772 mm\u00b2 at the top; the code needs at least half, 886 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -2617,6 +3239,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2627,13 +3251,16 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2644,15 +3271,18 @@
        101.99999999999994,
        0.0,
        -93.00000000000006
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -2661,13 +3291,16 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2678,27 +3311,49 @@
        -102.0,
        0.0,
        -93.00000000000006
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 893.39,
+      "compare": ">=",
+      "margin": -89.143,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1787 mm\u00b2 at the top; the code needs at least half, 893 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -2727,6 +3382,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2737,13 +3394,16 @@
        -750.0,
        -55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2754,13 +3414,16 @@
        -750.0,
        -18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2771,13 +3434,16 @@
        -750.0,
        18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2788,13 +3454,16 @@
        -750.0,
        55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top layer 2 bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2805,13 +3474,16 @@
        -750.0,
        -55.5,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top layer 2 bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2822,13 +3494,16 @@
        -750.0,
        55.5,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2839,13 +3514,16 @@
        101.99999999999994,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -2856,27 +3534,49 @@
        -102.0,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 904.779,
+      "compare": ">=",
+      "margin": -100.531,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1810 mm\u00b2 at the top; the code needs at least half, 905 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -2905,6 +3605,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2915,13 +3617,16 @@
        -750.0,
        -59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2932,13 +3637,16 @@
        -750.0,
        -29.599999999999998,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2949,13 +3657,16 @@
        -750.0,
        0.0,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2966,13 +3677,16 @@
        -750.0,
        29.6,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 5 and 6 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -2983,13 +3697,16 @@
        -750.0,
        59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-L",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 14.8,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -14.8,
       "unit": "mm",
       "message": "B12 top bar 2 of layer 2 is 15 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -3000,13 +3717,16 @@
        -750.0,
        -7.399999999999999,
        -61.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3017,13 +3737,16 @@
        101.99999999999994,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3034,13 +3757,16 @@
        101.99999999999994,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3051,13 +3777,16 @@
        101.99999999999994,
        0.0,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3068,13 +3797,16 @@
        -102.0,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3085,13 +3817,16 @@
        -102.0,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3102,27 +3837,49 @@
        -102.0,
        0.0,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 904.779,
+      "compare": ">=",
+      "margin": -100.531,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1810 mm\u00b2 at the top; the code needs at least half, 905 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -3151,6 +3908,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3161,13 +3920,16 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3178,15 +3940,18 @@
        101.99999999999994,
        0.0,
        -89.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -3195,13 +3960,16 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3212,27 +3980,49 @@
        -102.0,
        0.0,
        -89.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 905.957,
+      "compare": ">=",
+      "margin": -101.709,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1812 mm\u00b2 at the top; the code needs at least half, 906 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -3261,6 +4051,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 24.0,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -24.0,
       "unit": "mm",
       "message": "B12 top bar 2 of layer 2 is 24 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -3271,13 +4063,16 @@
        -750.0,
        -12.0,
        -64.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3288,13 +4083,16 @@
        101.99999999999994,
        0.0,
        -86.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3305,27 +4103,49 @@
        -102.0,
        0.0,
        -86.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 929.911,
+      "compare": ">=",
+      "margin": -125.664,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1860 mm\u00b2 at the top; the code needs at least half, 930 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -3354,6 +4174,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3364,15 +4186,18 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -3381,27 +4206,49 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 937.373,
+      "compare": ">=",
+      "margin": -133.125,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1875 mm\u00b2 at the top; the code needs at least half, 937 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -3430,6 +4277,8 @@
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3440,13 +4289,16 @@
        101.99999999999994,
        0.0,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3457,13 +4309,16 @@
        101.99999999999994,
        0.0,
        -88.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3474,13 +4329,16 @@
        -102.0,
        0.0,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3491,27 +4349,49 @@
        -102.0,
        0.0,
        -88.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 942.478,
+      "compare": ">=",
+      "margin": -138.23,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1885 mm\u00b2 at the top; the code needs at least half, 942 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -3540,20 +4420,41 @@
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 942.478,
+      "compare": ">=",
+      "margin": -138.23,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1885 mm\u00b2 at the top; the code needs at least half, 942 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -3581,6 +4482,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 8.8,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -16.2,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 9 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -3591,13 +4494,16 @@
        -750.0,
        -57.6,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 8.8,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -16.2,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 9 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -3608,13 +4514,16 @@
        -750.0,
        -28.8,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 8.8,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -16.2,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 9 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -3625,13 +4534,16 @@
        -750.0,
        3.552713678800501e-15,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 8.8,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -16.2,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 9 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -3642,13 +4554,16 @@
        -750.0,
        28.800000000000004,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 8.8,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -16.2,
       "unit": "mm",
       "message": "B12 top bars 5 and 6 are 9 mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm",
       "bars": [
@@ -3659,13 +4574,16 @@
        -750.0,
        57.6,
        -43.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -3.6,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -3.6,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (20 mm): they overlap by 4 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3676,13 +4594,16 @@
        101.99999999999994,
        -7.199999999999999,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -3.6,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -3.6,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 4 (20 mm): they overlap by 4 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3693,13 +4614,16 @@
        101.99999999999994,
        7.200000000000003,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -3.6,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -3.6,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (20 mm): they overlap by 4 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3710,13 +4634,16 @@
        -102.0,
        -7.199999999999999,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -3.6,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -3.6,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 4 (20 mm): they overlap by 4 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3727,27 +4654,49 @@
        -102.0,
        7.200000000000003,
        -42.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 942.478,
+      "compare": ">=",
+      "margin": -138.23,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1885 mm\u00b2 at the top; the code needs at least half, 942 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -3776,6 +4725,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -3786,13 +4737,16 @@
        -750.0,
        -59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -3803,13 +4757,16 @@
        -750.0,
        -29.599999999999998,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -3820,13 +4777,16 @@
        -750.0,
        0.0,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -3837,13 +4797,16 @@
        -750.0,
        29.6,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 5 and 6 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -3854,13 +4817,16 @@
        -750.0,
        59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 1 and 2 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -3871,13 +4837,16 @@
        -750.0,
        -59.2,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 2 and 3 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -3888,13 +4857,16 @@
        -750.0,
        -29.599999999999998,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 3 and 4 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -3905,13 +4877,16 @@
        -750.0,
        0.0,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 4 and 5 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -3922,13 +4897,16 @@
        -750.0,
        29.6,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 17.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -7.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 5 and 6 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -3939,13 +4917,16 @@
        -750.0,
        59.2,
        -80.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3956,13 +4937,16 @@
        101.99999999999994,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3973,13 +4957,16 @@
        101.99999999999994,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -3990,13 +4977,16 @@
        -102.0,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4007,27 +4997,49 @@
        -102.0,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 942.478,
+      "compare": ">=",
+      "margin": -138.23,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1885 mm\u00b2 at the top; the code needs at least half, 942 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4056,20 +5068,41 @@
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 981.748,
+      "compare": ">=",
+      "margin": -177.5,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1963 mm\u00b2 at the top; the code needs at least half, 982 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4098,6 +5131,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4108,13 +5143,16 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 1 layer 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4125,15 +5163,18 @@
        101.99999999999994,
        0.0,
        -95.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -4142,15 +5183,18 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 1 layer 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 1 layer 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T2-1"
@@ -4159,27 +5203,49 @@
        -102.0,
        0.0,
        -95.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 981.748,
+      "compare": ">=",
+      "margin": -177.5,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1963 mm\u00b2 at the top; the code needs at least half, 982 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4207,6 +5273,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.333,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -3.667,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 25 mm bars the code needs 25 mm",
       "bars": [
@@ -4217,13 +5285,16 @@
        -750.0,
        -46.33333333333333,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.333,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -3.667,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 25 mm bars the code needs 25 mm",
       "bars": [
@@ -4234,13 +5305,16 @@
        -750.0,
        3.552713678800501e-15,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.333,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -3.667,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 25 mm bars the code needs 25 mm",
       "bars": [
@@ -4251,27 +5325,49 @@
        -750.0,
        46.333333333333336,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 981.748,
+      "compare": ">=",
+      "margin": -177.5,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 1963 mm\u00b2 at the top; the code needs at least half, 982 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4300,6 +5396,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4310,13 +5408,16 @@
        -750.0,
        -55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4327,13 +5428,16 @@
        -750.0,
        -18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4344,13 +5448,16 @@
        -750.0,
        18.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4361,13 +5468,16 @@
        -750.0,
        55.5,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top layer 2 bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4378,13 +5488,16 @@
        -750.0,
        -55.5,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top layer 2 bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4395,13 +5508,16 @@
        -750.0,
        -18.5,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top layer 2 bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4412,13 +5528,16 @@
        -750.0,
        18.5,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 top layer 2 bars 4 and 5 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4429,13 +5548,16 @@
        -750.0,
        55.5,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4446,13 +5568,16 @@
        101.99999999999994,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4463,13 +5588,16 @@
        101.99999999999994,
        0.0,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4480,13 +5608,16 @@
        -102.0,
        0.0,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4497,27 +5628,49 @@
        -102.0,
        0.0,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 1005.31,
+      "compare": ">=",
+      "margin": -201.062,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 2011 mm\u00b2 at the top; the code needs at least half, 1005 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4546,6 +5699,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 1 and 2 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4556,13 +5711,16 @@
        -750.0,
        -59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 2 and 3 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4573,13 +5731,16 @@
        -750.0,
        -29.599999999999998,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 3 and 4 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4590,13 +5751,16 @@
        -750.0,
        0.0,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 4 and 5 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4607,13 +5771,16 @@
        -750.0,
        29.6,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top bars 5 and 6 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4624,13 +5791,16 @@
        -750.0,
        59.2,
        -41.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 1 and 2 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4641,13 +5811,16 @@
        -750.0,
        -59.2,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 13.6,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -11.4,
       "unit": "mm",
       "message": "B12 top layer 2 bars 3 and 4 are 14 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -4658,13 +5831,16 @@
        -750.0,
        59.2,
        -82.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4675,13 +5851,16 @@
        101.99999999999994,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4692,13 +5871,16 @@
        101.99999999999994,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 3 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4709,13 +5891,16 @@
        -102.0,
        -7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -1.2,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -1.2,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 4 (16 mm): they overlap by 1 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4726,27 +5911,49 @@
        -102.0,
        7.399999999999999,
        -40.99999999999994
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 320.0,
+      "compare": ">=",
+      "margin": -20.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 16 mm bars in B12 the code needs 20 \u00d7 16 = 320 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -41.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -41.0
+       ],
+       [
+        150.0,
+        0.0,
+        -41.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 1005.31,
+      "compare": ">=",
+      "margin": -201.062,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 2011 mm\u00b2 at the top; the code needs at least half, 1005 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4775,20 +5982,41 @@
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 400.0,
+      "compare": ">=",
+      "margin": -100.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 20 mm bars in B12 the code needs 20 \u00d7 20 = 400 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -43.0
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -43.0
+       ],
+       [
+        150.0,
+        0.0,
+        -43.0
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 1030.442,
+      "compare": ">=",
+      "margin": -226.195,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 2061 mm\u00b2 at the top; the code needs at least half, 1030 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4817,6 +6045,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4827,13 +6057,16 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4844,15 +6077,18 @@
        101.99999999999994,
        0.0,
        -91.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -4861,13 +6097,16 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4878,27 +6117,49 @@
        -102.0,
        0.0,
        -91.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 1037.904,
+      "compare": ">=",
+      "margin": -233.656,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 2076 mm\u00b2 at the top; the code needs at least half, 1038 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -4927,6 +6188,8 @@
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -4937,15 +6200,18 @@
        101.99999999999994,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -20.5,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -20.5,
       "unit": "mm",
-      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 20 mm, so one of them cannot be placed as drawn",
+      "message": "C4 column bar 8 (16 mm) runs into B12 top bar 2 (25 mm): they overlap by 21 mm, so one of them cannot be placed as drawn",
       "bars": [
        "C4/V8",
        "B12/T1-2"
@@ -4954,27 +6220,49 @@
        -102.0,
        0.0,
        -45.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS13920-7.1.1",
       "clause": "IS 13920:2016 cl. 7.1.1",
       "measured": 300.0,
       "limit": 500.0,
+      "compare": ">=",
+      "margin": -200.0,
       "unit": "mm",
       "message": "C4 is 300 mm deep along B12; with 25 mm bars in B12 the code needs 20 \u00d7 25 = 500 mm",
       "bars": [],
-      "at": null
+      "at": [
+       0.0,
+       0.0,
+       -45.5
+      ],
+      "span": [
+       [
+        -150.0,
+        0.0,
+        -45.5
+       ],
+       [
+        150.0,
+        0.0,
+        -45.5
+       ]
+      ]
      },
      {
       "rule": "IS13920-6.2.3",
       "clause": "IS 13920:2016 cl. 6.2.3",
       "measured": 804.248,
       "limit": 1050.47,
+      "compare": ">=",
+      "margin": -246.222,
       "unit": "mm\u00b2",
       "message": "B12 has 804 mm\u00b2 of bottom steel at the joint face against 2101 mm\u00b2 at the top; the code needs at least half, 1050 mm\u00b2",
       "bars": [],
-      "at": null
+      "at": null,
+      "span": null
      }
     ]
    },
@@ -5043,6 +6331,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 72.0,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -72.0,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 72 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -5053,13 +6343,16 @@
        -850.0,
        -36.0,
        -385.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5070,13 +6363,16 @@
        202.0,
        0.0,
        -364.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5087,7 +6383,8 @@
        -202.0,
        0.0,
        -364.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -5130,6 +6427,8 @@
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5140,13 +6439,16 @@
        202.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5157,7 +6459,8 @@
        -202.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -5270,6 +6573,8 @@
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5280,13 +6585,16 @@
        202.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5297,13 +6605,16 @@
        202.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5314,13 +6625,16 @@
        -202.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5331,7 +6645,8 @@
        -202.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -5374,6 +6689,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 1 and 2 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5384,13 +6701,16 @@
        -850.0,
        -60.8,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 2 and 3 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5401,13 +6721,16 @@
        -850.0,
        -30.400000000000002,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 3 and 4 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5418,13 +6741,16 @@
        -850.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 4 and 5 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5435,13 +6761,16 @@
        -850.0,
        30.4,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 5 and 6 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5452,7 +6781,8 @@
        -850.0,
        60.8,
        -411.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -5495,6 +6825,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 72.0,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -72.0,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 72 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -5505,13 +6837,16 @@
        -800.0,
        -36.0,
        -385.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5522,13 +6857,16 @@
        152.0,
        0.0,
        -364.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5539,7 +6877,8 @@
        -152.0,
        0.0,
        -364.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -5582,6 +6921,8 @@
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5592,13 +6933,16 @@
        152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5609,7 +6953,8 @@
        -152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -5722,6 +7067,8 @@
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5732,13 +7079,16 @@
        152.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5749,13 +7099,16 @@
        152.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5766,13 +7119,16 @@
        -152.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -5783,7 +7139,8 @@
        -152.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -5826,6 +7183,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 1 and 2 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5836,13 +7195,16 @@
        -800.0,
        -60.8,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 2 and 3 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5853,13 +7215,16 @@
        -800.0,
        -30.400000000000002,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 3 and 4 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5870,13 +7235,16 @@
        -800.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 4 and 5 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5887,13 +7255,16 @@
        -800.0,
        30.4,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 5 and 6 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -5904,7 +7275,8 @@
        -800.0,
        60.8,
        -411.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6017,6 +7389,8 @@
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6027,13 +7401,16 @@
        152.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6044,13 +7421,16 @@
        152.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6061,13 +7441,16 @@
        -152.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6078,7 +7461,8 @@
        -152.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6121,6 +7505,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 1 and 2 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -6131,13 +7517,16 @@
        -800.0,
        -60.8,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 2 and 3 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -6148,13 +7537,16 @@
        -800.0,
        -30.400000000000002,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 3 and 4 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -6165,13 +7557,16 @@
        -800.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 4 and 5 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -6182,13 +7577,16 @@
        -800.0,
        30.4,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 5 and 6 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -6199,7 +7597,8 @@
        -800.0,
        60.8,
        -411.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6242,6 +7641,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 24.667,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -24.667,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 25 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -6252,13 +7653,16 @@
        -800.0,
        -12.333333333333332,
        -389.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6269,13 +7673,16 @@
        152.0,
        0.0,
        -370.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6286,7 +7693,8 @@
        -152.0,
        0.0,
        -370.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6329,6 +7737,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 72.0,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -72.0,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 72 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -6339,13 +7749,16 @@
        -800.0,
        -36.0,
        -384.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6356,13 +7769,16 @@
        152.0,
        0.0,
        -362.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6373,7 +7789,8 @@
        -152.0,
        0.0,
        -362.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6416,6 +7833,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 72.0,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -72.0,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 72 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -6426,13 +7845,16 @@
        -800.0,
        -36.0,
        -384.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6443,13 +7865,16 @@
        152.0,
        0.0,
        -362.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6460,7 +7885,8 @@
        -152.0,
        0.0,
        -362.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6502,6 +7928,8 @@
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6512,13 +7940,16 @@
        152.0,
        0.0,
        -407.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6529,7 +7960,8 @@
        -152.0,
        0.0,
        -407.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6572,6 +8004,8 @@
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6582,13 +8016,16 @@
        152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6599,13 +8036,16 @@
        152.0,
        0.0,
        -370.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6616,13 +8056,16 @@
        -152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6633,7 +8076,8 @@
        -152.0,
        0.0,
        -370.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6710,6 +8154,8 @@
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6720,13 +8166,16 @@
        152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6737,7 +8186,8 @@
        -152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6780,6 +8230,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 24.667,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -24.667,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 25 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -6790,13 +8242,16 @@
        -800.0,
        -12.333333333333332,
        -388.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6807,13 +8262,16 @@
        152.0,
        0.0,
        -368.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6824,7 +8282,8 @@
        -152.0,
        0.0,
        -368.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6901,6 +8360,8 @@
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6911,13 +8372,16 @@
        202.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6928,7 +8392,8 @@
        -202.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -6971,6 +8436,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 24.667,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -24.667,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 25 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -6981,13 +8448,16 @@
        -850.0,
        -12.333333333333332,
        -388.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -6998,13 +8468,16 @@
        202.0,
        0.0,
        -368.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7015,7 +8488,8 @@
        -202.0,
        0.0,
        -368.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -7057,6 +8531,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7067,13 +8543,16 @@
        -850.0,
        -55.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7084,13 +8563,16 @@
        -850.0,
        -18.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7101,13 +8583,16 @@
        -850.0,
        18.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 4 and 5 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7118,13 +8603,16 @@
        -850.0,
        55.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7135,13 +8623,16 @@
        202.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7152,7 +8643,8 @@
        -202.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -7195,6 +8687,8 @@
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7205,13 +8699,16 @@
        202.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7222,7 +8719,8 @@
        -202.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -7265,6 +8763,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 1 and 2 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -7275,13 +8775,16 @@
        -850.0,
        -60.8,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 2 and 3 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -7292,13 +8795,16 @@
        -850.0,
        -30.400000000000002,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 3 and 4 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -7309,13 +8815,16 @@
        -850.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 4 and 5 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -7326,13 +8835,16 @@
        -850.0,
        30.4,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 18.4,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -6.6,
       "unit": "mm",
       "message": "B12 bottom bars 5 and 6 are 18 mm apart; with 20 mm aggregate and 12 mm bars the code needs 25 mm",
       "bars": [
@@ -7343,13 +8855,16 @@
        -850.0,
        60.8,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-L",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 15.2,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -15.2,
       "unit": "mm",
       "message": "B12 bottom bar 2 of layer 2 is 15 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -7360,13 +8875,16 @@
        -850.0,
        -7.600000000000001,
        -392.5
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7377,13 +8895,16 @@
        202.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7394,7 +8915,8 @@
        -202.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -7507,6 +9029,8 @@
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7517,13 +9041,16 @@
        152.0,
        0.0,
        -407.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7534,13 +9061,16 @@
        152.0,
        0.0,
        -366.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -18.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -18.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 2 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7551,13 +9081,16 @@
        -152.0,
        0.0,
        -407.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7568,7 +9101,8 @@
        -152.0,
        0.0,
        -366.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -7611,6 +9145,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 69.5,
       "limit": 0.0,
+      "compare": "<=",
+      "margin": -69.5,
       "unit": "mm",
       "message": "B12 bottom bar 1 of layer 2 is 70 mm off the line of the bar it should sit under; rows must be vertically in line",
       "bars": [
@@ -7621,13 +9157,16 @@
        -850.0,
        -34.75,
        -382.75
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7638,13 +9177,16 @@
        202.0,
        0.0,
        -361.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7655,7 +9197,8 @@
        -202.0,
        0.0,
        -361.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -7698,6 +9241,8 @@
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 1 and 2 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7708,13 +9253,16 @@
        -800.0,
        -55.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 2 and 3 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7725,13 +9273,16 @@
        -800.0,
        -18.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 3 and 4 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7742,13 +9293,16 @@
        -800.0,
        18.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "IS456-26.3.2-H",
       "clause": "IS 456:2000 cl. 26.3.2",
       "measured": 21.0,
       "limit": 25.0,
+      "compare": ">=",
+      "margin": -4.0,
       "unit": "mm",
       "message": "B12 bottom bars 4 and 5 are 21 mm apart; with 20 mm aggregate and 16 mm bars the code needs 25 mm",
       "bars": [
@@ -7759,13 +9313,16 @@
        -800.0,
        55.5,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7776,13 +9333,16 @@
        152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7793,13 +9353,16 @@
        152.0,
        0.0,
        -370.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -16.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -16.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 (16 mm): they overlap by 16 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7810,13 +9373,16 @@
        -152.0,
        0.0,
        -409.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 1 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7827,7 +9393,8 @@
        -152.0,
        0.0,
        -370.0
-      ]
+      ],
+      "span": null
      }
     ]
    },
@@ -7870,6 +9437,8 @@
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7880,13 +9449,16 @@
        152.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 4 (16 mm) runs into B12 bottom bar 3 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7897,13 +9469,16 @@
        152.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7914,13 +9489,16 @@
        -152.0,
        0.0,
        -411.0
-      ]
+      ],
+      "span": null
      },
      {
       "rule": "GEOM-CLASH",
       "clause": "Geometry",
       "measured": -14.0,
       "limit": 0.0,
+      "compare": ">=",
+      "margin": -14.0,
       "unit": "mm",
       "message": "C4 column bar 8 (16 mm) runs into B12 bottom bar 3 layer 2 (12 mm): they overlap by 14 mm, so one of them cannot be placed as drawn",
       "bars": [
@@ -7931,7 +9509,8 @@
        -152.0,
        0.0,
        -374.0
-      ]
+      ],
+      "span": null
      }
     ]
    }

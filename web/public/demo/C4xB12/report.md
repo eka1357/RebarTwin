@@ -24,8 +24,8 @@ Seismic zone II (IS 13920 off), mild exposure, 20 mm aggregate. Advisory: the en
 
 **Option 2: B12 top: 4-16 in layer 1, 4-16 in layer 2**
 
-- B12 top (layers outermost first): 5-20 becomes 4-16 / 4-16; 1608 mm² against 1571 mm² needed (+2.4%); effective depth 407 to 388 mm
-- Recheck: B12 top steel's effective depth drops from 407 to 388 mm: recheck the section's strength
+- B12 top (layers outermost first): 5-20 becomes 4-16 / 4-16; 1609 mm² against 1571 mm² needed (+2.4%); effective depth 407 to 389 mm
+- Recheck: B12 top steel's effective depth drops from 407 to 389 mm: recheck the section's strength
 
 **Option 3: B12 top: 4-20 in layer 1, 2-16 in layer 2**
 

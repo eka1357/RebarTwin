@@ -13,6 +13,7 @@ from typing import Annotated, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from .numbers import fmt
 from .check import Report, check
 from .model import Face, Joint, Layer, bar_area
 from .rules import CATALOGUE
@@ -60,11 +61,14 @@ class FaceChange(BaseModel):
     face: Face
     before: str                    # layers separated by " / ", outermost first: "2-25 / 2-20"
     after: str
+    area_before: float             # mm², the face as drawn
     area_required: float
     area_provided: float
     overshoot_pct: float
     depth_before: float
     depth_after: float
+    n_bars_before: int
+    n_layers_before: int
     n_bars: int
     n_layers: int
 
@@ -102,8 +106,9 @@ def apply(joint: Joint, cand: Candidate) -> Joint:
 
 
 def _failure_dicts(report: Report) -> list[dict]:
-    return [{"rule": f.rule, "clause": f.clause, "measured": f.measured, "limit": f.limit, "unit": f.unit,
-             "message": f.message, "bars": f.bars, "at": f.at} for f in report.failures]
+    return [{"rule": f.rule, "clause": f.clause, "measured": f.measured, "limit": f.limit, "compare": f.compare,
+             "margin": f.margin, "unit": f.unit, "message": f.message, "bars": f.bars, "at": f.at, "span": f.span}
+            for f in report.failures]
 
 
 def feedback_lines(history: list[Attempt], limit: int = 30) -> list[str]:
@@ -190,7 +195,7 @@ class Enumerator:
                 for layers in arrangements(need, s.stock_dias, s.max_layers)[: self.per_face]:
                     cands.append(Candidate(title=f"{beam_id} {face}: {_layers_text(layers)}",
                                            edits=[SetFace(beam=beam_id, face=face, layers=layers)],
-                                           rationale=f"re-arrange {drawn} to carry at least {need:.0f} mm²"))
+                                           rationale=f"re-arrange {drawn} to carry at least {fmt(need)} mm²"))
             return cands
         if round == 2:
             cands = []
@@ -235,7 +240,8 @@ def _option(joint: Joint, cand: Candidate, base_cage_depths: dict) -> Option:
     for e in cand.edits:
         if not isinstance(e, SetFace):
             continue
-        before = " / ".join(layer.bars for layer in joint.beam(e.beam).face(e.face))
+        drawn = joint.beam(e.beam).face(e.face)
+        before = " / ".join(layer.bars for layer in drawn)
         need = joint.required(e.beam, e.face)
         if e.face == "bottom" and trial.settings.is13920:
             need = max(need, trial.beam(e.beam).area("top") / 2)
@@ -243,12 +249,14 @@ def _option(joint: Joint, cand: Candidate, base_cage_depths: dict) -> Option:
         d0 = base_cage_depths.get((e.beam, e.face), 0.0)
         d1 = cage.effective_depth.get((e.beam, e.face), 0.0)
         faces.append(FaceChange(beam=e.beam, face=e.face, before=before, after=" / ".join(e.layers),
+                                area_before=round(sum(layer.area for layer in drawn), 1),
+                                n_bars_before=sum(layer.count for layer in drawn), n_layers_before=len(drawn),
                                 area_required=round(need, 1), area_provided=round(got, 1),
                                 overshoot_pct=round(100 * (got / need - 1), 1) if need else 0.0,
                                 depth_before=round(d0, 1), depth_after=round(d1, 1),
                                 n_bars=sum(Layer(bars=s).count for s in e.layers), n_layers=len(e.layers)))
         if d1 < d0 - 0.5:
-            flags.append(f"{e.beam} {e.face} steel's effective depth drops from {d0:.0f} to {d1:.0f} mm: recheck "
+            flags.append(f"{e.beam} {e.face} steel's effective depth drops from {fmt(d0)} to {fmt(d1)} mm: recheck "
                          f"the section's strength")
     column = None
     if cand.redesign:

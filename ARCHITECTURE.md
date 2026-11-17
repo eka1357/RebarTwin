@@ -59,20 +59,39 @@ along X or Y. Bar ids: `C4/V3` (column bar 3), `B12/T1-3` (top layer 1, bar 3), 
 joint            Joint as read (model.py)
 report           { findings[], rules_run[], rules_skipped{}, passed{}, is13920, seismic_zone, notes[] }
   finding        { rule, clause, title, status: fail|pass, measured, limit, compare: >=|<=, unit,
-                   members[], bars[], at: [x,y,z] mm, message }
+                   margin, members[], bars[], at: [x,y,z] mm, span: [[x,y,z], [x,y,z]] mm | null, message }
 fix              { status: clean|fixed|redesign|no_fix, summary, options[], attempts[], blocking{} }
-  option         { candidate{title, edits[], source}, faces[{beam, face, before, after, area_required,
-                   area_provided, overshoot_pct, depth_before, depth_after, n_bars, n_layers}], column, flags[] }
-  attempt        { round, candidate, passed, failures[{rule, clause, measured, limit, unit, message, bars[], at}] }
+  option         { candidate{title, edits[], source}, faces[{beam, face, before, after, area_before,
+                   area_required, area_provided, overshoot_pct, depth_before, depth_after, n_bars_before,
+                   n_layers_before, n_bars, n_layers}], column, flags[] }
+  attempt        { round, candidate, passed, failures[{rule, clause, measured, limit, compare, margin, unit,
+                   message, bars[], at, span}] }
 rules            { id: {clause, title, basis} }
 scene            { units: "mm", up: "z", concrete[{id, kind, min, max}],
                    bars[{id, member, role, layer, index, dia, p0, p1, label, status, findings[]}],
                    loops[{id, member, role, dia, points[]}] }
 option_scenes[]  a scene per fix option, same order
 attempt_scenes[] { concrete[], bars[] } per attempt (first 60); a bar's findings index that attempt's failures
+provenance[]     { path, member, field, layer, page, box_2d, text, gemini, parser, status: agreed|resolved|default,
+                   page_image }   only in bundles written by `rebartwin read`
+pages            { "<n>": "pages/page-<n>.png" }   page images copied beside bundle.json; paths relative to it
 ```
 
 A bar's `findings` in `scene` index `report.findings`. The viewer never computes a number; it formats these.
+
+- `margin` is signed, in the finding's `unit`: measured minus limit for `>=`, limit minus measured for `<=`, so
+  positive passes and negative fails. Gauges and "short by" text read it; nothing subtracts in the web.
+- `span` is a dimension to draw. IS 13920 cl. 7.1.1 has one: across the column along the beam, through the centre
+  line, at the level of the beam's outer top bars (the 300 mm minimum: across the smaller side at z = 0). `at` is its
+  midpoint, so the finding gets a 3D callout.
+- `area_before`, `n_bars_before`, `n_layers_before` are the face as drawn, beside the fix's `area_provided`,
+  `n_bars`, `n_layers`.
+- Numbers in engine text (messages, flags, report.md) round half away from zero on the decimal value, as
+  `Intl.NumberFormat` does by default (`rebartwin/numbers.py`): 388.5 mm reads "389 mm" in a flag and on a card.
+- Source (`provenance`, `pages`): `path` is the linking path, `box_2d` the drawing's box on `page`, `page_image`
+  the copied image (crop it with `box_2d`). `agreed` values came from both channels; `default` values (`parser`
+  holds the default, e.g. "20 mm") have no page, box or image; `resolved` marks a value a person gave in To check,
+  written when the API re-checks a resolved joint.
 
 ### provenance.json (reader)
 
@@ -103,27 +122,36 @@ from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face
 
 `field` is the read field (`section`, `top`, `top_extra`, `bottom`, `bottom_extra`, `main`, `links`, `cover`,
 `concrete_grade`, `steel_grade`, `seismic_zone`, `exposure`, `frames_into`) for items from agreement, and a linking
-path for items from linking. `joint` is null when the item blocks no joint (a member in no joint, a grade). An
-item on a general note (zone, exposure, ALL cover) is copied once per joint it blocks.
+path for items from linking. `joint` null with member ALL, ALL_BEAMS or ALL_COLUMNS, or field `seismic_zone` or
+`exposure`, is a project-level item: it blocks every joint until resolved. A drawing that does not state the zone
+or exposure gets one such item each (reason `missing`), never a silent zone II or mild: zone II would turn IS 13920
+off. Otherwise `joint` null means the item blocks nothing (a member in no joint, a grade).
 
 A joint with unresolved items is shown as "To check" and is not checked until they are resolved.
 
 ### reading.json (reader)
 
-The run: pdf name, pages, dpi, prompt versions (`read_v1`, `link_v1`), link model, counts, every accepted field with
-both boxes, and `unassigned`: values the parser read that Gemini did not report, shaped like To check items with
+The run: pdf name, pages, dpi, tile size, prompt versions (`read_v1`, `link_v1`), link model, seconds, text layer per
+page (words, annotations by author, whether annotations were read), counts, tokens (live calls only), every call
+(key, model, cached, tokens, latency), every accepted field with both boxes, and `unassigned`: values the parser read that Gemini did not report, shaped like To check items with
 `joint` null. They block nothing; they show what Gemini missed.
 
 ## Reader (Claude Code; `src/rebartwin/reader/`, `rebartwin read <pdf> --out out/<project>`)
 
 1. **Ingest** (`ingest.py`). PyMuPDF renders each page at 200 dpi to `pages/page-<n>.png` and returns the text layer
-   as words with `box_2d` boxes, mapped through the page rotation so they match the rendered image.
-2. **Gemini channel** (`gemini.py`). `REBARTWIN_MODEL_READ` (default `gemini-3.8-flash`), temperature 0, JSON
+   as words with `box_2d` boxes, mapped through the page rotation so they match the rendered image. A page with few
+   words and many annotations with content (AutoCAD SHX text) uses the annotations as its words. `--probe` prints
+   the counts per page, never the text.
+2. **Gemini channel** (`gemini.py`). `REBARTWIN_MODEL_READ` (default `gemini-3.8-flash`), no sampling parameters
+   (Gemini 3.6+ ignores and will reject temperature, top_p, top_k), JSON
    schema `PageReading`: callouts with member, field, layer, value as written, `box_2d`, page. Members ALL,
    ALL_BEAMS and ALL_COLUMNS mark general notes; `frames_into` (member = beam, value = column, box around both
    labels) is how the plan's topology is read. The prompt (`prompts/read_v1.md`) sends the image plus its text-layer
    lines and says numbers come only from the drawing. Sheets larger than 3000 px are read in overlapping tiles and
-   boxes mapped back. Retries with backoff on 408, 429 and 5xx; logs ids, model, tokens and latency, never text.
+   boxes mapped back, `--concurrency` (default 3) at a time. google-genai retries 408, 429 and 5xx (4 attempts, up
+   to 60 s); the reader retries only invalid replies. 403, 404 or a 429 with "limit: 0" means the key cannot use
+   the model: no retry, linking falls back. Every reply is saved in `out/<project>/replies/` by a hash of model and
+   parts and replayed on a re-run (`--replay` never calls the API). Logs ids, model, tokens and latency, never text.
 3. **Parser channel** (`parser.py`). A grammar over the text layer for Indian notation ("5-20", "2-25+1-20", "2#25",
    "8-T16", "3 nos 16φ", "230x450", "8φ @ 150 c/c", "2L-8 @ 100", "clear cover 25 mm", "C.C. 40", "M25",
    "Fe500", "zone III", member ids), on visual lines (CAD often splits one callout into several text objects),

@@ -104,7 +104,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
         onHoverBar: (barId) => {
           setHoveredBar(barId);
         },
-        onCameraUpdate: () => {
+        onCameraUpdate: (_cam, size) => {
           for (const { f, index } of visibleFindingsRef.current) {
             const btn = anchorRefs.current.get(index);
             if (!btn || !f.at) continue;
@@ -113,7 +113,10 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
               btn.style.display = "none";
             } else {
               btn.style.display = "";
-              btn.style.transform = `translate3d(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px, 0) translate(-50%, -50%)`;
+              const halfW = (btn.offsetWidth || 160) / 2 + 8;
+              const px = Math.min(Math.max(pos.x, halfW), Math.max(halfW, size.width - halfW));
+              const py = Math.min(Math.max(pos.y, 20), Math.max(20, size.height - 44));
+              btn.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) translate(-50%, -50%)`;
             }
           }
         },

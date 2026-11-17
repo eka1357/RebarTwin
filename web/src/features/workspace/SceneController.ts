@@ -521,7 +521,7 @@ export class SceneController {
       this.sceneBounds.getSize(size);
     }
     const radius = Math.max(size.length() * 0.5, 0.5);
-    const dist = radius * 1.95;
+    const dist = radius * 2.65;
     const animate = !this.reducedMotion;
 
     if (preset === "plan") {
@@ -560,12 +560,12 @@ export class SceneController {
       );
       return;
     }
-    // Default Iso view matching worked example framing
+    // Default Iso view framing the entire column, beam ends, and joint core cleanly
     void this.controls.setLookAt(
-      center.x - dist * 0.56,
-      center.y + dist * 0.36,
+      center.x - dist * 0.52,
+      center.y + dist * 0.34,
       center.z + dist * 0.85,
-      center.x - 0.04,
+      center.x,
       center.y,
       center.z,
       animate,

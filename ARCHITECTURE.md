@@ -27,7 +27,7 @@ Only the engine produces numbers. Gemini reads and proposes; the engine measures
 ```
 src/rebartwin/          engine (done): model, layout, geometry, rules, check, fixes, exports, report, cli
 src/rebartwin/reader/   PDF reading, two channels, agreement, linking (R1 to R5)
-src/rebartwin/api.py    to build: FastAPI service
+src/rebartwin/api.py    API (built): FastAPI service (check, projects, upload, SSE events, to-check, bundles, exports, crops)
 tests/                  engine tests (hand-checked); reader and API tests to add
 examples/               joint JSON fixtures (c4_b12.json is the deck's worked example)
 web/                    React app; web/src holds the v0 viewer built in Antigravity (to migrate, below)
@@ -198,7 +198,7 @@ page (words, annotations by author, whether annotations were read), counts, toke
 
 Keys: an AI Studio key in `GEMINI_API_KEY` locally; Vertex AI on Cloud Run (`GOOGLE_GENAI_USE_VERTEXAI=true`).
 
-## API (to build)
+## API (built, `src/rebartwin/api.py`; Vite proxies `/api/*` -> `http://127.0.0.1:8000/*`)
 
 | Method and path | Does |
 |---|---|

@@ -9,12 +9,20 @@ dependencies = ["pydantic>=2.6"]
 [project.optional-dependencies]
 ifc = ["ifcopenshell>=0.8"]
 reader = ["pymupdf>=1.24", "google-genai>=1.30"]
+api = [
+    "fastapi>=0.115",
+    "python-multipart>=0.0.12",
+    "uvicorn>=0.32",
+]
 
 [project.scripts]
 rebartwin = "rebartwin.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "httpx>=0.28",
+    "pytest>=8",
+]
 
 [build-system]
 requires = ["hatchling"]

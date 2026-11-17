@@ -258,3 +258,22 @@ def test_tiles_run_concurrently_and_results_keep_tile_order(tmp_path: Path):
     found = read_page(page, Slow(), concurrency=3)
     assert state["most"] == 3
     assert [r.callout.member for r in found] == [f"B{t}" for t in range(6)]
+
+
+def test_a_dropped_connection_is_retried_here():
+    """'Server disconnected without sending a response' has no status code, so the SDK does not retry it. call()
+    retries it with backoff (2 s, then 4 s) and then succeeds; a status-code error is still raised at once."""
+    RemoteProtocolError = type("RemoteProtocolError", (Exception,), {"__module__": "httpx2._exceptions"})
+    sleeps = []
+    t = Flaky([RemoteProtocolError("Server disconnected"), RemoteProtocolError("Server disconnected")])
+    out = call(t, key="k", model="m", parts=[], schema={}, validate=PageReading.model_validate_json,
+               sleep=sleeps.append)
+    assert out.callouts == [] and t.calls == 3 and sleeps == [2, 4]
+    t = Flaky([RemoteProtocolError("x")] * 3)
+    with pytest.raises(Exception, match="x"):
+        call(t, key="k", model="m", parts=[], schema={}, validate=PageReading.model_validate_json, sleep=sleeps.append)
+    assert t.calls == 3
+    own = Flaky([ReadError("no recorded reply")])                 # the reader's own ReadError is not a dropped line
+    with pytest.raises(ReadError):
+        call(own, key="k", model="m", parts=[], schema={}, validate=PageReading.model_validate_json, sleep=sleeps.append)
+    assert own.calls == 1

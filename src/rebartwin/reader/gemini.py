@@ -228,10 +228,23 @@ def unavailable(e: Exception) -> bool:
     return code in (403, 404) or (code == 429 and "limit: 0" in str(e))
 
 
+def dropped(e: Exception) -> bool:
+    """A connection that broke with no HTTP answer (reset, timeout, 'server disconnected'). The SDK's retries cover
+    status codes only, so these are retried here; they carry no status code, so the two layers never overlap."""
+    if _status(e) is not None:
+        return False
+    if isinstance(e, (ConnectionError, TimeoutError)):
+        return True
+    return type(e).__module__.split(".")[0] in ("httpx", "httpx2", "httpcore") and type(e).__name__ in (
+        "RemoteProtocolError", "ReadError", "WriteError", "ConnectError", "ReadTimeout", "WriteTimeout",
+        "ConnectTimeout", "PoolTimeout")
+
+
 def call(transport: Transport, *, key: str, model: str, parts: list[tuple[str, Any]], schema: dict,
-         validate: Callable[[str], Any], high_res: bool = False, attempts: int = 3) -> Any:
-    """One model call. Retries only replies that fail `validate` (the SDK already retried the transport). Logs ids,
-    model, tokens and latency; never the parts or the reply."""
+         validate: Callable[[str], Any], high_res: bool = False, attempts: int = 3,
+         sleep: Callable[[float], None] = time.sleep) -> Any:
+    """One model call. Retries replies that fail `validate` and connections that dropped with no HTTP answer (the
+    SDK retries status codes). Logs ids, model, tokens and latency; never the parts or the reply."""
     last: Exception | None = None
     for attempt in range(1, attempts + 1):
         t0 = time.perf_counter()
@@ -241,6 +254,12 @@ def call(transport: Transport, *, key: str, model: str, parts: list[tuple[str, A
             if unavailable(e):
                 log.warning("gemini %s model=%s unavailable to this key (code=%s)", key, model, _status(e))
                 raise ModelNotFound(model) from e
+            if dropped(e) and attempt < attempts:
+                log.warning("gemini %s model=%s attempt=%d connection dropped (%s)", key, model, attempt,
+                            type(e).__name__)
+                last = e
+                sleep(2 ** attempt)
+                continue
             log.error("gemini %s model=%s failed: %s code=%s", key, model, type(e).__name__, _status(e))
             raise
         ms = round(1000 * (time.perf_counter() - t0))

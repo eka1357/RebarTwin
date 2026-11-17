@@ -885,6 +885,46 @@ export class SceneController {
         const segs = new THREE.LineSegments(geom, mat);
         segs.renderOrder = 6;
         this.calloutGroup.add(segs);
+        return;
+      }
+
+      // Column / member span dimension (e.g. IS 13920 cl. 7.1.1 across column along beam)
+      if (f.span) {
+        const dA = new THREE.Vector3(...ifcToThree(f.span[0]));
+        const dB = new THREE.Vector3(...ifcToThree(f.span[1]));
+        const spanVec = dB.clone().sub(dA);
+        if (spanVec.lengthSq() < 1e-8) return;
+        const n = spanVec.clone().normalize();
+        const tickAxis = Math.abs(n.y) < 0.85 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+        const tickHalf = tickAxis.clone().multiplyScalar(isSelected ? 0.022 : 0.016);
+        const serifA1 = dA.clone().add(tickHalf);
+        const serifA2 = dA.clone().sub(tickHalf);
+        const serifB1 = dB.clone().add(tickHalf);
+        const serifB2 = dB.clone().sub(tickHalf);
+        const slashHalf = n.clone().multiplyScalar(0.01).add(tickHalf);
+        const slashA1 = dA.clone().sub(slashHalf);
+        const slashA2 = dA.clone().add(slashHalf);
+        const slashB1 = dB.clone().sub(slashHalf);
+        const slashB2 = dB.clone().add(slashHalf);
+
+        const pts = [
+          dA.x, dA.y, dA.z, dB.x, dB.y, dB.z,
+          serifA1.x, serifA1.y, serifA1.z, serifA2.x, serifA2.y, serifA2.z,
+          serifB1.x, serifB1.y, serifB1.z, serifB2.x, serifB2.y, serifB2.z,
+          slashA1.x, slashA1.y, slashA1.z, slashA2.x, slashA2.y, slashA2.z,
+          slashB1.x, slashB1.y, slashB1.z, slashB2.x, slashB2.y, slashB2.z,
+        ];
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+        const mat = new THREE.LineBasicMaterial({
+          color,
+          transparent: true,
+          opacity,
+          depthTest: false,
+        });
+        const segs = new THREE.LineSegments(geom, mat);
+        segs.renderOrder = 6;
+        this.calloutGroup.add(segs);
       }
     });
   }

@@ -18,45 +18,49 @@ interface TourStepSpec {
   durationHint: string;
 }
 
+const PITCH_DECK_SOURCE_SUMMARY =
+  "This worked example was typed in from the pitch deck. Read a drawing to trace each value to its sheet.";
+
+const PROVENANCE_SOURCE_SUMMARY =
+  "Every value traces back to its normalized box on the drawing sheet with paired Gemini and parser readings.";
+
 const DEMO_TOUR_STEPS: TourStepSpec[] = [
   {
     id: "finding",
     label: "1. Finding",
-    title: "Six failing checks in Zone II",
+    title: "Six checks fail",
     summary:
-      "B12 top bars are 16 mm apart where IS 456 cl. 26.3.2 needs 25 mm, and column bars V4 and V8 cut through T1-3 by 18 mm.",
+      "B12's top bars are 16 mm apart where IS 456 needs 25 mm, and two column bars run 18 mm into B12's middle top bar.",
     durationHint: "0:30",
   },
   {
     id: "source",
     label: "2. Source",
-    title: "Traced to the drawing schedule crop",
-    summary:
-      "Every bar mark and concrete dimension traces back to its normalized bounding box with paired Gemini and parser readings.",
+    title: "Where each value came from",
+    summary: PITCH_DECK_SOURCE_SUMMARY,
     durationHint: "1:00",
   },
   {
     id: "fix",
     label: "3. Fix",
-    title: "Validated 3D fix: 2-25 over 2-20",
+    title: "A fix that passes every rule",
     summary:
-      "Replacing 5-20 with 2-25 / 2-20 gives 1,610 mm² (+2.5%), clears the column core, and morphs bars in place by bar id.",
+      "two 25s over two 20s give 1,610 mm², 2.5% more steel than the drawn 5-20. It costs 21 mm of effective depth, so the designer rechecks the beam.",
     durationHint: "1:35",
   },
   {
     id: "workings",
     label: "4. Replay",
-    title: "Every solver attempt explained",
-    summary:
-      "Inspect all 34 tested candidates step by step with live 3D clash rings and the exact rejecting clause shown on each.",
+    title: "Every attempt, shown",
+    summary: "34 arrangements tried; each failed one names the clause that rejected it.",
     durationHint: "2:10",
   },
   {
     id: "zone3",
     label: "5. Zone III",
-    title: "Seismic Zone III triggers IS 13920",
+    title: "Zone III changes the answer",
     summary:
-      "IS 13920 cl. 7.1.1 asks for 400 mm column depth against 20 mm beam bars; C4 at 300 mm needs a Redesign option (325 × 300 mm).",
+      "IS 13920 wants the column at least 20 beam-bar diameters deep (400 mm); C4 is 300. No bar change passes; the smallest redesign is B12 top 4-16 over 4-16 with C4 at 325 × 300.",
     durationHint: "2:50",
   },
 ];
@@ -216,6 +220,15 @@ export function DemoTour({ open, onClose, variant, onVariantChange, bundle }: De
   if (!open) return null;
 
   const current = DEMO_TOUR_STEPS[stepIndex] ?? DEMO_TOUR_STEPS[0];
+  const hasProvenance = Array.isArray(bundle?.provenance)
+    ? bundle.provenance.length > 0
+    : Boolean(bundle?.provenance && Object.keys(bundle.provenance).length > 0);
+  const currentSummary =
+    current.id === "source"
+      ? hasProvenance
+        ? PROVENANCE_SOURCE_SUMMARY
+        : PITCH_DECK_SOURCE_SUMMARY
+      : current.summary;
   const isLast = stepIndex === DEMO_TOUR_STEPS.length - 1;
 
   return (
@@ -237,7 +250,7 @@ export function DemoTour({ open, onClose, variant, onVariantChange, bundle }: De
           <span className="font-num text-xs text-muted-foreground">{current.durationHint} / 3:00</span>
           <h2 className="font-display text-sm font-semibold text-foreground">{current.title}</h2>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">{current.summary}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{currentSummary}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -288,7 +301,7 @@ export function DemoTour({ open, onClose, variant, onVariantChange, bundle }: De
       </div>
 
       <div aria-live="polite" className="sr-only">
-        Tour step {stepIndex + 1} of {DEMO_TOUR_STEPS.length}: {current.title}. {current.summary}
+        Tour step {stepIndex + 1} of {DEMO_TOUR_STEPS.length}: {current.title}. {currentSummary}
       </div>
     </motion.section>
   );

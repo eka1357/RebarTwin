@@ -1,6 +1,12 @@
 import { Link, useParams } from "react-router";
 import { StatusPill } from "../components/StatusPill";
 import { Button } from "../components/ui/button";
+import {
+  jointPath,
+  projectReportPath,
+  projectReviewPath,
+  projectUploadPath,
+} from "../lib/routes";
 
 export function ProjectRoute() {
   const { id = "c4-b12" } = useParams();
@@ -14,13 +20,13 @@ export function ProjectRoute() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/projects/${id}/upload`}>Upload PDF</Link>
+            <Link to={projectUploadPath(id)}>Upload PDF</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/projects/${id}/review`}>To check</Link>
+            <Link to={projectReviewPath(id)}>To check</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link to={`/projects/${id}/report`}>Report</Link>
+            <Link to={projectReportPath(id)}>Report</Link>
           </Button>
         </div>
       </div>
@@ -36,7 +42,7 @@ export function ProjectRoute() {
           <div className="flex items-center gap-2">
             <StatusPill status="fail" count={6} />
             <Button variant="secondary" size="sm" asChild>
-              <Link to={`/projects/${id}/joints/C4xB12`}>Inspect joint</Link>
+              <Link to={jointPath(id, "C4xB12")}>Inspect joint</Link>
             </Button>
           </div>
         </div>

@@ -16,7 +16,7 @@ import { WorkingsTimeline } from "../workings/WorkingsTimeline";
 
 type FindingFilter = "fail" | "pass" | "all";
 
-export function JointInspector({ bundle }: { bundle: Bundle }) {
+export function JointInspector({ bundle, bundleUrl }: { bundle: Bundle; bundleUrl?: string }) {
   const [filter, setFilter] = useState<FindingFilter>("fail");
   const cardRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -259,7 +259,7 @@ export function JointInspector({ bundle }: { bundle: Bundle }) {
           </TabsContent>
 
           <TabsContent value="source" className="mt-0">
-            <SourceCrop bundle={bundle} focusMember={sourceFocusMember} />
+            <SourceCrop bundle={bundle} focusMember={sourceFocusMember} bundleUrl={bundleUrl} />
           </TabsContent>
         </ScrollArea>
       </Tabs>

@@ -98,8 +98,7 @@ export function FixOptionCard({
               <div>
                 <dt className="text-muted-foreground">Effective depth</dt>
                 <dd className="font-num font-medium text-foreground">
-                  {formatMeasure(Math.round(fc.depth_before), "mm")} →{" "}
-                  {formatMeasure(Math.round(fc.depth_after), "mm")}
+                  {formatMeasure(fc.depth_before, "mm")} → {formatMeasure(fc.depth_after, "mm")}
                 </dd>
               </div>
             </div>

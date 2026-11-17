@@ -67,11 +67,12 @@ test.describe("Demo 3D Scene W3", () => {
     await page.goto("/demo");
     await expect(page.getByText(/17 bars · 7 failing/i)).toBeVisible();
 
-    // Production preview hides Styleguide nav link and drops duplicate fail count in StatusIsland
+    // Production preview hides Styleguide nav link and StatusIsland uses concise accessible name
     await expect(page.getByRole("link", { name: "Styleguide" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Joint status:/i })).not.toContainText(
-      /6 fail ·/i,
-    );
+    const island = page.getByRole("button", {
+      name: "6 fails, 0 to check, zone II, IS 13920 off",
+    });
+    await expect(island).toBeVisible();
 
     // Zero page scroll at 1440x900
     const noPageScroll1440 = await page.evaluate(
@@ -129,11 +130,31 @@ test.describe("Demo 3D Scene W3", () => {
     // Selecting a FindingCard frames its bars in 3D, renders sentence gauges, ClauseChip popover, and Source tab
     const findingsRegion = page.getByRole("region", { name: "Findings list" });
     await expect(
-      findingsRegion.getByRole("img", { name: "16 millimetres; needs at least 25; short by 9" }).first(),
+      findingsRegion.getByRole("button", {
+        name: "Fails: B12 top bars 1 and 2 are 16 mm apart, need 25 mm, IS 456 clause 26.3.2",
+      }),
+    ).toBeVisible();
+    await expect(
+      findingsRegion.getByRole("img", { name: "16 millimetres; needs at least 25; short by 9 mm" }).first(),
     ).toBeVisible();
     await expect(
       findingsRegion.getByRole("img", { name: "18 millimetres overlap; zero clearance allowed" }).first(),
     ).toBeVisible();
+
+    // ToleranceGauge measured label sits under diamond (not right end) and never collides with limit label
+    const firstGaugeSvg = findingsRegion.locator('svg[role="img"]').first();
+    const measuredBox = await firstGaugeSvg.locator('[data-gauge-role="measured"]').boundingBox();
+    const limitBox = await firstGaugeSvg.locator('[data-gauge-role="limit"]').boundingBox();
+    const svgBox = await firstGaugeSvg.boundingBox();
+    expect(measuredBox && limitBox && svgBox).toBeTruthy();
+    expect(measuredBox!.x + measuredBox!.width).toBeLessThan(svgBox!.x + svgBox!.width * 0.72);
+    const gaugeSepX =
+      measuredBox!.x + measuredBox!.width <= limitBox!.x + 1 ||
+      limitBox!.x + limitBox!.width <= measuredBox!.x + 1;
+    const gaugeSepY =
+      measuredBox!.y + measuredBox!.height <= limitBox!.y + 1 ||
+      limitBox!.y + limitBox!.height <= measuredBox!.y + 1;
+    expect(gaugeSepX || gaugeSepY).toBe(true);
 
     const wrapForFrame = page.getByRole("img", { name: /Joint C4xB12:/i });
     const countBeforeCardFrame = Number((await wrapForFrame.getAttribute("data-render-count")) ?? "0");
@@ -147,11 +168,11 @@ test.describe("Demo 3D Scene W3", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: "Source" }).first().click();
-    await expect(page.getByRole("button", { name: /Open full sheet/i })).toBeVisible();
-    await page.getByRole("button", { name: /Zoom in crop/i }).click();
-    await page.getByRole("button", { name: /Open full sheet/i }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(
+      page.getByText(
+        "This worked example was typed in from the pitch deck. Read a drawing to trace each value to its sheet.",
+      ),
+    ).toBeVisible();
 
     // W6: Fix tab renders FixOptionCards with SectionGlyphs, Preview After morphs matched bar ids + toast, Use in report
     await page.getByRole("tab", { name: "Fix" }).click();
@@ -168,7 +189,7 @@ test.describe("Demo 3D Scene W3", () => {
     const afterIds = (await wrapForFrame.getAttribute("data-scene-bar-ids")) ?? "";
     expect(afterIds).toContain("B12/T2-1");
     expect(afterIds).not.toContain("B12/T1-5");
-    await expect(page.getByText(/\+39\s+mm², 4 bars instead of 5/i)).toBeVisible();
+    await expect(page.getByText(/1,571 → 1,610\s*mm² · 5 bars → 4/i)).toBeVisible();
 
     await page.getByRole("button", { name: /Use in report/i }).first().click();
     await expect(page.getByRole("button", { name: /Used in report/i })).toBeVisible();
@@ -291,9 +312,13 @@ test.describe("Demo 3D Scene W3", () => {
     ).toBeVisible({ timeout: 15_000 });
     await page.keyboard.press("Escape");
 
-    // Switch to Zone III
+    // Switch to Zone III -> shows all 7 failures including IS 13920 cl. 7.1.1 dimension callout
     await page.getByRole("radio", { name: "Zone III" }).click();
     await expect(page.getByText(/7 Fails/i).first()).toBeVisible();
+    await expect(
+      page.locator('button[data-callout-index]', { hasText: /300\s+mm · needs 400 · IS 13920 cl\. 7\.1\.1/ }),
+    ).toBeVisible();
+    expect(await page.locator("button[data-callout-index]:visible").count()).toBe(7);
 
     // Switch to Light theme and check axe
     await page.getByRole("button", { name: /Switch to light theme/i }).click();
@@ -352,7 +377,7 @@ test.describe("Demo 3D Scene W3", () => {
       await page.getByRole("button", { name: /Guided tour/i }).click();
       await expect(page.getByRole("region", { name: "Guided demo tour" })).toBeVisible();
       await expect(
-        page.getByRole("heading", { name: /Six failing checks in Zone II/i }),
+        page.getByRole("heading", { name: /^Six checks fail$/i }),
       ).toBeVisible();
       await expect(
         page
@@ -372,14 +397,18 @@ test.describe("Demo 3D Scene W3", () => {
       // Step 2: Source
       await page.keyboard.press(" ");
       await expect(
-        page.getByRole("heading", { name: /Traced to the drawing schedule crop/i }),
+        page.getByRole("heading", { name: /^Where each value came from$/i }),
       ).toBeVisible();
-      await expect(page.getByText(/Schedule callout/i)).toBeVisible();
+      await expect(
+        page.getByText(
+          "This worked example was typed in from the pitch deck. Read a drawing to trace each value to its sheet.",
+        ).first(),
+      ).toBeVisible();
 
       // Step 3: Fix (After morph)
       await page.keyboard.press(" ");
       await expect(
-        page.getByRole("heading", { name: /Validated 3D fix: 2-25 over 2-20/i }),
+        page.getByRole("heading", { name: /^A fix that passes every rule$/i }),
       ).toBeVisible();
       const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });
       await expect(wrap).toHaveAttribute("data-scene-mode", "after");
@@ -387,14 +416,14 @@ test.describe("Demo 3D Scene W3", () => {
       // Step 4: Replay (Workings)
       await page.keyboard.press(" ");
       await expect(
-        page.getByRole("heading", { name: /Every solver attempt explained/i }),
+        page.getByRole("heading", { name: /^Every attempt, shown$/i }),
       ).toBeVisible();
       await expect(page.getByText(/Attempt 1 of 34 · Round 1/i)).toBeVisible();
 
       // Step 5: Zone III (works offline via prefetched cache)
       await page.keyboard.press(" ");
       await expect(
-        page.getByRole("heading", { name: /Seismic Zone III triggers IS 13920/i }),
+        page.getByRole("heading", { name: /^Zone III changes the answer$/i }),
       ).toBeVisible();
       await expect(page.getByText(/7 Fails/i).first()).toBeVisible();
       await expect(page.getByText(/4-16 over 4-16; C4 325 × 300/i)).toBeVisible();

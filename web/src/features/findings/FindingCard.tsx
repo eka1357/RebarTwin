@@ -1,8 +1,9 @@
 import { Eye, FileSearch } from "lucide-react";
-import { forwardRef } from "react";
+import { forwardRef, useId } from "react";
 import { StatusPill } from "../../components/StatusPill";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { describeFindingCardLabel } from "../../lib/a11y";
 import { formatCalloutValue } from "../../lib/format";
 import type { Finding, RuleMeta, SceneBar } from "../../types/bundle";
 import { BarChip } from "./BarChip";
@@ -26,8 +27,9 @@ interface FindingCardProps {
 }
 
 /**
- * Finding card with interactive header trigger (never nested buttons),
- * ToleranceGauge, ClauseChip popover, BarChips, Show in 3D, and Source action.
+ * Finding card with concise aria-label on the card selection trigger,
+ * details and ToleranceGauge linked via aria-describedby, plus secondary
+ * interactive chips (ClauseChip, BarChips, Show in 3D, Source) layered cleanly above.
  */
 export const FindingCard = forwardRef<HTMLElement, FindingCardProps>(function FindingCard(
   {
@@ -46,6 +48,7 @@ export const FindingCard = forwardRef<HTMLElement, FindingCardProps>(function Fi
   },
   ref,
 ) {
+  const descId = useId();
   const isFail = finding.status === "fail";
   const matchedBars = finding.bars
     .map((id) => barsById.get(id))
@@ -56,21 +59,24 @@ export const FindingCard = forwardRef<HTMLElement, FindingCardProps>(function Fi
       ref={ref}
       onMouseEnter={() => onHoverFinding(true)}
       onMouseLeave={() => onHoverFinding(false)}
-      className={`rounded-[var(--radius-md)] border p-3 transition-colors duration-[var(--dur-1)] ${
-        active
-          ? isFail
-            ? "border-2 border-fail bg-surface-raised"
-            : "border-2 border-ring bg-surface-raised"
-          : "border-border bg-surface-raised hover:border-border-strong"
-      }`}
+      className={`relative rounded-[var(--radius-md)] border p-3 transition-colors duration-[var(--dur-1)] ${active
+        ? isFail
+          ? "border-2 border-fail bg-surface-raised"
+          : "border-2 border-ring bg-surface-raised"
+        : "border-border bg-surface-raised hover:border-border-strong"
+        }`}
     >
       <button
         type="button"
         onClick={onSelect}
         onKeyDown={onKeyDown}
         aria-pressed={active}
-        className="w-full text-left cursor-pointer"
-      >
+        aria-label={describeFindingCardLabel(finding)}
+        aria-describedby={descId}
+        className="absolute inset-0 rounded-[var(--radius-md)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      />
+
+      <div className="pointer-events-none relative">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <StatusPill status={finding.status} size="sm" />
@@ -81,12 +87,13 @@ export const FindingCard = forwardRef<HTMLElement, FindingCardProps>(function Fi
           </Badge>
         </div>
 
-        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{finding.message}</p>
+        <div id={descId} className="mt-1.5">
+          <p className="text-xs leading-relaxed text-muted-foreground">{finding.message}</p>
+          <ToleranceGauge finding={finding} />
+        </div>
+      </div>
 
-        <ToleranceGauge finding={finding} />
-      </button>
-
-      <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
+      <div className="relative z-10 mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
         <ClauseChip clause={finding.clause} ruleId={finding.rule} meta={ruleMeta} />
 
         {matchedBars.map((bar) => (

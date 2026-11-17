@@ -100,6 +100,10 @@ in OCR words only, raw text kept; table cells from drawn ruling lines (letter st
 headers on sheets 7 and 8 now read as the three storeys; float boxes inside, integer box_2d in files. 235 tests, no
 key needed.
 
+## 17 November 2026: W4-W13 review fixes (`fix/w13-review`)
+
+Applied review fixes on `fix/w13-review`: removed UI arithmetic (`summarizeLayerSpec`, gauge subtraction) in favour of `Finding.margin`, `FaceChange.area_before`, and `n_bars_before` (`1,571 → 1,610 mm² · 5 bars → 4` toast, `short by 9 mm` gauge sentences); placed `ToleranceGauge` measured values directly under their diamond markers and `needs <limit>` / `max <limit>` under limit ticks with automatic collision staggering across Findings and Workings; drew `IS 13920 cl. 7.1.1` spans across the column in `SceneController.ts` so Zone III displays all 7 failing callouts (`300 mm · needs 400 · IS 13920 cl. 7.1.1`); replaced the mock schedule SVG in `SourceCrop.tsx` with either the pitch-deck message or real `provenance` rendering (`entry.member`, bundle-relative `page_image`, `Agreed`/`Resolved`, `Assumed, not on the drawing`, column `Storey`, `OCR read '...'`); added concise accessible labels on `StatusIsland` and `FindingCard` with `aria-describedby` linking and WCAG 2.5.3 compliance; updated `DemoTour` copy; ignored `web/public/live/` in `.gitignore`; and encoded `@` joint ids via `lib/routes.ts`. Verified with `eslint`, `tsc`, Vitest (18 passed), Vite production build, and Playwright + axe (12 passed).
+
 ## Next: built in Google Antigravity
 
 The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

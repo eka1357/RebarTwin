@@ -7,6 +7,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { JointInspector } from "../features/workspace/JointInspector";
 import { ReplayUrlSync } from "../features/workspace/ReplayUrlSync";
 import { demoAssetUrl, fetchDemoBundle } from "../lib/demoData";
+import { projectPath } from "../lib/routes";
 
 const LazyViewport = lazy(() => import("../features/workspace/Viewport"));
 
@@ -41,7 +42,7 @@ export function JointRoute() {
             />
           )}
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/projects/${id}`}>Project</Link>
+            <Link to={projectPath(id)}>Project</Link>
           </Button>
         </div>
       </div>

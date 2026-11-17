@@ -1,4 +1,12 @@
-import { formatMeasure, formatOverlap } from "./format";
+import {
+  describeToleranceGauge,
+  formatClause,
+  formatMeasure,
+  formatNumber,
+  formatOverlap,
+  NBSP,
+} from "./format";
+import type { Finding } from "../types/bundle";
 
 export function describeBarFull(bar: {
   id: string;
@@ -8,7 +16,7 @@ export function describeBarFull(bar: {
   index: number;
   dia: number;
 }): string {
-  const diaText = `${Math.round(bar.dia)} millimetres`;
+  const diaText = `${formatNumber(bar.dia)} millimetres`;
   if (bar.role === "column") {
     return `${bar.member} column bar ${bar.index}, ${diaText}`;
   }
@@ -22,38 +30,31 @@ export function describeGaugeSentence(f: {
   measured: number;
   limit: number;
   compare: ">=" | "<=";
+  margin: number;
   unit: string;
   status: "fail" | "pass";
 }): string {
-  const unitWord =
-    f.unit === "mm" ? "millimetres" : f.unit === "mm²" ? "square millimetres" : f.unit;
+  return describeToleranceGauge(f);
+}
+
+/**
+ * Concise spoken accessible name for a FindingCard trigger, e.g.:
+ * "Fails: B12 top bars 1 and 2 are 16 mm apart, need 25 mm, IS 456 clause 26.3.2"
+ */
+export function describeFindingCardLabel(f: Pick<
+  Finding,
+  "rule" | "clause" | "status" | "measured" | "limit" | "compare" | "unit" | "message"
+>): string {
+  const statusWord = f.status === "fail" ? "Fails" : "Passes";
+  const clauseSpoken = formatClause(f.clause).replace(/\bcl\.\s*/gi, "clause ");
+  const subject = f.message.split(";")[0]?.split(":")[0]?.trim() || f.message;
+
   if (f.rule === "GEOM-CLASH" && f.measured < 0) {
-    return `${formatOverlap(f.measured)}; needs no overlap`;
+    const overlap = formatOverlap(f.measured).replace(NBSP, " ");
+    return `${statusWord}: ${subject}, ${overlap}, ${clauseSpoken}`;
   }
-  const measuredText = formatMeasure(f.measured, unitWord, {
-    limit: f.limit,
-    compare: f.compare,
-    status: f.status,
-  });
-  const limitText = formatMeasure(f.limit, unitWord);
-  if (f.compare === ">=") {
-    if (f.measured < f.limit) {
-      const diff = formatMeasure(f.limit - f.measured, unitWord, {
-        limit: 0,
-        compare: "<=",
-        status: "fail",
-      });
-      return `${measuredText}; needs at least ${limitText}; short by ${diff}`;
-    }
-    return `${measuredText}; needs at least ${limitText}; passes`;
-  }
-  if (f.measured > f.limit) {
-    const diff = formatMeasure(f.measured - f.limit, unitWord, {
-      limit: 0,
-      compare: "<=",
-      status: "fail",
-    });
-    return `${measuredText}; needs at most ${limitText}; over by ${diff}`;
-  }
-  return `${measuredText}; needs at most ${limitText}; passes`;
+
+  const limitStr = formatMeasure(f.limit, f.unit).replace(NBSP, " ");
+  const limitPhrase = f.compare === "<=" ? `max ${limitStr}` : `need ${limitStr}`;
+  return `${statusWord}: ${subject}, ${limitPhrase}, ${clauseSpoken}`;
 }

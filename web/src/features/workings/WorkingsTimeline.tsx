@@ -21,11 +21,13 @@ function failureToGaugeFinding(f: AttemptFailure): Finding {
     status: "fail",
     measured: f.measured,
     limit: f.limit,
-    compare: f.rule === "GEOM-CLASH" || f.measured < f.limit ? ">=" : "<=",
+    compare: f.compare,
+    margin: f.margin,
     unit: f.unit,
     members: [],
     bars: f.bars ?? [],
     at: f.at ?? null,
+    span: f.span ?? null,
     message: f.message,
   };
 }

@@ -62,9 +62,13 @@ test.describe("App shell W2", () => {
     const lightAxe = await new AxeBuilder({ page }).analyze();
     expect(lightAxe.violations).toEqual([]);
 
-    const island = page.getByRole("button", { name: /Joint status:/i });
+    const island = page.getByRole("button", { name: /6 fails, 0 to check, zone II, IS 13920 off/i });
     await island.click();
     await expect(page.getByRole("link", { name: /Open demo/i })).toBeVisible();
+
+    // Encoded @ in joint ids works cleanly across routes
+    await page.goto("/projects/c4-b12/joints/C4xB12%40FIRST");
+    await expect(page.getByRole("heading", { name: /Joint Workspace: C4xB12@FIRST/i })).toBeVisible();
   });
 
   test("reflows cleanly at 320 px width with accessible mobile menu", async ({ page }) => {

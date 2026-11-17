@@ -1,0 +1,40 @@
+{
+ "_about": "Hand-written stand-in for a linking reply (LinkReply) to the accepted fields of tests/reader_pdf.py. Field ids follow agree()'s numbering: sorted by page, member, field, layer.",
+ "joints": [
+  {
+   "joint": {
+    "id": "C4-joint",
+    "column": {"id": "C4", "b": 300, "h": 300, "n_bars": 8, "bar_dia": 16, "tie_dia": 8, "cover": 40,
+               "cover_to": "main"},
+    "beams": [
+     {"id": "B12", "direction": "x", "b": 230, "D": 450, "stirrup_dia": 8, "cover": 25, "cover_to": "links",
+      "top": [{"bars": "5-20"}], "bottom": [{"bars": "4-16"}]},
+     {"id": "B13", "direction": "y", "b": 230, "D": 450, "stirrup_dia": 8, "cover": 25, "cover_to": "links",
+      "top": [{"bars": "2-25 + 1-20"}], "bottom": [{"bars": "3-16"}]}
+    ],
+    "settings": {"seismic_zone": "III"},
+    "notes": ["Placed B12 along X because its label runs horizontally on the plan."]
+   },
+   "sources": [
+    {"path": "column.section", "field_ids": ["f0021"]},
+    {"path": "column.main", "field_ids": ["f0020"]},
+    {"path": "column.ties", "field_ids": ["f0019"]},
+    {"path": "column.cover", "field_ids": ["f0005"]},
+    {"path": "beams[0].section", "field_ids": ["f0009"]},
+    {"path": "beams[0].top", "field_ids": ["f0010"]},
+    {"path": "beams[0].bottom", "field_ids": ["f0006"]},
+    {"path": "beams[0].stirrups", "field_ids": ["f0008"]},
+    {"path": "beams[0].cover", "field_ids": ["f0004"]},
+    {"path": "beams[0].frames_into", "field_ids": ["f0007"]},
+    {"path": "beams[1].section", "field_ids": ["f0014"]},
+    {"path": "beams[1].top", "field_ids": ["f0015"]},
+    {"path": "beams[1].bottom", "field_ids": ["f0011"]},
+    {"path": "beams[1].stirrups", "field_ids": ["f0013"]},
+    {"path": "beams[1].cover", "field_ids": ["f0004"]},
+    {"path": "beams[1].frames_into", "field_ids": ["f0012"]},
+    {"path": "settings.seismic_zone", "field_ids": ["f0002"]}
+   ],
+   "unresolved": []
+  }
+ ]
+}

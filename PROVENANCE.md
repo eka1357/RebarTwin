@@ -44,6 +44,14 @@ concrete with edge outlines, 100 mm / 500 mm fading floor grid, theme-reactive t
 instant cuts), `ViewportToolbar`, `JointInspector`, lazy-loaded `OpenIfcDialog` (`web-ifc`), Zone II and Zone III
 demo bundles copied into `web/public/demo/`, and retired the unstyled v0 viewer files.
 
+## 17 November 2026: the reader, R1 to R5 (`feature/R-reader`)
+
+Written by Claude Code: `src/rebartwin/reader/` (ingest, the parser grammar, the Gemini channel with versioned
+prompts `read_v1` and `link_v1`, agreement, linking with code-side verification of every linked number) and
+`rebartwin read`. 125 tests that need no key, against a sheet drawn by PyMuPDF inside the tests and hand-written
+stand-ins for Gemini replies in `tests/fixtures/reader/` (no real drawing, no live model output). Not yet run on a
+real drawing or a live model.
+
 ## Next: built in Google Antigravity
 
 The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

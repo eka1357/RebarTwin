@@ -48,6 +48,10 @@ demo bundles copied into `web/public/demo/`, and retired the unstyled v0 viewer 
 
 Fixed workspace height and camera framing on `fix/w3-review`: bounded workspace routes to `100dvh` above `1024 px` with `min-h-0` viewport and inspector internal scrolling, fitted full `sceneBounds` (`concrete` + `bars`) on load, resize, and presets via `camera-controls` `fitToBox`/`getDistanceToFitBox` with 12% padding, added synchronous resize/fullscreen re-rendering and `data-joint-bounds` verification, formatted 3D labels via `lib/format.ts` (`16 mm · needs 25 · IS 456 cl. 26.3.2`, `18 mm overlap · Geometry`), removed duplicate `StatusIsland` count, gated the `Styleguide` link on `import.meta.env.DEV`, added Vite React/Three dedupe, and passed `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run dev -- --force` console verification, and all 9 Playwright + axe checks across `1280x720`, `1440x900`, `1920x1080`, `768x1024`, and `320x720`.
 
+## 17 November 2026: 3D callouts, dimension lines, and clash rings (W4)
+
+Built `web/` W4 on `feature/w4-callouts`: 3D CAD gap dimension lines with extension stems and end ticks between parallel bar surfaces, dual-plane 3D clash rings in `SceneController.ts`, deterministic flush-stack non-overlapping 2D pill layout (`lib/calloutLayout.ts` + Vitest suite), SVG leader lines and anchor dots (`ViewportCallouts.tsx`), `+n more` overflow chip above 8 localized labels, and mirrored screen-reader findings list. Verified across Iso/Plan/Elev views and Labels Failures/All/Off modes.
+
 ## Next: built in Google Antigravity
 
 The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

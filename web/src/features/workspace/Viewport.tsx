@@ -1,9 +1,9 @@
 import { useReducedMotion } from "motion/react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatCalloutValue, formatClause } from "../../lib/format";
 import { useWorkspaceStore } from "../../stores/workspace";
 import type { Bundle, Finding } from "../../types/bundle";
 import { SceneController } from "./SceneController";
+import { ViewportCallouts, type ViewportCalloutsHandle } from "./ViewportCallouts";
 import { ViewportToolbar } from "./ViewportToolbar";
 
 const LazyOpenIfcDialog = lazy(() =>
@@ -19,7 +19,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasWrapRef = useRef<HTMLDivElement | null>(null);
   const controllerRef = useRef<SceneController | null>(null);
-  const anchorRefs = useRef<Map<number, HTMLButtonElement | null>>(new Map());
+  const calloutsRef = useRef<ViewportCalloutsHandle | null>(null);
 
   const [ifcOpen, setIfcOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -55,15 +55,23 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     return bundle.report.findings;
   }, [bundle.report.findings, mode]);
 
-  const visibleFindings = useMemo(() => {
-    if (labelMode === "hidden") return [];
-    return activeFindings
-      .map((f, index) => ({ f, index }))
-      .filter(({ f }) => Boolean(f.at) && (labelMode === "all" || f.status === "fail"))
-      .slice(0, 8);
+  const { visibleFindings, mirroredFindings, overflowCount } = useMemo(() => {
+    const indexed = activeFindings.map((f, index) => ({ f, index }));
+    const filteredForMode = indexed.filter(({ f }) => labelMode === "all" || f.status === "fail");
+    const localized = filteredForMode
+      .filter(({ f }) => Boolean(f.at))
+      .sort((a, b) => {
+        if (a.f.status !== b.f.status) return a.f.status === "fail" ? -1 : 1;
+        return a.index - b.index;
+      });
+    const visible = labelMode === "hidden" ? [] : localized.slice(0, 8);
+    const overflow = labelMode === "hidden" ? 0 : Math.max(0, localized.length - 8);
+    return {
+      visibleFindings: visible,
+      mirroredFindings: indexed.filter(({ f }) => f.status === "fail" || labelMode === "all"),
+      overflowCount: overflow,
+    };
   }, [activeFindings, labelMode]);
-
-  const visibleFindingsRef = useRef(visibleFindings);
 
   const highlightedBarIds = useMemo(() => {
     const ids = new Set<string>();
@@ -76,10 +84,6 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   }, [selectedBarId, selectedFindingIndex, activeFindings]);
 
   const highlightedRef = useRef(highlightedBarIds);
-
-  useEffect(() => {
-    visibleFindingsRef.current = visibleFindings;
-  }, [visibleFindings]);
 
   useEffect(() => {
     highlightedRef.current = highlightedBarIds;
@@ -113,20 +117,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
             }
             wrap.dataset.renderCount = String(Number(wrap.dataset.renderCount ?? "0") + 1);
           }
-          for (const { f, index } of visibleFindingsRef.current) {
-            const btn = anchorRefs.current.get(index);
-            if (!btn || !f.at) continue;
-            const pos = ctrl.projectWorld(f.at);
-            if (!pos.visible) {
-              btn.style.display = "none";
-            } else {
-              btn.style.display = "";
-              const halfW = (btn.offsetWidth || 160) / 2 + 8;
-              const px = Math.min(Math.max(pos.x, halfW), Math.max(halfW, size.width - halfW));
-              const py = Math.min(Math.max(pos.y, 20), Math.max(20, size.height - 44));
-              btn.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) translate(-50%, -50%)`;
-            }
-          }
+          calloutsRef.current?.updatePositions(ctrl, size);
         },
       },
     });
@@ -167,8 +158,12 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   }, [activeScene]);
 
   useEffect(() => {
-    controllerRef.current?.renderImmediate();
-  }, [visibleFindings]);
+    const ctrl = controllerRef.current;
+    if (!ctrl) return;
+    ctrl.setCalloutIndicators(activeFindings, labelMode, selectedFindingIndex);
+    const id = requestAnimationFrame(() => ctrl.renderImmediate());
+    return () => cancelAnimationFrame(id);
+  }, [activeFindings, labelMode, selectedFindingIndex]);
 
   useEffect(() => {
     controllerRef.current?.setSelection(highlightedBarIds, hoveredBarId);
@@ -283,40 +278,27 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
       >
         <div ref={canvasWrapRef} role="img" aria-label={summaryText} className="h-full w-full" />
 
-        <div className="pointer-events-none absolute inset-0">
-          {visibleFindings.map(({ f, index }) => (
-            <button
-              key={`${f.rule}-${index}`}
-              type="button"
-              ref={(el) => {
-                anchorRefs.current.set(index, el);
-              }}
-              onClick={() => {
-                selectBar(f.bars[0] ?? null);
-                selectFinding(index);
-              }}
-              className={`pointer-events-auto absolute top-0 left-0 inline-flex items-center gap-1.5 rounded-[var(--radius-xs)] border px-1.5 py-0.5 font-num text-xs font-medium shadow-[var(--shadow-overlay)] cursor-pointer ${
-                selectedFindingIndex === index
-                  ? "border-ring bg-primary text-primary-foreground"
-                  : f.status === "fail"
-                    ? "border-fail/60 bg-surface-raised/95 text-fail"
-                    : "border-pass/60 bg-surface-raised/95 text-pass"
-              }`}
-              title={f.message}
-            >
-              <span>{formatCalloutValue(f)}</span>{" "}
-              <span
-                className={
-                  selectedFindingIndex === index
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground"
-                }
-              >
-                · {formatClause(f.clause)}
-              </span>
-            </button>
-          ))}
-        </div>
+        <ViewportCallouts
+          ref={calloutsRef}
+          visibleFindings={visibleFindings}
+          mirroredFindings={mirroredFindings}
+          overflowCount={overflowCount}
+          labelMode={labelMode}
+          selectedFindingIndex={selectedFindingIndex}
+          onSelectFinding={(f, index) => {
+            selectBar(f.bars[0] ?? null);
+            selectFinding(index);
+          }}
+          onOpenOverflow={() => {
+            const inspectorEl = document.getElementById("inspector");
+            const firstBtn = inspectorEl?.querySelector("button");
+            if (firstBtn instanceof HTMLElement) {
+              firstBtn.focus();
+            } else {
+              inspectorEl?.focus();
+            }
+          }}
+        />
 
         <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface/90 px-2.5 py-1.5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5 text-foreground">

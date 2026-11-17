@@ -215,6 +215,7 @@ Group, Slider, Progress, ScrollArea, Separator, Badge, Skeleton, Sonner, Resizab
 | CommandPalette | Ctrl or Cmd + K: joints, findings, bars, clauses, actions | Fuzzy search, recent items | cmdk with full keyboard support |
 | ShortcutDialog | `?` modal listing viewport and navigation shortcuts | Opens on `?` outside text inputs | Radix Dialog with Escape close |
 | ViewportToolbar | View, Concrete, Labels, Reset, Full screen | Tooltips show shortcuts | Toggle groups with labels |
+| ViewportCallouts | Stacked HTML callouts with SVG leaders, anchor dots, `+n more` chip, plus 3D gap dimension lines and clash rings | Caps at 8 visible pills without overlap; clicking selects finding and bars | Mirrored `sr-only` findings list; each callout is a keyboard-reachable button |
 | EmptyState | A joint plan drawn in hairlines, one sentence, one action | | Illustration is decorative |
 
 Use outside components only after a review: copy the source in, check keyboard and screen-reader behaviour, replace

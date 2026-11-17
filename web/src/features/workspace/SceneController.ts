@@ -1,8 +1,8 @@
 import CameraControls from "camera-controls";
 import * as THREE from "three";
 import { ifcToThree, MM_TO_M } from "../../lib/coords";
-import type { CameraPreset, ConcreteMode, ThemeMode } from "../../stores/workspace";
-import type { Scene, SceneBar, SceneConcrete, SceneLoop } from "../../types/bundle";
+import type { CameraPreset, ConcreteMode, LabelMode, ThemeMode } from "../../stores/workspace";
+import type { Finding, Scene, SceneBar, SceneConcrete, SceneLoop } from "../../types/bundle";
 
 CameraControls.install({ THREE });
 
@@ -22,6 +22,7 @@ export interface ProjectedBounds {
 interface ThemePalette {
   bg: THREE.Color;
   fail: THREE.Color;
+  pass: THREE.Color;
   steel: THREE.Color;
   concrete: THREE.Color;
   edge: THREE.Color;
@@ -40,11 +41,20 @@ function readPalette(theme: ThemeMode): ThemePalette {
   return {
     bg: cssColor("--surface-sunken", theme === "light" ? "#eae6df" : "#0a0d11"),
     fail: cssColor("--fail", theme === "light" ? "#b42318" : "#ff6a3d"),
+    pass: cssColor("--pass", theme === "light" ? "#126b43" : "#3dd68c"),
     steel: cssColor("--steel", "#9aa6b5"),
     concrete: cssColor("--concrete", "#cfc9bf"),
     edge: cssColor("--border-strong", theme === "light" ? "#bfb8ac" : "#3a4351"),
     rim: cssColor("--foreground", theme === "light" ? "#15191f" : "#eef1f4"),
   };
+}
+
+function closestPointOnSegment(a: THREE.Vector3, b: THREE.Vector3, p: THREE.Vector3): THREE.Vector3 {
+  const ab = b.clone().sub(a);
+  const lenSq = ab.lengthSq();
+  if (lenSq < 1e-9) return a.clone();
+  const t = THREE.MathUtils.clamp(p.clone().sub(a).dot(ab) / lenSq, 0, 1);
+  return a.clone().addScaledVector(ab, t);
 }
 
 function buildFadingGrid(yFloor: number, bg: THREE.Color, edge: THREE.Color): THREE.LineSegments {
@@ -122,7 +132,11 @@ export class SceneController {
   private renderer: THREE.WebGLRenderer;
   private controls: CameraControls;
   private root: THREE.Group;
+  private calloutGroup: THREE.Group;
   private grid: THREE.LineSegments | null = null;
+  private currentFindings: Finding[] = [];
+  private currentLabelMode: LabelMode = "failures";
+  private activeFindingIndex: number | null = null;
   private sharedCylinder: THREE.CylinderGeometry;
   private sharedBox: THREE.BoxGeometry;
 
@@ -204,6 +218,9 @@ export class SceneController {
 
     this.root = new THREE.Group();
     this.scene.add(this.root);
+
+    this.calloutGroup = new THREE.Group();
+    this.scene.add(this.calloutGroup);
 
     this.sharedCylinder = new THREE.CylinderGeometry(1, 1, 1, 18, 1);
     this.sharedBox = new THREE.BoxGeometry(1, 1, 1);
@@ -296,6 +313,7 @@ export class SceneController {
     this.rebuildGrid();
     this.refreshConcreteMaterials();
     this.refreshMaterials();
+    this.rebuildCallouts();
     this.needsRender = true;
   }
 
@@ -322,6 +340,7 @@ export class SceneController {
     this.rebuildGrid();
     this.applyConcreteMode(this.concreteMode);
     this.refreshMaterials();
+    this.rebuildCallouts();
     this.needsRender = true;
   }
 
@@ -479,6 +498,133 @@ export class SceneController {
     this.hoveredId = hoveredId;
     this.refreshMaterials();
     this.needsRender = true;
+  }
+
+  setCalloutIndicators(
+    findings: Finding[],
+    labelMode: LabelMode,
+    selectedFindingIndex: number | null,
+  ) {
+    this.currentFindings = findings;
+    this.currentLabelMode = labelMode;
+    this.activeFindingIndex = selectedFindingIndex;
+    this.rebuildCallouts();
+    this.needsRender = true;
+  }
+
+  private clearCallouts() {
+    while (this.calloutGroup.children.length > 0) {
+      const obj = this.calloutGroup.children.pop()!;
+      if (obj instanceof THREE.LineSegments || obj instanceof THREE.LineLoop || obj instanceof THREE.Mesh) {
+        obj.geometry.dispose();
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((m) => m.dispose());
+        } else {
+          obj.material.dispose();
+        }
+      }
+    }
+  }
+
+  private rebuildCallouts() {
+    this.clearCallouts();
+    if (this.currentLabelMode === "hidden") return;
+
+    this.currentFindings.forEach((f, index) => {
+      if (!f.at) return;
+      if (this.currentLabelMode === "failures" && f.status !== "fail") return;
+
+      const isSelected = this.activeFindingIndex === index;
+      const hasActive = this.activeFindingIndex !== null;
+      const color = f.status === "fail" ? this.palette.fail : this.palette.pass;
+      const opacity = hasActive ? (isSelected ? 1 : 0.25) : f.status === "fail" ? 0.92 : 0.45;
+      const atVec = new THREE.Vector3(...ifcToThree(f.at));
+
+      if (f.rule === "GEOM-CLASH") {
+        const radius = isSelected ? 0.042 : 0.032;
+        const segments = 32;
+        for (const plane of ["xz", "xy"] as const) {
+          const pts: number[] = [];
+          for (let i = 0; i < segments; i++) {
+            const a = (i / segments) * Math.PI * 2;
+            const ca = Math.cos(a) * radius;
+            const sa = Math.sin(a) * radius;
+            if (plane === "xz") {
+              pts.push(atVec.x + ca, atVec.y, atVec.z + sa);
+            } else {
+              pts.push(atVec.x + ca, atVec.y + sa, atVec.z);
+            }
+          }
+          const geom = new THREE.BufferGeometry();
+          geom.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+          const ringMat = new THREE.LineBasicMaterial({
+            color,
+            transparent: true,
+            opacity,
+            depthTest: false,
+          });
+          const loop = new THREE.LineLoop(geom, ringMat);
+          loop.renderOrder = 6;
+          this.calloutGroup.add(loop);
+        }
+        return;
+      }
+
+      // Gap dimension line with extension stems and end ticks between the two affected bars.
+      if (f.bars.length >= 2) {
+        const eA = this.barEntries.get(f.bars[0]);
+        const eB = this.barEntries.get(f.bars[1]);
+        if (!eA || !eB) return;
+
+        const qA = closestPointOnSegment(
+          new THREE.Vector3(...ifcToThree(eA.bar.p0)),
+          new THREE.Vector3(...ifcToThree(eA.bar.p1)),
+          atVec,
+        );
+        const qB = closestPointOnSegment(
+          new THREE.Vector3(...ifcToThree(eB.bar.p0)),
+          new THREE.Vector3(...ifcToThree(eB.bar.p1)),
+          atVec,
+        );
+        const gapVec = qB.clone().sub(qA);
+        if (gapVec.lengthSq() < 1e-8) return;
+        const n = gapVec.clone().normalize();
+        const sA = qA.clone().addScaledVector(n, eA.radius);
+        const sB = qB.clone().addScaledVector(n, -eB.radius);
+
+        const liftAxis = Math.abs(n.y) < 0.85 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+        const lift = liftAxis.clone().multiplyScalar(isSelected ? 0.048 : 0.036);
+        const dA = sA.clone().add(lift);
+        const dB = sB.clone().add(lift);
+        const tickHalf = liftAxis.clone().multiplyScalar(0.011);
+        const serifA = dA.clone().addScaledVector(n, -0.008).add(tickHalf);
+        const serifA2 = dA.clone().addScaledVector(n, 0.008).sub(tickHalf);
+        const serifB = dB.clone().addScaledVector(n, -0.008).add(tickHalf);
+        const serifB2 = dB.clone().addScaledVector(n, 0.008).sub(tickHalf);
+
+        const pts = [
+          // Main dimension span
+          dA.x, dA.y, dA.z, dB.x, dB.y, dB.z,
+          // Extension stems
+          sA.x, sA.y, sA.z, dA.x + tickHalf.x, dA.y + tickHalf.y, dA.z + tickHalf.z,
+          sB.x, sB.y, sB.z, dB.x + tickHalf.x, dB.y + tickHalf.y, dB.z + tickHalf.z,
+          // End ticks
+          serifA.x, serifA.y, serifA.z, serifA2.x, serifA2.y, serifA2.z,
+          serifB.x, serifB.y, serifB.z, serifB2.x, serifB2.y, serifB2.z,
+        ];
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+        const mat = new THREE.LineBasicMaterial({
+          color,
+          transparent: true,
+          opacity,
+          depthTest: false,
+        });
+        const segs = new THREE.LineSegments(geom, mat);
+        segs.renderOrder = 6;
+        this.calloutGroup.add(segs);
+      }
+    });
   }
 
   applyConcreteMode(mode: ConcreteMode) {
@@ -755,6 +901,7 @@ export class SceneController {
     this.resizeObserver.disconnect();
     this.unbindPointerEvents();
     this.clearSceneObjects();
+    this.clearCallouts();
     if (this.grid) {
       this.scene.remove(this.grid);
       this.grid.geometry.dispose();

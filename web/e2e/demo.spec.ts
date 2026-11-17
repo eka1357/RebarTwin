@@ -80,7 +80,7 @@ test.describe("Demo 3D Scene W3", () => {
     expect(noPageScroll1440).toBe(true);
     await expectJointFitsInsideCanvas(page, { width: 1440, height: 900 });
 
-    // Labels include measured, "needs", and clause
+    // Labels include measured, "needs", clause, and never overlap pairwise across presets
     const spacingLabels = page.locator("button", { hasText: "needs 25" });
     expect(await spacingLabels.count()).toBeGreaterThanOrEqual(1);
     await expect(spacingLabels.first()).toContainText(/16\s+mm · needs 25 · IS 456 cl\. 26\.3\.2/);
@@ -88,11 +88,44 @@ test.describe("Demo 3D Scene W3", () => {
       /18\s+mm overlap · Geometry/,
     );
 
-    // Check all four view presets fit the whole joint
+    const expectNoCalloutOverlaps = async (contextLabel: string) => {
+      const boxes = await page.locator("button[data-callout-index]:visible").evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return { x: r.left, y: r.top, w: r.width, h: r.height };
+        }),
+      );
+      expect(boxes.length, `${contextLabel} callouts rendered`).toBeGreaterThanOrEqual(6);
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i];
+          const b = boxes[j];
+          const sepX = a.x + a.w <= b.x + 0.5 || b.x + b.w <= a.x + 0.5;
+          const sepY = a.y + a.h <= b.y + 0.5 || b.y + b.h <= a.y + 0.5;
+          expect(sepX || sepY, `${contextLabel} overlap between ${i} and ${j}`).toBe(true);
+        }
+      }
+    };
+
+    await expectNoCalloutOverlaps("Iso");
+
+    // Check all four view presets fit the whole joint and never overlap callouts
     for (const presetName of ["Plan", "X Elev", "Y Elev", "Iso"] as const) {
       await page.getByRole("radio", { name: presetName }).click();
       await expectJointFitsInsideCanvas(page, { width: 1440, height: 900 });
+      await expectNoCalloutOverlaps(presetName);
     }
+
+    // Clicking a 3D callout opens/selects its finding and corresponding bar
+    await page.locator('button[data-callout-index="0"]').click();
+    await expect(page.getByText(/B12\/T1-1 · T1-1/i)).toBeVisible();
+
+    // Switching to Labels: All caps at 8 pills and shows +9 more without overlaps
+    await page.getByRole("button", { name: /Labels: Failures/i }).click();
+    await expect(page.getByRole("button", { name: /\+9 more/i })).toBeVisible();
+    await expectNoCalloutOverlaps("Labels: All");
+    await page.getByRole("button", { name: /Labels: All/i }).click();
+    await page.getByRole("button", { name: /Labels: Off/i }).click();
 
     // Check desktop viewports and confirm resize triggers re-render without blanking
     const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });

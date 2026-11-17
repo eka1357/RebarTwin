@@ -26,7 +26,10 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <div className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:top-2 focus-within:left-2 focus-within:z-50 focus-within:flex focus-within:gap-2">
+      <nav
+        aria-label="Skip links"
+        className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:top-2 focus-within:left-2 focus-within:z-50 focus-within:flex focus-within:gap-2"
+      >
         <a
           href="#main-content"
           className="rounded-[var(--radius-sm)] border border-control-border bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-[var(--shadow-overlay)]"
@@ -41,7 +44,7 @@ export function AppShell() {
             Skip to inspector
           </a>
         )}
-      </div>
+      </nav>
 
       <TopBar />
 

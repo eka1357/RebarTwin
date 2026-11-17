@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import * as WebIFC from "web-ifc";
-import type { BarMetadata, Finding, Vec3 } from "./types";
+import type { Finding, Vec3 } from "../types/bundle";
 
 let ifcApiPromise: Promise<WebIFC.IfcAPI> | null = null;
 
@@ -16,22 +16,30 @@ async function getIfcApi(): Promise<WebIFC.IfcAPI> {
   return ifcApiPromise;
 }
 
+export interface IfcBarMetadata {
+  expressID: number;
+  globalId: string;
+  tag: string;
+  name: string;
+  ifcType: string;
+  predefinedType: string;
+  member: string;
+  role: string;
+  layer: number | null;
+  diameterMm: number | null;
+  lengthMm: number | null;
+  status: "FAIL" | "OK";
+  failedClauses: string[];
+  centerThree: Vec3;
+}
+
 export interface LoadedIfcModel {
   root: THREE.Group;
   barMeshes: THREE.Mesh[];
   concreteMeshes: THREE.Mesh[];
   concreteOutlines: THREE.LineSegments[];
-  barsByKey: Map<string, { mesh: THREE.Mesh; meta: BarMetadata }>;
+  barsByKey: Map<string, { mesh: THREE.Mesh; meta: IfcBarMetadata }>;
   bounds: THREE.Box3;
-}
-
-interface RawPsetData {
-  member?: string;
-  role?: string;
-  layer?: number;
-  diameterMm?: number;
-  status?: "FAIL" | "OK";
-  failedClauses?: string[];
 }
 
 function readStringAttr(attr: unknown): string {
@@ -54,8 +62,22 @@ async function readBarPset(
   api: WebIFC.IfcAPI,
   modelID: number,
   expressID: number,
-): Promise<RawPsetData> {
-  const out: RawPsetData = {};
+): Promise<{
+  member?: string;
+  role?: string;
+  layer?: number;
+  diameterMm?: number;
+  status?: "FAIL" | "OK";
+  failedClauses?: string[];
+}> {
+  const out: {
+    member?: string;
+    role?: string;
+    layer?: number;
+    diameterMm?: number;
+    status?: "FAIL" | "OK";
+    failedClauses?: string[];
+  } = {};
   try {
     const psets = await api.properties.getPropertySets(modelID, expressID, true);
     for (const pset of psets) {
@@ -83,7 +105,7 @@ async function readBarPset(
       }
     }
   } catch {
-    // Property set lookup is supplemental; Tag/GlobalId and bundle.json remain authoritative.
+    // Property set lookup is supplemental.
   }
   return out;
 }
@@ -117,46 +139,15 @@ function buildBufferGeometry(
   return geom;
 }
 
-function makeConcreteMaterial(): THREE.MeshPhysicalMaterial {
-  return new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(0xcfc9be),
-    roughness: 0.75,
-    metalness: 0.0,
-    transparent: true,
-    opacity: 0.16,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
+function readTokenColor(name: string, fallback: string): THREE.Color {
+  if (typeof document !== "undefined") {
+    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (val) return new THREE.Color(val);
+  }
+  return new THREE.Color(fallback);
 }
 
-function makeBarMaterial(
-  status: "FAIL" | "OK",
-  predefinedType: string,
-): THREE.MeshStandardMaterial {
-  if (status === "FAIL") {
-    return new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0xe03a34),
-      emissive: new THREE.Color(0x5c110f),
-      emissiveIntensity: 0.55,
-      roughness: 0.35,
-      metalness: 0.35,
-    });
-  }
-  if (predefinedType === "LIGATURE") {
-    return new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0x5b6775),
-      roughness: 0.5,
-      metalness: 0.55,
-    });
-  }
-  return new THREE.MeshStandardMaterial({
-    color: new THREE.Color(0x8896a6),
-    roughness: 0.36,
-    metalness: 0.58,
-  });
-}
-
-export function disposeLoadedModel(model: LoadedIfcModel | null): void {
+export function disposeLoadedIfcModel(model: LoadedIfcModel | null): void {
   if (!model) return;
   model.root.traverse((obj) => {
     if (obj instanceof THREE.Mesh || obj instanceof THREE.LineSegments) {
@@ -172,11 +163,16 @@ export function disposeLoadedModel(model: LoadedIfcModel | null): void {
 
 export async function loadIfcModel(
   ifcBuffer: ArrayBuffer,
-  findings: Finding[],
-  useBundleFailureStatus: boolean,
+  findings: Finding[] = [],
+  useBundleFailureStatus = true,
 ): Promise<LoadedIfcModel> {
   const api = await getIfcApi();
   const modelID = api.OpenModel(new Uint8Array(ifcBuffer));
+
+  const failColor = readTokenColor("--fail", "#ff6a3d");
+  const steelColor = readTokenColor("--steel", "#9aa6b5");
+  const concreteColor = readTokenColor("--concrete", "#cfc9bf");
+  const borderStrongColor = readTokenColor("--border-strong", "#3a4351");
 
   const failingKeys = new Set<string>();
   const clausesByKey = new Map<string, Set<string>>();
@@ -195,7 +191,7 @@ export async function loadIfcModel(
   const barMeshes: THREE.Mesh[] = [];
   const concreteMeshes: THREE.Mesh[] = [];
   const concreteOutlines: THREE.LineSegments[] = [];
-  const barsByKey = new Map<string, { mesh: THREE.Mesh; meta: BarMetadata }>();
+  const barsByKey = new Map<string, { mesh: THREE.Mesh; meta: IfcBarMetadata }>();
 
   const pendingBars: Array<{
     expressID: number;
@@ -220,20 +216,27 @@ export async function loadIfcModel(
       if (ifcType === "IfcColumn" || ifcType === "IfcBeam") {
         for (const pg of geoms) {
           const geom = buildBufferGeometry(api, modelID, pg.geometryExpressID);
-          const mat = makeConcreteMaterial();
+          const mat = new THREE.MeshPhysicalMaterial({
+            color: concreteColor,
+            roughness: 0.75,
+            metalness: 0.0,
+            transparent: true,
+            opacity: 0.12,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          });
           const concreteMesh = new THREE.Mesh(geom, mat);
           const matrix = new THREE.Matrix4().fromArray(pg.flatTransformation);
           concreteMesh.applyMatrix4(matrix);
           concreteMesh.renderOrder = 2;
-          concreteMesh.userData = { ifcType, name: readStringAttr(line?.Name) };
           root.add(concreteMesh);
           concreteMeshes.push(concreteMesh);
 
           const edgesGeom = new THREE.EdgesGeometry(geom, 25);
           const edgesMat = new THREE.LineBasicMaterial({
-            color: new THREE.Color(0x9fb0c4),
+            color: borderStrongColor,
             transparent: true,
-            opacity: 0.36,
+            opacity: 0.5,
           });
           const outline = new THREE.LineSegments(edgesGeom, edgesMat);
           outline.applyMatrix4(matrix);
@@ -266,7 +269,22 @@ export async function loadIfcModel(
 
       for (const pg of item.geoms) {
         const geom = buildBufferGeometry(api, modelID, pg.geometryExpressID);
-        const mat = makeBarMaterial(status, predefinedType);
+        const mat =
+          status === "FAIL"
+            ? new THREE.MeshStandardMaterial({
+                color: failColor,
+                emissive: failColor,
+                emissiveIntensity: 0.45,
+                roughness: 0.4,
+                metalness: 0.35,
+              })
+            : new THREE.MeshStandardMaterial({
+                color: steelColor,
+                roughness: 0.45,
+                metalness: 0.6,
+                transparent: predefinedType === "LIGATURE",
+                opacity: predefinedType === "LIGATURE" ? 0.7 : 1,
+              });
         const barMesh = new THREE.Mesh(geom, mat);
         const matrix = new THREE.Matrix4().fromArray(pg.flatTransformation);
         barMesh.applyMatrix4(matrix);
@@ -277,7 +295,7 @@ export async function loadIfcModel(
         box.getCenter(center);
 
         const inferredMember = tag.includes("/") ? tag.split("/")[0] : "";
-        const meta: BarMetadata = {
+        const meta: IfcBarMetadata = {
           expressID: item.expressID,
           globalId,
           tag,
@@ -291,16 +309,10 @@ export async function loadIfcModel(
           lengthMm: readNumberAttr(item.line?.BarLength),
           status,
           failedClauses: Array.from(clauseSet),
-          centerThree: [center.x, center.y, center.z] as Vec3,
+          centerThree: [center.x, center.y, center.z],
         };
 
-        barMesh.userData = {
-          barMeta: meta,
-          baseColor: mat.color.getHex(),
-          baseEmissive: mat.emissive.getHex(),
-          baseEmissiveIntensity: mat.emissiveIntensity,
-        };
-
+        barMesh.userData = { barMeta: meta };
         root.add(barMesh);
         barMeshes.push(barMesh);
         if (tag) barsByKey.set(tag, { mesh: barMesh, meta });

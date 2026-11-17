@@ -57,6 +57,7 @@ test.describe("App shell W2", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.getByRole("heading", { name: /Worked Example: C4 × B12/i })).toBeVisible();
 
     const lightAxe = await new AxeBuilder({ page }).analyze();
     expect(lightAxe.violations).toEqual([]);

@@ -1,0 +1,13 @@
+{
+  "id": "C4xB12",
+  "column": {"id": "C4", "b": 300, "h": 300, "n_bars": 8, "bar_dia": 16, "tie_dia": 8, "cover": 40, "cover_to": "main"},
+  "beams": [
+    {"id": "B12", "direction": "x", "b": 230, "D": 450, "stirrup_dia": 8, "cover": 25, "cover_to": "links",
+     "top": [{"bars": "5-20"}], "bottom": [{"bars": "4-16"}]}
+  ],
+  "settings": {"aggregate": 20, "exposure": "mild", "seismic_zone": "II"},
+  "notes": [
+    "Worked example from the pitch deck: sizes assumed, checked by hand.",
+    "Assumed, because the deck gives neither: bottom bars 4-16, and 40 mm cover to the column's main bars."
+  ]
+}

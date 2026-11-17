@@ -152,13 +152,13 @@ def _tied(member: str, value: Match, members: list[Match], line_of: dict[int, in
     if inside:
         names = {m.value for m in inside}
         return (True, None, None) if member in names else (False, sorted(names)[0], None)
-    if strip(page, box) is not None:
-        # In a ruled table, structure decides, not distance: a label in the same row (its height range overlapping
-        # the value's), inside the same storey group when the table has groups, in either direction.
-        group = _group_of(page, box)
+    group = _group_of(page, box) if strip(page, box) is not None else None
+    if group is not None:
+        # In a ruled schedule by storey, structure decides, not distance: a label in the same row (its height range
+        # overlapping the value's) inside the same storey group, in either direction. Ruled strips alone are not
+        # enough to call something a table: beam elevations make them too.
         row = {m.value for m in same if m.box[0] < box[2] + 2 and box[0] - 2 < m.box[2]
-               and strip(page, m.box) is not None
-               and (group is None or group[2] < (m.box[1] + m.box[3]) / 2 <= group[3])}
+               and group[2] < (m.box[1] + m.box[3]) / 2 <= group[3]}
         if len(row) == 1:
             name = row.pop()
             return (True, None, None) if name == member else (False, name, None)

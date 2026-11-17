@@ -68,9 +68,17 @@ Built `web/` W7 on `feature/w7-workings`: `WorkingsTimeline` grouped by round (`
 
 Built `web/` W13 on `feature/w13-demo-tour`: 5-beat `DemoTour` (Finding -> Source -> Fix -> Replay -> Zone III) with `Space` advance and `Escape` close, prefetching both `zone2` and `zone3` offline bundles under `/demo/` (`staleTime: Infinity`) so the entire 3-minute story runs offline (`context.setOffline(true)`), and full normal and reduced-motion verification. Verified with Vitest (16 passed), ESLint/TypeScript clean, production build, and Playwright + axe (12 passed).
 
+## 17 November 2026: the reader, R1 to R5 (`feature/R-reader`)
+
+Written by Claude Code: `src/rebartwin/reader/` (ingest, the parser grammar, the Gemini channel with versioned
+prompts `read_v1` and `link_v1`, agreement, linking with code-side verification of every linked number) and
+`rebartwin read`. 125 tests that need no key, against a sheet drawn by PyMuPDF inside the tests and hand-written
+stand-ins for Gemini replies in `tests/fixtures/reader/` (no real drawing, no live model output). Not yet run on a
+real drawing or a live model.
+
 ## Next: built in Google Antigravity
 
-The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.
+The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.
 Record each piece here when it lands.
 
 ## Data

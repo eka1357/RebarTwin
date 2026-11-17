@@ -26,7 +26,7 @@ Only the engine produces numbers. Gemini reads and proposes; the engine measures
 
 ```
 src/rebartwin/          engine (done): model, layout, geometry, rules, check, fixes, exports, report, cli
-src/rebartwin/reader/   to build: PDF reading, two channels, agreement, linking
+src/rebartwin/reader/   PDF reading, two channels, agreement, linking (R1 to R5)
 src/rebartwin/api.py    to build: FastAPI service
 tests/                  engine tests (hand-checked); reader and API tests to add
 examples/               joint JSON fixtures (c4_b12.json is the deck's worked example)
@@ -74,39 +74,73 @@ attempt_scenes[] { concrete[], bars[] } per attempt (first 60); a bar's findings
 
 A bar's `findings` in `scene` index `report.findings`. The viewer never computes a number; it formats these.
 
-### provenance.json (reader, to build)
+### provenance.json (reader)
+
+A list, one entry per linked joint:
 
 ```
-{ "joint": "C4xB12",
-  "fields": { "beams[0].top[0].bars": { "page": 3, "box_2d": [ymin, xmin, ymax, xmax], "text": "5-20",
-              "gemini": "5-20", "parser": "5-20", "status": "agreed" } } }
+[{ "joint": "C4xB12",
+   "fields": { "beams[0].top[0].bars": { "page": 3, "box_2d": [ymin, xmin, ymax, xmax], "text": "5-20",
+               "gemini": "5-20", "parser": "5-20", "status": "agreed", "field_id": "f0012" },
+               "beams[0].top": [ {...}, {...} ] },
+   "link_notes": ["what the linking model said, kept for a person; never copied into the joint"] }]
 ```
 
-`box_2d` is Gemini's convention: integers 0 to 1000 relative to the page image, `[ymin, xmin, ymax, xmax]`.
+`box_2d` is Gemini's convention: integers 0 to 1000 relative to the page image, `[ymin, xmin, ymax, xmax]`; in
+provenance it is the text layer's box. `text` is the drawing's own text, `gemini` what Gemini wrote, `parser` the
+canonical value. Keys are the linking paths (`column.section`, `column.main`, `column.ties`, `column.cover`,
+`beams[i].section|top|bottom|stirrups|cover|frames_into`, `settings.seismic_zone|exposure`); a face with one layer
+from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face key holds a list.
 
-### to_check.json (reader, to build)
+### to_check.json (reader)
 
 ```
-[{ "id": "tc_0007", "joint": "C4xB12", "field": "beams[0].top[0].bars", "page": 3, "box_2d": [...],
-   "gemini": {"value": "5-20"}, "parser": {"value": "5-16"}, "reason": "disagree|missing|ambiguous",
+[{ "id": "tc_0007", "joint": "C4xB12" | null, "member": "B12" | null, "field": "top" | "beams[0].top",
+   "layer": 1, "page": 3, "box_2d": [...] | null, "gemini": {"value": "5-20"} | null,
+   "parser": {"value": "5-16"} | null, "reason": "disagree|missing|ambiguous", "detail": "a sentence for a person",
    "resolution": null | {"value": "5-20", "by": "person", "at": "2026-11-19T10:02:00Z"} }]
 ```
 
+`field` is the read field (`section`, `top`, `top_extra`, `bottom`, `bottom_extra`, `main`, `links`, `cover`,
+`concrete_grade`, `steel_grade`, `seismic_zone`, `exposure`, `frames_into`) for items from agreement, and a linking
+path for items from linking. `joint` is null when the item blocks no joint (a member in no joint, a grade). An
+item on a general note (zone, exposure, ALL cover) is copied once per joint it blocks.
+
 A joint with unresolved items is shown as "To check" and is not checked until they are resolved.
 
-## Reader (to build, Claude Code)
+### reading.json (reader)
 
-1. **Ingest.** PyMuPDF renders each page at 200 dpi and returns the text layer as words with boxes.
-2. **Gemini channel.** `gemini-3.8-flash`, temperature 0, structured output (JSON schema): every schedule row and
-   callout with member id, field, value as written, `box_2d`, page. The prompt sends the page image plus its words
-   and says numbers come only from the drawing. Prompts live in `src/rebartwin/reader/prompts/` and are versioned.
-3. **Parser channel.** A grammar over the text layer for Indian notation ("5-20", "2#25", "8-T16", "230x450",
-   "8φ @ 150 c/c", "clear cover 25 mm", "M25", "Fe500"), mapped to word boxes. No model.
-4. **Agreement.** Accept a field when both channels give the same normalised value and their boxes overlap (IoU at
-   least 0.3, or one centre inside the other). Everything else becomes a To check item.
-5. **Linking.** `gemini-4-argon` (fallback `gemini-3.8-flash`) assembles joints from accepted fields across
-   sheets, with `Joint.model_json_schema()` as the response schema. Every default it applies is written into
-   `Joint.notes` as an assumption.
+The run: pdf name, pages, dpi, prompt versions (`read_v1`, `link_v1`), link model, counts, every accepted field with
+both boxes, and `unassigned`: values the parser read that Gemini did not report, shaped like To check items with
+`joint` null. They block nothing; they show what Gemini missed.
+
+## Reader (Claude Code; `src/rebartwin/reader/`, `rebartwin read <pdf> --out out/<project>`)
+
+1. **Ingest** (`ingest.py`). PyMuPDF renders each page at 200 dpi to `pages/page-<n>.png` and returns the text layer
+   as words with `box_2d` boxes, mapped through the page rotation so they match the rendered image.
+2. **Gemini channel** (`gemini.py`). `REBARTWIN_MODEL_READ` (default `gemini-3.8-flash`), temperature 0, JSON
+   schema `PageReading`: callouts with member, field, layer, value as written, `box_2d`, page. Members ALL,
+   ALL_BEAMS and ALL_COLUMNS mark general notes; `frames_into` (member = beam, value = column, box around both
+   labels) is how the plan's topology is read. The prompt (`prompts/read_v1.md`) sends the image plus its text-layer
+   lines and says numbers come only from the drawing. Sheets larger than 3000 px are read in overlapping tiles and
+   boxes mapped back. Retries with backoff on 408, 429 and 5xx; logs ids, model, tokens and latency, never text.
+3. **Parser channel** (`parser.py`). A grammar over the text layer for Indian notation ("5-20", "2-25+1-20", "2#25",
+   "8-T16", "3 nos 16φ", "230x450", "8φ @ 150 c/c", "2L-8 @ 100", "clear cover 25 mm", "C.C. 40", "M25",
+   "Fe500", "zone III", member ids), on visual lines (CAD often splits one callout into several text objects),
+   mapped to word boxes. Canonical values: bars "2-25 + 1-20", sections "230x450" (b x D), links "2L-8@100". No
+   model.
+4. **Agreement** (`agree.py`). Accept a callout only when both channels give the same canonical value at the same
+   place (IoU at least 0.3, or one centre inside the other), the member is the label for that value in reading
+   order (nearest same-kind id to its left in the row, else above in the column), a top or bottom label does not
+   contradict the face, and no other accepted callout gives the field another value. Everything else becomes a To
+   check item with a reason.
+5. **Linking** (`link.py`). `REBARTWIN_MODEL_LINK` (default `gemini-4-argon`; on model-not-found
+   `REBARTWIN_MODEL_FALLBACK`) returns `{joints: [{joint, sources, unresolved}]}`, `joint` being
+   `Joint.model_json_schema()`. The model chooses structure and cites, per linking path, the accepted field ids it
+   used. Code then proves every number from the cited fields: a value that differs, has no field, or leaves out a
+   drawn field becomes a To check item tied to the joint. Defaults and the model's structural choices (direction,
+   column orientation, cover measured to, layer arrangement) are written into `Joint.notes` by code, never by the
+   model. Joint ids are rebuilt from the members: `C4xB12xB13`.
 6. **Evaluation.** A golden set of 60 hand-labelled callouts; report accuracy per field. Target: at least 95%
    accepted and correct, zero wrong values accepted.
 

@@ -26,9 +26,10 @@ engineer of record decides. Buildathon: Hyderabad round 20 to 21 November 2026, 
 ## Commands
 
 ```
-uv sync --extra ifc                      # or: .venv\Scripts\python -m pip install -e ".[ifc]" pytest
-uv run pytest                            # engine tests (12)
+uv sync --extra ifc --extra reader       # or: .venv\Scripts\python -m pip install -e ".[ifc,reader]" pytest
+uv run pytest                            # engine (12) and reader (125) tests; no key needed
 uv run rebartwin check examples/c4_b12.json --out out/C4xB12
+uv run rebartwin read uploads/<drawing>.pdf --out out/<project>   # needs GEMINI_API_KEY in .env
 cd web && npm install && npm run dev     # web app
 npm run lint && npm run typecheck && npm test && npm run build   # before any delivery (scripts added in W1)
 ```
@@ -49,6 +50,9 @@ npm run lint && npm run typecheck && npm test && npm run build   # before any de
 
 ## How to work
 
+- Antigravity works only in C:\Projects\RebarTwin, Claude Code only in C:\Projects\RebarTwin-R. Never switch
+  branches or edit tracked files in the other folder. Branch from the latest master; merge to master only at a gate,
+  when the other agent is idle.
 - Take one task id from IMPLEMENTATION_PLAN.md. Branch `feature/<id>-<slug>`. Small commits. Do not merge to `main`
   without the owner's OK.
 - Before coding, write a short plan: files you will touch, the contract you rely on, how you will verify.

@@ -1,0 +1,27 @@
+{
+ "_about": "Hand-written stand-in for a Gemini reply to page 1 of tests/reader_pdf.py, in the shape of PageReading. Boxes are the text layer's boxes moved by a few units, as a model's are. Deliberate errors: B14 bottom read as 3-20 (the sheet says 3-16). Replace with a live recording only if it holds no client drawing content.",
+ "callouts": [
+  {"member": "B12", "field": "section", "layer": 1, "value": "230x450", "box_2d": [167, 129, 191, 173], "page": 1},
+  {"member": "B12", "field": "top", "layer": 1, "value": "5-20", "box_2d": [168, 235, 190, 262], "page": 1},
+  {"member": "B12", "field": "bottom", "layer": 1, "value": "4-16", "box_2d": [170, 342, 192, 366], "page": 1},
+  {"member": "B12", "field": "links", "layer": 1, "value": "2L-8 @ 100", "box_2d": [167, 449, 190, 506], "page": 1},
+  {"member": "B13", "field": "section", "layer": 1, "value": "230 X 450", "box_2d": [201, 129, 224, 179], "page": 1},
+  {"member": "B13", "field": "top", "layer": 1, "value": "2-25+1-20", "box_2d": [202, 236, 224, 288], "page": 1},
+  {"member": "B13", "field": "bottom", "layer": 1, "value": "3-16", "box_2d": [201, 342, 223, 367], "page": 1},
+  {"member": "B13", "field": "links", "layer": 1, "value": "8φ @ 150 c/c", "box_2d": [202, 449, 224, 516], "page": 1},
+  {"member": "B14", "field": "section", "layer": 1, "value": "230x380", "box_2d": [235, 130, 257, 172], "page": 1},
+  {"member": "B14", "field": "top", "layer": 1, "value": "3-12", "box_2d": [235, 236, 257, 260], "page": 1},
+  {"member": "B14", "field": "bottom", "layer": 1, "value": "3-20", "box_2d": [235, 343, 257, 366], "page": 1},
+  {"member": "B14", "field": "links", "layer": 1, "value": "8φ @ 150 c/c", "box_2d": [235, 450, 257, 515], "page": 1},
+  {"member": "C4", "field": "section", "layer": 1, "value": "300x300", "box_2d": [402, 129, 426, 173], "page": 1},
+  {"member": "C4", "field": "main", "layer": 1, "value": "8-16", "box_2d": [403, 235, 425, 261], "page": 1},
+  {"member": "C4", "field": "links", "layer": 1, "value": "8φ @ 150 c/c", "box_2d": [402, 342, 426, 409], "page": 1},
+  {"member": "ALL_BEAMS", "field": "cover", "layer": 1, "value": "25 mm", "box_2d": [520, 183, 544, 214], "page": 1},
+  {"member": "ALL_COLUMNS", "field": "cover", "layer": 1, "value": "C.C. 40", "box_2d": [554, 57, 577, 94], "page": 1},
+  {"member": "ALL", "field": "concrete_grade", "layer": 1, "value": "M25", "box_2d": [587, 112, 611, 139], "page": 1},
+  {"member": "ALL", "field": "steel_grade", "layer": 1, "value": "Fe500", "box_2d": [588, 168, 610, 201], "page": 1},
+  {"member": "ALL", "field": "seismic_zone", "layer": 1, "value": "III", "box_2d": [621, 120, 645, 144], "page": 1},
+  {"member": "B12", "field": "frames_into", "layer": 1, "value": "C4", "box_2d": [314, 706, 346, 808], "page": 1},
+  {"member": "B13", "field": "frames_into", "layer": 1, "value": "C4", "box_2d": [314, 706, 430, 742], "page": 1}
+ ]
+}

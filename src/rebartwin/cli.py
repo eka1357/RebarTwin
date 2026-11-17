@@ -32,7 +32,10 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("read", help="read a drawing PDF into joints, provenance and a To check list, then check "
                                     "every joint with nothing left to check")
     r.add_argument("pdf", type=Path)
-    r.add_argument("--out", type=Path, required=True, help="project folder, e.g. out/<project>")
+    r.add_argument("--out", type=Path, help="project folder, e.g. out/<project> (required unless --probe)")
+    r.add_argument("--probe", action="store_true", help="count text-layer words and annotations per page, then stop")
+    r.add_argument("--concurrency", type=int, default=3, help="tiles read at once")
+    r.add_argument("--replay", action="store_true", help="use saved replies only; never call the API")
     r.add_argument("--pages", help="1-based pages to read, e.g. 1,3-5 (default all)")
     r.add_argument("--dpi", type=int, default=200)
     r.add_argument("--tile", type=int, default=3000, help="largest tile side in pixels sent to Gemini")
@@ -103,17 +106,37 @@ def read_command(args) -> int:
     from .reader.gemini import GenAITransport, ReadError, load_env
     from .reader.pipeline import read
 
+    if args.probe:
+        from .reader.ingest import probe
+        for row in probe(args.pdf):
+            notes = ", ".join(f"{n} by {a}" for a, n in sorted(row["annotations"].items())) or "none"
+            print(f"page {row['page']}: {row['size_pt'][0]} x {row['size_pt'][1]} pt, rotation {row['rotation']}, "
+                  f"{row['words']} words, annotations with content: {notes}"
+                  f"{'; parser will read the annotations' if row['uses_annotations'] else ''}")
+        return 0
+    if args.out is None:
+        print("rebartwin read: --out is required")
+        return 2
+
+    from .reader.pipeline import attach_sources
+
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     load_env()
     try:
-        result = read(args.pdf, args.out, GenAITransport(), pages=_pages(args.pages), dpi=args.dpi,
-                      tile_px=args.tile)
+        transport = None if args.replay else GenAITransport()
+        result = read(args.pdf, args.out, transport, pages=_pages(args.pages), dpi=args.dpi, tile_px=args.tile,
+                      concurrency=args.concurrency)
     except ReadError as e:
         print(f"Read stopped: {e}")
         return 2
     a = result.agreement
-    print(f"Read {result.pages} page(s) of {args.pdf.name}: {len(a.accepted)} values agreed, "
-          f"{len(result.linked.to_check)} to check, {len(a.unassigned)} parser values Gemini did not report.")
+    live = [c for c in result.calls if not c["cached"]]
+    print(f"Read {result.pages} page(s) of {args.pdf.name} in {result.seconds:g} s: {len(a.accepted)} values agreed, "
+          f"{len(result.linked.to_check)} to check, {len(a.unassigned)} parser values Gemini did not report. "
+          f"{len(live)} model call(s), {len(result.calls) - len(live)} replayed; "
+          f"{sum(c['prompt_tokens'] or 0 for c in live)} prompt and {sum(c['output_tokens'] or 0 for c in live)} "
+          f"output tokens.")
+    fields = {f.id: f for f in a.accepted}
     status = 0
     for v in result.linked.joints:
         jid = v.joint.id
@@ -123,6 +146,7 @@ def read_command(args) -> int:
             continue
         if not args.no_check:
             status = max(status, run_check(v.joint, args.out / "joints" / jid, args.no_ifc))
+            attach_sources(args.out / "joints" / jid / "bundle.json", v, fields, args.out)
     if not result.linked.joints:
         print("No joints linked.")
         status = 2

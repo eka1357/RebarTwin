@@ -25,7 +25,7 @@ LINK = json.loads((FIXTURES / "link.json").read_text(encoding="utf-8"))
 @pytest.fixture(scope="module")
 def agreement(tmp_path_factory) -> Agreement:
     pages = ingest(make_pdf(tmp_path_factory.mktemp("sheet") / "s.pdf"))
-    reads = read_page(pages[0], RecordedTransport(FIXTURES), sleep=lambda s: None)
+    reads = read_page(pages[0], RecordedTransport(FIXTURES))
     return agree(reads, parse_page(pages[0]), pages)
 
 
@@ -45,7 +45,7 @@ class Replies:
 
 
 def run(agreement, body):
-    return link(agreement, Replies(body), sleep=lambda s: None)
+    return link(agreement, Replies(body))
 
 
 def body_with(change) -> dict:
@@ -75,7 +75,7 @@ def test_recorded_link_gives_the_hand_checked_joint(agreement):
     assert blocking(result) == []
     assert result.model == "gemini-4-argon"
     # Defaults and judgements are sentences written by code; the model's own note is kept aside, not in the joint.
-    assert "Default: exposure mild (not on the drawing)." in j.notes
+    assert not any("exposure" in n or "zone" in n for n in j.notes)    # read from the notes, not defaulted
     assert "Default: aggregate 20 mm (not on the drawing)." in j.notes
     assert any(n.startswith("B13 meets C4 on the plan; it runs along Y") for n in j.notes)
     assert not any("label runs horizontally" in n for n in j.notes)
@@ -84,7 +84,7 @@ def test_recorded_link_gives_the_hand_checked_joint(agreement):
     p = v.provenance["beams[0].top[0].bars"]
     assert (p["text"], p["gemini"], p["parser"], p["status"], p["page"]) == ("5-20", "5-20", "5-20", "agreed", 1)
     assert set(v.provenance) >= {"column.section", "column.main", "column.cover", "beams[1].frames_into",
-                                 "settings.seismic_zone", "beams[1].bottom[0].bars"}
+                                 "settings.seismic_zone", "settings.exposure", "beams[1].bottom[0].bars"}
     report, _ = check(j)                                 # the engine accepts it
     assert report.is13920
 
@@ -126,7 +126,7 @@ def test_citing_another_members_field(agreement):
     def change(item):
         for s in item["sources"]:
             if s["path"] == "beams[0].top":
-                s["field_ids"] = ["f0018"]                # B14's 3-12
+                s["field_ids"] = ["f0019"]                # B14's 3-12
         item["joint"]["beams"][0]["top"] = [{"bars": "3-12"}]
     items = blocking(run(agreement, body_with(change)))
     assert [(t.field, t.reason) for t in items] == [("beams[0].top", "disagree")]
@@ -145,8 +145,8 @@ def test_beam_not_shown_meeting_the_column(agreement):
         beam = item["joint"]["beams"][1]
         beam.update(id="B14", b=230, D=380, top=[{"bars": "3-12"}], bottom=[{"bars": "3-16"}])
         item["sources"] = [s for s in item["sources"] if not s["path"].startswith("beams[1]")] + [
-            {"path": "beams[1].section", "field_ids": ["f0017"]}, {"path": "beams[1].top", "field_ids": ["f0018"]},
-            {"path": "beams[1].stirrups", "field_ids": ["f0016"]}, {"path": "beams[1].cover", "field_ids": ["f0004"]}]
+            {"path": "beams[1].section", "field_ids": ["f0018"]}, {"path": "beams[1].top", "field_ids": ["f0019"]},
+            {"path": "beams[1].stirrups", "field_ids": ["f0017"]}, {"path": "beams[1].cover", "field_ids": ["f0005"]}]
     result = run(agreement, body_with(change))
     items = blocking(result, "C4xB12xB14")
     fields = {(t.field, t.reason) for t in items}
@@ -169,17 +169,17 @@ def test_extra_bars_must_all_be_used_and_layers_kept(agreement):
             if s["path"] == "beams[0].top":
                 s["field_ids"] = top_ids
 
-    good = body_with(lambda i: (sources(i, ["f0010", "f0101", "f0102"]), i["joint"]["beams"][0].update(
+    good = body_with(lambda i: (sources(i, ["f0011", "f0101", "f0102"]), i["joint"]["beams"][0].update(
         top=[{"bars": "5-20 + 2-16"}, {"bars": "2-12"}])))
     result = run(a2, good)
     assert blocking(result) == []
     assert any("B12 top bars arranged as layer 1: 5-20 + 2-16; layer 2: 2-12" in n for n in result.joints[0].joint.notes)
 
-    dropped = body_with(lambda i: (sources(i, ["f0010", "f0102"]), i["joint"]["beams"][0].update(
+    dropped = body_with(lambda i: (sources(i, ["f0011", "f0102"]), i["joint"]["beams"][0].update(
         top=[{"bars": "5-20"}, {"bars": "2-12"}])))
     assert [(t.field, t.reason) for t in blocking(run(a2, dropped))] == [("beams[0].top", "missing")]
 
-    flattened = body_with(lambda i: (sources(i, ["f0010", "f0101", "f0102"]), i["joint"]["beams"][0].update(
+    flattened = body_with(lambda i: (sources(i, ["f0011", "f0101", "f0102"]), i["joint"]["beams"][0].update(
         top=[{"bars": "5-20 + 2-16 + 2-12"}])))
     items = blocking(run(a2, flattened))
     assert [(t.field, t.reason) for t in items] == [("beams[0].top", "disagree")] and "layer 2" in items[0].detail
@@ -188,7 +188,7 @@ def test_extra_bars_must_all_be_used_and_layers_kept(agreement):
 def test_model_not_found_falls_back(agreement, monkeypatch):
     monkeypatch.setenv("REBARTWIN_MODEL_FALLBACK", "gemini-3.8-flash")
     t = Replies(LINK, missing=("gemini-4-argon",))
-    result = link(agreement, t, sleep=lambda s: None)
+    result = link(agreement, t)
     assert t.models == ["gemini-4-argon", "gemini-3.8-flash"]
     assert result.model == "gemini-3.8-flash" and len(result.joints) == 1
 
@@ -222,15 +222,40 @@ def test_a_disagreement_on_a_joint_member_blocks_that_joint(agreement):
     assert ("beams[0].top", "missing") in [(t.field, t.reason) for t in items]
 
 
-def test_general_note_conflict_blocks_every_joint(agreement):
-    a2 = copy.deepcopy(agreement)
+def test_general_note_conflict_is_one_project_level_item(agreement):
+    """A conflict on a general note stays one item, with no joint, and blocks every joint until resolved."""
     from rebartwin.reader.agree import ToCheck
+    from rebartwin.reader.link import blocks
+    a2 = copy.deepcopy(agreement)
     a2.to_check.append(ToCheck("tc_0098", "ALL", "seismic_zone", 1, (0, 0, 1, 1), None, None, "ambiguous", "two zones"))
     result = run(a2, LINK)
-    assert any(t.id == "tc_0098" and t.joint == "C4xB12xB13" for t in result.to_check)
+    [item] = [t for t in result.to_check if t.field == "seismic_zone"]
+    assert item.id == "tc_0098" and item.joint is None
+    assert blocks(item, "C4xB12xB13") and blocks(item, "any other joint")
+    item.resolution = {"value": "III", "by": "person", "at": "2026-11-20T09:00:00Z"}
+    assert not blocks(item, "C4xB12xB13")
+
+
+@pytest.mark.parametrize("missing", ["seismic_zone", "exposure"])
+def test_unstated_zone_or_exposure_is_a_project_item_not_a_default(agreement, missing):
+    """Remove the drawing's zone (or exposure) note. The joint keeps the schema default only as a placeholder: no
+    'Default' note, one project-level To check item (member ALL, reason missing), and every joint is blocked. Zone II
+    by default would have switched IS 13920 off without anyone deciding it."""
+    from rebartwin.reader.link import blocks
+    a2 = copy.deepcopy(agreement)
+    a2.accepted = [a for a in a2.accepted if a.field != missing]
+
+    def change(item):
+        item["sources"] = [s for s in item["sources"] if s["path"] != f"settings.{missing}"]
+        item["joint"]["settings"].pop(missing, None)
+    result = run(a2, body_with(change))
+    items = [t for t in result.to_check if t.field == missing]
+    assert [(t.member, t.joint, t.reason) for t in items] == [("ALL", None, "missing")]
+    assert blocks(items[0], "C4xB12xB13")
+    assert not any(missing.replace("_", " ") in n for n in result.joints[0].joint.notes)
 
 
 def test_no_accepted_fields_means_no_call():
     t = Replies(LINK)
-    result = link(Agreement(), t, sleep=lambda s: None)
+    result = link(Agreement(), t)
     assert result.joints == [] and t.models == []

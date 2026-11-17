@@ -4,7 +4,7 @@ against this exact layout, so change both together.
 
 Joint on the plan: C4 (300 x 300, 8-16, ties 8φ @ 150 c/c) with B12 along X (230 x 450, top 5-20, bottom 4-16,
 2L-8 @ 100) and B13 along Y (230 X 450, top 2-25+1-20, bottom 3-16, 8φ @ 150 c/c). B14 is in the schedule only.
-Notes: clear cover to beams 25 mm, C.C. 40 to columns, M25, Fe500, seismic zone III.
+Notes: clear cover to beams 25 mm, C.C. 40 to columns, M25, Fe500, seismic zone III, exposure mild.
 """
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ TEXT = [
     (40, 340, "2. C.C. 40 TO COLUMNS"),
     (40, 360, "3. CONCRETE M25, STEEL Fe500"),
     (40, 380, "4. SEISMIC ZONE III"),
+    (40, 400, "5. EXPOSURE: MILD"),
     (560, 60, "FRAMING PLAN"),
     (600, 200, "C4"), (660, 200, "B12"),
     (603, 250, "B13"),
@@ -41,6 +42,7 @@ TRUTH = {
     ("C4", "section"): "300x300", ("C4", "main"): "8-16", ("C4", "links"): "8@150",
     ("ALL_BEAMS", "cover"): "25", ("ALL_COLUMNS", "cover"): "40", ("ALL", "concrete_grade"): "M25",
     ("ALL", "steel_grade"): "Fe500", ("ALL", "seismic_zone"): "III",
+    ("ALL", "exposure"): "mild",
     ("B12", "frames_into"): "C4", ("B13", "frames_into"): "C4",
 }
 
@@ -58,6 +60,27 @@ def make_pdf(path: Path, rotate: int = 0) -> Path:
     page.draw_rect(pymupdf.Rect(590, 180, 620, 210))     # the column on the plan
     page.draw_line((620, 195), (760, 195))               # B12 along X
     page.draw_line((605, 210), (605, 330))               # B13 along Y
+    if rotate:
+        page.set_rotation(rotate)
+    doc.save(path)
+    doc.close()
+    return path
+
+
+def make_shx_pdf(path: Path, rotate: int = 0) -> Path:
+    """The same schedule rows written the way AutoCAD's SHX fonts export: no text layer, each string an annotation
+    with author 'AutoCAD SHX Text'. Drawn here as Square annotations, whose border shows in the rendered image, so a
+    test can check the box lands on ink; their appearance holds no text, like the real thing."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page(width=842, height=595)
+    for x, y, text in (t for t in TEXT if 90 <= t[1] <= 150):
+        a = page.add_rect_annot(pymupdf.Rect(x, y - 9, x + 6 * len(text), y + 3))
+        a.set_colors(stroke=(0, 0, 0))
+        a.set_border(width=1)
+        a.set_info(title="AutoCAD SHX Text", content=text)
+        a.update()
     if rotate:
         page.set_rotation(rotate)
     doc.save(path)

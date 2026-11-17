@@ -20,7 +20,6 @@ FIXTURES = Path(__file__).parent / "fixtures" / "reader"
 @pytest.fixture
 def recorded(monkeypatch):
     monkeypatch.setattr(gemini, "GenAITransport", lambda: gemini.RecordedTransport(FIXTURES))
-    monkeypatch.setattr(gemini.time, "sleep", lambda s: None)
 
 
 def test_read_writes_the_contract_and_checks_the_joint(tmp_path: Path, recorded, capsys):
@@ -30,7 +29,7 @@ def test_read_writes_the_contract_and_checks_the_joint(tmp_path: Path, recorded,
     code = cli.main(["read", str(make_pdf(tmp_path / "s.pdf")), "--out", str(out), "--no-ifc"])
     printed = capsys.readouterr().out
     assert code == 1
-    assert "21 values agreed, 1 to check" in printed
+    assert "22 values agreed, 1 to check" in printed
 
     assert (out / "pages" / "page-1.png").is_file()
     joint = Joint.model_validate_json((out / "joints" / "C4xB12xB13.json").read_text(encoding="utf-8"))
@@ -52,7 +51,7 @@ def test_read_writes_the_contract_and_checks_the_joint(tmp_path: Path, recorded,
 
     reading = json.loads((out / "reading.json").read_text(encoding="utf-8"))
     assert reading["prompts"] == {"read": "read_v1", "link": "link_v1"}
-    assert reading["counts"]["accepted"] == 21
+    assert reading["counts"]["accepted"] == 22
 
 
 def test_blocked_joint_is_written_but_not_checked(tmp_path: Path, monkeypatch, capsys):
@@ -66,7 +65,6 @@ def test_blocked_joint_is_written_but_not_checked(tmp_path: Path, monkeypatch, c
     (fixtures / "read-p1-t0.json").write_text(json.dumps(page), encoding="utf-8")
     (fixtures / "link.json").write_text((FIXTURES / "link.json").read_text(encoding="utf-8"), encoding="utf-8")
     monkeypatch.setattr(gemini, "GenAITransport", lambda: gemini.RecordedTransport(fixtures))
-    monkeypatch.setattr(gemini.time, "sleep", lambda s: None)
 
     out = tmp_path / "proj"
     code = cli.main(["read", str(make_pdf(tmp_path / "s.pdf")), "--out", str(out), "--no-ifc"])
@@ -81,3 +79,46 @@ def test_blocked_joint_is_written_but_not_checked(tmp_path: Path, monkeypatch, c
 def test_pages_option():
     assert cli._pages("1,3-5") == [1, 3, 4, 5]
     assert cli._pages(None) is None
+
+
+def test_bundle_carries_its_sources_and_page_images(tmp_path: Path, recorded):
+    """Every agreed value in the checked joint's bundle points at a page image beside bundle.json; defaults say so
+    and point at nothing."""
+    out = tmp_path / "proj"
+    cli.main(["read", str(make_pdf(tmp_path / "s.pdf")), "--out", str(out), "--no-ifc"])
+    folder = out / "joints" / "C4xB12xB13"
+    bundle = json.loads((folder / "bundle.json").read_text(encoding="utf-8"))
+    assert bundle["pages"] == {"1": "pages/page-1.png"}
+    assert (folder / "pages" / "page-1.png").is_file()
+    keys = {"path", "member", "field", "layer", "page", "box_2d", "text", "gemini", "parser", "status", "page_image"}
+    assert all(set(e) == keys for e in bundle["provenance"])
+    top = next(e for e in bundle["provenance"] if e["path"] == "beams[0].top[0].bars")
+    assert (top["member"], top["field"], top["layer"], top["text"], top["parser"], top["status"], top["page_image"]) \
+        == ("B12", "top", 1, "5-20", "5-20", "agreed", "pages/page-1.png")
+    agg = next(e for e in bundle["provenance"] if e["path"] == "settings.aggregate")
+    assert (agg["status"], agg["parser"], agg["page"], agg["page_image"]) == ("default", "20 mm", None, None)
+    assert {e["status"] for e in bundle["provenance"]} == {"agreed", "default"}
+
+
+def test_replay_reads_again_without_the_api(tmp_path: Path, recorded, monkeypatch, capsys):
+    out = tmp_path / "proj"
+    pdf = make_pdf(tmp_path / "s.pdf")
+    cli.main(["read", str(pdf), "--out", str(out), "--no-ifc"])
+    assert "2 model call(s), 0 replayed" in capsys.readouterr().out
+
+    def no_api():
+        raise AssertionError("--replay must not build a client")
+    monkeypatch.setattr(gemini, "GenAITransport", no_api)
+    code = cli.main(["read", str(pdf), "--out", str(out), "--no-ifc", "--replay"])
+    printed = capsys.readouterr().out
+    assert code == 1 and "0 model call(s), 2 replayed" in printed
+    reading = json.loads((out / "reading.json").read_text(encoding="utf-8"))
+    assert all(c["cached"] for c in reading["calls"]) and reading["tokens"] == {"prompt": 0, "output": 0}
+
+
+def test_probe_prints_counts_only(tmp_path: Path, capsys):
+    from reader_pdf import make_shx_pdf
+    assert cli.main(["read", str(make_shx_pdf(tmp_path / "shx.pdf")), "--probe"]) == 0
+    printed = capsys.readouterr().out
+    assert "0 words, annotations with content: 20 by AutoCAD SHX Text; parser will read the annotations" in printed
+    assert "230x450" not in printed and "B12" not in printed

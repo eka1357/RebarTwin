@@ -21,6 +21,7 @@
   {"member": "ALL", "field": "concrete_grade", "layer": 1, "value": "M25", "box_2d": [587, 112, 611, 139], "page": 1},
   {"member": "ALL", "field": "steel_grade", "layer": 1, "value": "Fe500", "box_2d": [588, 168, 610, 201], "page": 1},
   {"member": "ALL", "field": "seismic_zone", "layer": 1, "value": "III", "box_2d": [621, 120, 645, 144], "page": 1},
+  {"member": "ALL", "field": "exposure", "layer": 1, "value": "MILD", "box_2d": [655, 110, 678, 143], "page": 1},
   {"member": "B12", "field": "frames_into", "layer": 1, "value": "C4", "box_2d": [314, 706, 346, 808], "page": 1},
   {"member": "B13", "field": "frames_into", "layer": 1, "value": "C4", "box_2d": [314, 706, 430, 742], "page": 1}
  ]

@@ -68,7 +68,7 @@ def test_centre_inside_rescues_a_small_box_in_a_long_line():
 def test_recorded_page_accepts_only_the_truth(sheet):
     result = run(sheet, RECORDED)
     assert_nothing_wrong(result)
-    assert len(result.accepted) == 21                     # 22 callouts, one misread
+    assert len(result.accepted) == 22                     # 23 callouts, one misread
     [item] = result.to_check
     assert (item.member, item.field, item.reason) == ("B14", "bottom", "disagree")
     assert item.gemini == {"value": "3-20"} and item.parser == {"value": "3-16"}
@@ -213,6 +213,8 @@ def _wrong_values(c: dict) -> list[str]:
         return ["C9", "B13" if c["member"] != "B13" else "B12"]
     if fld == "seismic_zone":
         return ["IV", "II"]
+    if fld == "exposure":
+        return ["moderate", "severe"]
     if fld == "concrete_grade":
         return ["M30"]
     if fld == "steel_grade":

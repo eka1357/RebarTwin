@@ -1,5 +1,5 @@
-"""R3: the Gemini channel with no key: recorded replies, retries, model-not-found, logging without drawing text,
-tiling arithmetic, and the request the real transport builds."""
+"""R3: the Gemini channel with no key: recorded replies, one retry layer, models a key cannot use, logging without
+drawing text, the reply cache, concurrent tiles, tiling arithmetic, and the request the real transport builds."""
 import json
 import logging
 from pathlib import Path
@@ -42,38 +42,45 @@ class ApiError(Exception):
         self.code = code
 
 
-def _call(t, sleeps):
+def _call(t):
     return call(t, key="read-p1-t0", model="m", parts=[("text", "B12 5-20")], schema={},
-                validate=PageReading.model_validate_json, sleep=sleeps.append)
+                validate=PageReading.model_validate_json)
 
 
-def test_retries_rate_limits_and_server_errors_with_backoff():
-    """Attempt 1 gets 429, attempt 2 gets 503, attempt 3 succeeds. Backoff is 2^(n-1) seconds plus up to 0.25 s of
-    jitter: about 1 s, then about 2 s."""
-    sleeps = []
-    t = Flaky([ApiError(429), ApiError(503)])
-    assert _call(t, sleeps).callouts == []
-    assert t.calls == 3
-    assert 1 <= sleeps[0] <= 1.25 and 2 <= sleeps[1] <= 2.25
+def test_transport_errors_are_not_retried_here():
+    """google-genai already retries 408, 429 and 5xx with backoff; a second layer here would multiply the waits. So a
+    503 that reaches `call` is raised as is, after one attempt."""
+    t = Flaky([ApiError(503)])
+    with pytest.raises(ApiError):
+        _call(t)
+    assert t.calls == 1
+    assert gemini.RETRY["attempts"] == 4 and gemini.RETRY["max_delay"] == 60
+    assert {429, 500, 503} <= set(gemini.RETRY["http_status_codes"])
 
 
 def test_invalid_reply_is_retried_then_gives_up():
-    sleeps = []
-    assert _call(Flaky(["not json"]), sleeps).callouts == []
+    t = Flaky(["not json"])
+    assert _call(t).callouts == [] and t.calls == 2
     with pytest.raises(ReadError):
-        _call(Flaky(["{}"] * 4), sleeps)
+        _call(Flaky(["{}"] * 4))
 
 
-def test_client_errors_are_not_retried():
-    t = Flaky([ApiError(400, "bad request")])
-    with pytest.raises(ApiError):
-        _call(t, [])
+@pytest.mark.parametrize("error", [
+    ApiError(404, "models/gemini-4-argon is not found for API version v1beta"),
+    ApiError(403, "permission denied"),
+    ApiError(429, "Quota exceeded for metric generate_content_free_tier_requests, limit: 0, model: gemini-4-argon"),
+])
+def test_a_model_this_key_cannot_use_fails_at_once(error):
+    t = Flaky([error])
+    with pytest.raises(ModelNotFound):
+        _call(t)
     assert t.calls == 1
 
 
-def test_model_not_found_is_its_own_error():
-    with pytest.raises(ModelNotFound):
-        _call(Flaky([ApiError(404, "models/gemini-4-argon is not found for API version v1beta")]), [])
+def test_an_ordinary_rate_limit_is_not_a_missing_model():
+    """A 429 with a real quota that ran out (after the SDK's retries) is an error, not a reason to switch models."""
+    with pytest.raises(ApiError):
+        _call(Flaky([ApiError(429, "Quota exceeded, limit: 15, retry in 20s")]))
 
 
 def test_log_has_numbers_not_drawing_text(caplog, tmp_path: Path):
@@ -81,8 +88,8 @@ def test_log_has_numbers_not_drawing_text(caplog, tmp_path: Path):
     the log."""
     page = ingest(make_pdf(tmp_path / "s.pdf"))[0]
     with caplog.at_level(logging.INFO, logger="rebartwin.reader"):
-        read_page(page, RecordedTransport(FIXTURES), sleep=lambda s: None)
-        _call(Flaky([ApiError(429)]), [])
+        read_page(page, RecordedTransport(FIXTURES))
+        _call(Flaky(["not json"]))
     text = "\n".join(r.getMessage() for r in caplog.records)
     assert "read-p1-t0" in text and "latency_ms=" in text and "prompt_tokens=1200" in text
     for drawn in ("B12", "5-20", "230x450", "CLEAR COVER", "C4"):
@@ -92,12 +99,12 @@ def test_log_has_numbers_not_drawing_text(caplog, tmp_path: Path):
 def test_recorded_page_maps_boxes_and_pages(tmp_path: Path):
     page = ingest(make_pdf(tmp_path / "s.pdf"))[0]
     t = RecordedTransport(FIXTURES)
-    found = read_page(page, t, sleep=lambda s: None)
-    assert len(found) == 22
+    found = read_page(page, t)
+    assert len(found) == 23
     assert {r.callout.page for r in found} == {1}
     assert found[0].box == (167, 129, 191, 173)            # one tile covering the page: boxes unchanged
     [sent] = t.calls
-    assert sent["temperature"] == 0.0 and sent["model"] == "gemini-3.8-flash"
+    assert sent["model"] == "gemini-3.8-flash"
     assert sent["schema"]["properties"]["callouts"]["type"] == "array"
     kinds = [k for k, _ in sent["parts"]]
     assert kinds == ["image/png", "text"]
@@ -107,7 +114,7 @@ def test_model_comes_from_the_environment(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("REBARTWIN_MODEL_READ", "gemini-test")
     page = ingest(make_pdf(tmp_path / "s.pdf"))[0]
     t = RecordedTransport(FIXTURES)
-    read_page(page, t, sleep=lambda s: None)
+    read_page(page, t)
     assert t.calls[0]["model"] == "gemini-test"
 
 
@@ -165,7 +172,8 @@ def test_genai_transport_builds_a_structured_request():
     reply = GenAITransport(client).generate(key="k", model="gemini-3.8-flash", parts=[("image/png", b"\x89PNG"),
                                             ("text", "hello")], schema={"type": "object"}, high_res=True)
     cfg = sent["config"]
-    assert cfg.temperature == 0.0 and cfg.response_mime_type == "application/json"
+    assert cfg.response_mime_type == "application/json"
+    assert cfg.temperature is None and cfg.top_p is None and cfg.top_k is None      # deprecated on Gemini 3.6+
     assert cfg.response_json_schema == {"type": "object"}
     assert sent["model"] == "gemini-3.8-flash" and len(sent["contents"]) == 2
     assert (reply.model, reply.prompt_tokens, reply.output_tokens) == ("gemini-3.8-flash-001", 10, 2)
@@ -200,3 +208,53 @@ def test_recorded_transport_refuses_a_missing_recording(tmp_path: Path):
         RecordedTransport(tmp_path).generate(key="nope", model="m", parts=[], schema={})
     (tmp_path / "x.json").write_text(json.dumps({"text": "{}", "model": "m2"}), encoding="utf-8")
     assert RecordedTransport(tmp_path).generate(key="x", model="m", parts=[], schema={}).model == "m2"
+
+
+def test_replies_are_saved_and_replayed(tmp_path: Path):
+    """The first read calls the model once per tile and saves the reply; the second replays it with no transport at
+    all. A different model is a different key, so nothing is replayed for it."""
+    page = ingest(make_pdf(tmp_path / "s.pdf"))[0]
+    live = RecordedTransport(FIXTURES)
+    first = gemini.CachingTransport(live, tmp_path / "replies")
+    a = read_page(page, first)
+    assert len(live.calls) == 1 and [c.cached for c in first.ledger] == [False]
+    assert len(list((tmp_path / "replies").glob("*.json"))) == 1
+    again = gemini.CachingTransport(None, tmp_path / "replies")
+    b = read_page(page, again)
+    assert [r.callout for r in a] == [r.callout for r in b] and [c.cached for c in again.ledger] == [True]
+    with pytest.raises(ReadError, match="no saved reply"):
+        read_page(page, again, model="another-model")
+
+
+def test_reply_hash_covers_model_and_every_part():
+    base = gemini.reply_hash("m", [("image/png", b"tile"), ("text", "<!-- read_v1 --> words")])
+    assert base == gemini.reply_hash("m", [("image/png", b"tile"), ("text", "<!-- read_v1 --> words")])
+    assert base != gemini.reply_hash("m2", [("image/png", b"tile"), ("text", "<!-- read_v1 --> words")])
+    assert base != gemini.reply_hash("m", [("image/png", b"tile2"), ("text", "<!-- read_v1 --> words")])
+    assert base != gemini.reply_hash("m", [("image/png", b"tile"), ("text", "<!-- read_v2 --> words")])
+
+
+def test_tiles_run_concurrently_and_results_keep_tile_order(tmp_path: Path):
+    """Six tiles at 600 dpi with three workers: at most three calls in flight at once, and the callouts come back in
+    tile order whatever order the calls finish in."""
+    import threading
+    import time as _time
+    page = ingest(make_pdf(tmp_path / "s.pdf"), dpi=600)[0]
+    state = {"now": 0, "most": 0}
+    lock = threading.Lock()
+
+    class Slow:
+        def generate(self, *, key, model, parts, schema, high_res=False):
+            with lock:
+                state["now"] += 1
+                state["most"] = max(state["most"], state["now"])
+            _time.sleep(0.05 * (6 - int(key[-1])))               # later tiles finish first
+            with lock:
+                state["now"] -= 1
+            t = int(key[-1])
+            return Reply(json.dumps({"callouts": [{"member": f"B{t}", "field": "section", "value": "230x450",
+                                                    "box_2d": [10, 10, 20, 20]}]}), model)
+
+    found = read_page(page, Slow(), concurrency=3)
+    assert state["most"] == 3
+    assert [r.callout.member for r in found] == [f"B{t}" for t in range(6)]

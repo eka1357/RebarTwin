@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import time
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Callable
@@ -64,6 +63,7 @@ class Verified:
     joint: Joint
     provenance: dict
     issues: list[Issue]
+    defaults: dict[str, str] = field(default_factory=dict)     # path -> the default used, e.g. "8 mm"
 
 
 def _bars(value: str) -> Counter:
@@ -96,6 +96,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     issues: list[Issue] = []
     provenance: dict = {}
     notes: list[str] = []
+    defaults: dict[str, str] = {}
     for s in linked.sources:
         unknown = [i for i in s.field_ids if i not in fields]
         if unknown:
@@ -109,7 +110,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         return own or [a for a in accepted if a.member in scope and a.field in names]
 
     def use(path: str, expected: list[Accepted], names: tuple[str, ...], check: Callable[[list[Accepted]], str | None],
-            *, required: bool = True, value=None, default=None, label: str = "") -> bool:
+            *, required: bool = True, value=None, default=None, label: str = "", note_default: bool = True) -> bool:
         """One path: the cited fields are the expected ones, none is left out, and the value matches them.
         An optional value with no field must equal the model default, which becomes a note."""
         got = cited.get(path, [])
@@ -127,7 +128,9 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
             elif value != default:
                 issues.append(Issue(path, "missing", f"{label} {value} comes from no accepted field"))
             else:
-                notes.append(f"Default: {label} {default} (not on the drawing).")
+                if note_default:
+                    notes.append(f"Default: {label} {default} (not on the drawing).")
+                    defaults[path] = str(default)
                 return True
             return False
         left_out = [a for a in expected if a not in got]
@@ -215,6 +218,8 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
             notes.append(f"{beam.id} meets {col.id} on the plan; it runs along {beam.direction.upper()} "
                          "(the linking model's reading of the plan).")
         if len(beam.top) > 1 or len(beam.bottom) > 1:
+            if beam.spacer == db["spacer"].default:
+                defaults[f"{p}.spacer"] = f"{beam.spacer:g} mm"
             notes.append(f"Default: {beam.id} spacer between layers {beam.spacer:g} mm (not on the drawing)."
                          if beam.spacer == db["spacer"].default else
                          f"{beam.id} spacer {beam.spacer:g} mm (the linking model's value; no field gives it).")
@@ -225,9 +230,10 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         use(f"settings.{name}", [a for a in accepted if a.field == name], (name,),
             lambda got, value=value, label=label: None if got[0].value == value else
             f"{label} is {value} in the joint, {got[0].value} on the drawing",
-            required=False, value=value, default=ds[name].default, label=label)
+            required=False, value=value, default=ds[name].default, label=label, note_default=False)
     if st.aggregate == ds["aggregate"].default:
         notes.append(f"Default: aggregate {st.aggregate:g} mm (not on the drawing).")
+        defaults["settings.aggregate"] = f"{st.aggregate:g} mm"
     else:
         issues.append(Issue("settings.aggregate", "missing", f"aggregate {st.aggregate:g} mm comes from no "
                             "accepted field"))
@@ -239,7 +245,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         face = j.beams[int(key[6:key.index("]")])].face(key.rsplit(".", 1)[1])
         if len(face) == 1 and isinstance(provenance[key], dict):
             provenance[f"{key}[0].bars"] = provenance.pop(key)
-    return Verified(Joint.model_validate(j.model_dump()), provenance, issues)
+    return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults)
 
 
 def _members(j: Joint) -> set[str]:
@@ -263,13 +269,24 @@ def _inputs(agreement: Agreement) -> str:
             .replace("{pending}", json.dumps(pending, ensure_ascii=False, indent=0)))
 
 
+def project_level(t: ToCheck) -> bool:
+    """An item on a general note or a project-wide setting: it applies to every joint."""
+    return t.joint is None and t.field in USED_FIELDS and (
+        t.member in GLOBAL_MEMBERS or t.field in ("seismic_zone", "exposure"))
+
+
+def blocks(t: ToCheck, joint_id: str) -> bool:
+    """Does this unresolved item stop `joint_id` from being checked?"""
+    return t.resolution is None and (t.joint == joint_id or project_level(t))
+
+
 # Fields a joint uses; To check items on other fields (grades) block nothing.
 USED_FIELDS = {"section", "top", "top_extra", "bottom", "bottom_extra", "main", "links", "cover", "seismic_zone",
                "exposure", "frames_into"}
 
 
 def link(agreement: Agreement, transport: Transport, model: str | None = None, fallback: str | None = None,
-         sleep: Callable[[float], None] = time.sleep) -> Linked:
+) -> Linked:
     """Ask the linking model for joints, then verify each one. Returns joints with provenance and every To check
     item, each tied to the joint it blocks."""
     to_check = list(agreement.to_check)
@@ -287,10 +304,10 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
 
     parts = [("text", _inputs(agreement))]
     try:
-        raw = call(transport, key="link", model=model, parts=parts, schema=schema, validate=parse, sleep=sleep)
+        raw = call(transport, key="link", model=model, parts=parts, schema=schema, validate=parse)
         used = model
     except ModelNotFound:
-        raw = call(transport, key="link", model=fallback, parts=parts, schema=schema, validate=parse, sleep=sleep)
+        raw = call(transport, key="link", model=fallback, parts=parts, schema=schema, validate=parse)
         used = fallback
 
     fields = {a.id: a for a in agreement.accepted}
@@ -327,21 +344,26 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
                 parser={"value": ", ".join(a.value for a in issue.fields)} if issue.fields else None,
                 reason=issue.reason, detail=issue.detail, joint=v.joint.id))
 
-    # Items from agreement block every joint that uses their member, or every joint for a general note.
-    tied: list[ToCheck] = []
+    # Items from agreement block every joint that uses their member. Items on general notes and project-wide
+    # settings stay as one project-level item (joint null), which blocks every joint (see `blocks`).
     for t in to_check:
-        if t.joint is not None or t.field not in USED_FIELDS:
-            tied.append(t)
-            continue
-        general = t.member in GLOBAL_MEMBERS or t.field in ("seismic_zone", "exposure")
-        hits = [v.joint.id for v in joints if general or t.member in _members(v.joint)]
-        if not hits:
-            tied.append(t)
-            continue
-        t.joint = hits[0]
-        tied.append(t)
-        for extra in hits[1:]:
-            copy = new_item(**{k: v for k, v in t.to_json().items() if k not in ("id", "joint")})
-            copy.box_2d, copy.joint = t.box_2d, extra
-            tied.append(copy)
+        if t.joint is None and t.field in USED_FIELDS and not project_level(t):
+            hits = [v.joint.id for v in joints if t.member in _members(v.joint)]
+            if len(hits) == 1:
+                t.joint = hits[0]
+            elif hits:                                   # a beam in two joints: one item per joint
+                t.joint = hits[0]
+                for extra in hits[1:]:
+                    copy = new_item(**{k: v for k, v in t.to_json().items() if k not in ("id", "joint")})
+                    copy.box_2d, copy.joint = t.box_2d, extra
+                    to_check.append(copy)
+    # Zone and exposure the drawing does not state: one project-level item each, never a silent default. Zone II
+    # would turn IS 13920 off.
+    if joints:
+        for name, what in (("seismic_zone", "the seismic zone; IS 13920 applies only in zones III, IV and V"),
+                           ("exposure", "the exposure condition, which sets the cover IS 456 requires")):
+            if not any(a.field == name for a in agreement.accepted) and not any(t.field == name for t in to_check):
+                to_check.append(new_item(member="ALL", field=name, page=0, box_2d=None, gemini=None, parser=None,
+                                         reason="missing", detail=f"the drawing does not state {what}; give it"))
+    tied = to_check
     return Linked(joints, tied, used, notes)

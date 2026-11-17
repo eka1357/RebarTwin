@@ -1,20 +1,32 @@
 """R3: the Gemini channel. Reads a page image plus its text layer and returns callouts with `box_2d`.
 
-The model call sits behind a `Transport` so tests replay recorded replies with no key and no network. Every call is
-temperature 0 with a JSON response schema, retried with backoff on rate limits and server errors, and logged as
-model, tokens and latency only: drawing text never reaches the log.
+The model call sits behind a `Transport` so tests replay recorded replies with no key and no network. Every call uses
+a JSON response schema and is logged as model, tokens and latency only: drawing text never reaches the log.
+
+No sampling parameters are sent. Gemini 3.6 and later ignore temperature, top_p and top_k, flag them as deprecated and
+will reject them; the response schema is what keeps the output stable.
+
+One retry layer each: google-genai retries 408, 429 and 5xx with backoff (`RETRY`); `call` retries only replies that
+fail validation. A key that cannot use a model (403, 404, or a 429 whose quota limit is 0) raises `ModelNotFound` at
+once, so linking falls back to the next model.
+
+`CachingTransport` saves every reply under `out/<project>/replies/`, keyed by a hash of the model and everything
+sent (tile image, prompt version and prompt text), and replays it on a re-run: the demo never waits on the API.
 
 Large sheets are read in overlapping tiles. An A1 sheet at 200 dpi is about 6600 x 4700 px, and small callout text
 does not survive the model's downsampling of a whole sheet; each tile's boxes are mapped back to page coordinates.
+Tiles run concurrently (`concurrency`, default 3).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import math
 import os
-import random
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Literal, Protocol
@@ -29,6 +41,7 @@ log = logging.getLogger("rebartwin.reader")
 PROMPTS = Path(__file__).parent / "prompts"
 READ_PROMPT = "read_v1"
 DEFAULT_READ_MODEL = "gemini-3.8-flash"
+RETRY = {"attempts": 4, "initial_delay": 1.0, "max_delay": 60.0, "http_status_codes": [408, 429, 500, 502, 503, 504]}
 
 FieldName = Literal["section", "top", "top_extra", "bottom", "bottom_extra", "main", "links", "cover",
                     "concrete_grade", "steel_grade", "seismic_zone", "exposure", "frames_into"]
@@ -65,11 +78,11 @@ class Reply:
 
 class Transport(Protocol):
     def generate(self, *, key: str, model: str, parts: list[tuple[str, Any]], schema: dict,
-                 temperature: float = 0.0, high_res: bool = False) -> Reply: ...
+                 high_res: bool = False) -> Reply: ...
 
 
 class ModelNotFound(RuntimeError):
-    pass
+    """This key cannot use this model: missing, not allowed, or no quota (no free tier)."""
 
 
 class ReadError(RuntimeError):
@@ -93,32 +106,35 @@ def load_env(path: Path = Path(".env")) -> None:
 def make_client():
     """AI Studio with GEMINI_API_KEY locally; Vertex AI when GOOGLE_GENAI_USE_VERTEXAI=true (Cloud Run)."""
     from google import genai
+    from google.genai import types
 
+    options = types.HttpOptions(retry_options=types.HttpRetryOptions(**RETRY))
     if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true", "yes"):
         project = os.environ.get("GOOGLE_CLOUD_PROJECT")
         if not project:
             raise ReadError("GOOGLE_GENAI_USE_VERTEXAI is true but GOOGLE_CLOUD_PROJECT is not set")
-        return genai.Client(vertexai=True, project=project, location=os.environ.get("GOOGLE_CLOUD_LOCATION", "global"))
+        return genai.Client(vertexai=True, project=project, http_options=options,
+                            location=os.environ.get("GOOGLE_CLOUD_LOCATION", "global"))
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise ReadError("set GEMINI_API_KEY in .env (see .env.example), or GOOGLE_GENAI_USE_VERTEXAI=true")
-    return genai.Client(api_key=key)
+    return genai.Client(api_key=key, http_options=options)
 
 
 class GenAITransport:
-    """The real thing: google-genai, structured JSON output."""
+    """The real thing: google-genai, structured JSON output, the SDK's own retries."""
 
     def __init__(self, client=None):
         self.client = client or make_client()
 
     def generate(self, *, key: str, model: str, parts: list[tuple[str, Any]], schema: dict,
-                 temperature: float = 0.0, high_res: bool = False) -> Reply:
+                 high_res: bool = False) -> Reply:
         from google.genai import types
 
         contents = [types.Part.from_text(text=p) if kind == "text" else types.Part.from_bytes(data=p, mime_type=kind)
                     for kind, p in parts]
         config = types.GenerateContentConfig(
-            temperature=temperature, response_mime_type="application/json", response_json_schema=schema,
+            response_mime_type="application/json", response_json_schema=schema,
             media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH if high_res else None)
         r = self.client.models.generate_content(model=model, contents=contents, config=config)
         u = r.usage_metadata
@@ -135,8 +151,8 @@ class RecordedTransport:
         self.calls: list[dict] = []
 
     def generate(self, *, key: str, model: str, parts: list[tuple[str, Any]], schema: dict,
-                 temperature: float = 0.0, high_res: bool = False) -> Reply:
-        self.calls.append({"key": key, "model": model, "parts": parts, "schema": schema, "temperature": temperature})
+                 high_res: bool = False) -> Reply:
+        self.calls.append({"key": key, "model": model, "parts": parts, "schema": schema})
         path = self.directory / f"{key}.json"
         if not path.is_file():
             raise ReadError(f"no recorded reply {path.name}")
@@ -146,55 +162,94 @@ class RecordedTransport:
         return Reply(json.dumps(data), model)
 
 
+@dataclass
+class CallRecord:
+    key: str
+    model: str
+    cached: bool
+    prompt_tokens: int | None
+    output_tokens: int | None
+    latency_ms: int
+
+
+def reply_hash(model: str, parts: list[tuple[str, Any]]) -> str:
+    """The cache key: the model and every part sent. The prompt text carries its version and the page's words, the
+    image part is the tile, so a changed prompt, tile or model is a new key."""
+    h = hashlib.sha256(model.encode())
+    for kind, p in parts:
+        h.update(b"\0" + kind.encode() + b"\0")
+        h.update(p if isinstance(p, bytes) else str(p).encode("utf-8"))
+    return h.hexdigest()[:32]
+
+
+class CachingTransport:
+    """Saves each reply as `<dir>/<hash>.json` and replays it next time. Keeps a ledger of calls for reading.json.
+    With `inner` None it only replays. A reply that fails validation is still saved; delete the file to ask again."""
+
+    def __init__(self, inner: Transport | None, directory: Path):
+        self.inner, self.directory = inner, directory
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self.ledger: list[CallRecord] = []
+        self._lock = threading.Lock()
+
+    def generate(self, *, key: str, model: str, parts: list[tuple[str, Any]], schema: dict,
+                 high_res: bool = False) -> Reply:
+        path = self.directory / f"{reply_hash(model, parts)}.json"
+        t0 = time.perf_counter()
+        if path.is_file():
+            d = json.loads(path.read_text(encoding="utf-8"))
+            reply, cached = Reply(d["text"], d["model"], d.get("prompt_tokens"), d.get("output_tokens")), True
+        else:
+            if self.inner is None:
+                raise ReadError(f"{key}: no saved reply and no model access (replay only)")
+            reply, cached = self.inner.generate(key=key, model=model, parts=parts, schema=schema,
+                                                high_res=high_res), False
+            path.write_text(json.dumps({"key": key, "model": reply.model, "text": reply.text,
+                                        "prompt_tokens": reply.prompt_tokens,
+                                        "output_tokens": reply.output_tokens}, ensure_ascii=False), encoding="utf-8")
+        with self._lock:
+            self.ledger.append(CallRecord(key, reply.model, cached, reply.prompt_tokens, reply.output_tokens,
+                                          round(1000 * (time.perf_counter() - t0))))
+        return reply
+
+
 def _status(e: Exception) -> int | None:
     code = getattr(e, "code", None) or getattr(e, "status_code", None)
     return code if isinstance(code, int) else None
 
 
-def _retryable(e: Exception) -> bool:
-    if _status(e) in (408, 429, 500, 502, 503, 504):
-        return True
-    return isinstance(e, (TimeoutError, ConnectionError)) or type(e).__name__ in (
-        "ReadTimeout", "ConnectTimeout", "WriteTimeout", "PoolTimeout", "ConnectError", "RemoteProtocolError")
-
-
-def _not_found(e: Exception) -> bool:
-    return _status(e) in (400, 404) and "not found" in str(e).lower() and "model" in str(e).lower()
+def unavailable(e: Exception) -> bool:
+    """This key cannot use this model: 403, 404, or a 429 whose quota limit is 0 (no free tier). Retrying is useless."""
+    code = _status(e)
+    return code in (403, 404) or (code == 429 and "limit: 0" in str(e))
 
 
 def call(transport: Transport, *, key: str, model: str, parts: list[tuple[str, Any]], schema: dict,
-         validate: Callable[[str], Any], high_res: bool = False, attempts: int = 4,
-         sleep: Callable[[float], None] = time.sleep) -> Any:
-    """One model call with retries. `validate` turns the reply text into the result; a reply that fails it is
-    retried like a server error. Logs ids, model, tokens and latency; never the parts or the reply."""
+         validate: Callable[[str], Any], high_res: bool = False, attempts: int = 3) -> Any:
+    """One model call. Retries only replies that fail `validate` (the SDK already retried the transport). Logs ids,
+    model, tokens and latency; never the parts or the reply."""
     last: Exception | None = None
     for attempt in range(1, attempts + 1):
         t0 = time.perf_counter()
         try:
-            reply = transport.generate(key=key, model=model, parts=parts, schema=schema, temperature=0.0,
-                                       high_res=high_res)
-            ms = round(1000 * (time.perf_counter() - t0))
-            try:
-                result = validate(reply.text)
-            except (ValueError, ValidationError) as e:
-                log.warning("gemini %s model=%s attempt=%d invalid reply (%s) latency_ms=%d", key, model, attempt,
-                            type(e).__name__, ms)
-                last = e
-            else:
-                log.info("gemini %s model=%s attempt=%d prompt_tokens=%s output_tokens=%s latency_ms=%d", key,
-                         reply.model, attempt, reply.prompt_tokens, reply.output_tokens, ms)
-                return result
-        except Exception as e:  # noqa: BLE001 - classified below, re-raised when not retryable
-            if _not_found(e):
-                log.warning("gemini %s model=%s not found", key, model)
+            reply = transport.generate(key=key, model=model, parts=parts, schema=schema, high_res=high_res)
+        except Exception as e:  # noqa: BLE001 - classified, then re-raised
+            if unavailable(e):
+                log.warning("gemini %s model=%s unavailable to this key (code=%s)", key, model, _status(e))
                 raise ModelNotFound(model) from e
-            if not _retryable(e):
-                log.error("gemini %s model=%s failed: %s code=%s", key, model, type(e).__name__, _status(e))
-                raise
-            log.warning("gemini %s model=%s attempt=%d %s code=%s", key, model, attempt, type(e).__name__, _status(e))
+            log.error("gemini %s model=%s failed: %s code=%s", key, model, type(e).__name__, _status(e))
+            raise
+        ms = round(1000 * (time.perf_counter() - t0))
+        try:
+            result = validate(reply.text)
+        except (ValueError, ValidationError) as e:
+            log.warning("gemini %s model=%s attempt=%d invalid reply (%s) latency_ms=%d", key, model, attempt,
+                        type(e).__name__, ms)
             last = e
-        if attempt < attempts:
-            sleep(2 ** (attempt - 1) + random.uniform(0, 0.25))
+            continue
+        log.info("gemini %s model=%s attempt=%d prompt_tokens=%s output_tokens=%s latency_ms=%d", key, reply.model,
+                 attempt, reply.prompt_tokens, reply.output_tokens, ms)
+        return result
     raise ReadError(f"{key}: no valid reply from {model} after {attempts} attempts ({type(last).__name__})")
 
 
@@ -270,7 +325,7 @@ def prompt(page: Page, tile: Tile, n_tiles: int) -> str:
         lines.append(f"{' '.join(w.text for w in line)}\t[{b[0]}, {b[1]}, {b[2]}, {b[3]}]")
     template = (PROMPTS / f"{READ_PROMPT}.md").read_text(encoding="utf-8")
     where = f"page {page.number}" + (f", tile {tile.index + 1} of {n_tiles}" if n_tiles > 1 else "")
-    return (template.replace("{where}", where).replace("{page}", str(page.number))
+    return (f"<!-- {READ_PROMPT} -->\n" + template.replace("{where}", where).replace("{page}", str(page.number))
             .replace("{words}", "\n".join(lines) if lines else "(this image has no text layer)"))
 
 
@@ -288,23 +343,41 @@ def _overlaps(a: Box, b: Box) -> bool:
     return same_place(a, b)
 
 
-def read_page(page: Page, transport: Transport, model: str | None = None, tile_px: int = 3000,
-              sleep: Callable[[float], None] = time.sleep) -> list[Read]:
-    """Every callout on a page, deduplicated across tile overlaps."""
+def read_pages(pages: list[Page], transport: Transport, model: str | None = None, tile_px: int = 3000,
+               concurrency: int = 3) -> list[Read]:
+    """Every callout on every page, tiles read `concurrency` at a time, deduplicated across tile overlaps."""
     model = model or os.environ.get("REBARTWIN_MODEL_READ") or DEFAULT_READ_MODEL
     schema = PageReading.model_json_schema()
+    jobs = []
+    for page in pages:
+        parts_of = tiles(page, tile_px)
+        jobs.extend((page, t, len(parts_of)) for t in parts_of)
+
+    def run(job):
+        page, t, n = job
+        return call(transport, key=f"read-p{page.number}-t{t.index}", model=model, schema=schema, high_res=True,
+                    parts=[("image/png", t.png), ("text", prompt(page, t, n))],
+                    validate=lambda text: PageReading.model_validate_json(text))
+
+    with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
+        readings = list(pool.map(run, jobs))           # in job order, so results are deterministic
+
     found: list[Read] = []
-    parts_of = tiles(page, tile_px)
-    for t in parts_of:
+    for (page, t, _), reading in zip(jobs, readings):
         key = f"read-p{page.number}-t{t.index}"
-        reading = call(transport, key=key, model=model, schema=schema, high_res=True,
-                       parts=[("image/png", t.png), ("text", prompt(page, t, len(parts_of)))],
-                       validate=lambda text: PageReading.model_validate_json(text), sleep=sleep)
+        mine = [r for r in found if r.callout.page == page.number]
         for c in reading.callouts:
             c.page = page.number
             box = to_page(c.box_2d, t.box)
             if any(r.callout.member == c.member and r.callout.field == c.field and r.callout.layer == c.layer
-                   and r.callout.value == c.value and _overlaps(r.box, box) for r in found):
+                   and r.callout.value == c.value and _overlaps(r.box, box) for r in mine):
                 continue
-            found.append(Read(c, box, key, model))
+            r = Read(c, box, key, model)
+            found.append(r)
+            mine.append(r)
     return found
+
+
+def read_page(page: Page, transport: Transport, model: str | None = None, tile_px: int = 3000,
+              concurrency: int = 3) -> list[Read]:
+    return read_pages([page], transport, model, tile_px, concurrency)

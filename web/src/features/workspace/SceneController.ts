@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { ifcToThree, MM_TO_M } from "../../lib/coords";
 import type { CameraPreset, ConcreteMode, LabelMode, ThemeMode } from "../../stores/workspace";
 import type { Finding, Scene, SceneBar, SceneConcrete, SceneLoop } from "../../types/bundle";
+import { easeInOutCubic, partitionSceneBars } from "./sceneMorph";
 
 CameraControls.install({ THREE });
 
@@ -17,6 +18,38 @@ export interface ProjectedBounds {
   maxY: number;
   width: number;
   height: number;
+}
+
+interface MorphBarEntry {
+  kind: "tween" | "shrink" | "grow";
+  entry: BarEntry;
+  fromPos: THREE.Vector3;
+  toPos: THREE.Vector3;
+  fromQuat: THREE.Quaternion;
+  toQuat: THREE.Quaternion;
+  fromRadius: number;
+  toRadius: number;
+  fromLength: number;
+  toLength: number;
+  fromFail: number;
+  toFail: number;
+}
+
+interface MorphConcreteEntry {
+  mesh: THREE.Mesh;
+  outline: THREE.LineSegments;
+  fromPos: THREE.Vector3;
+  toPos: THREE.Vector3;
+  toScale: THREE.Vector3;
+}
+
+interface MorphState {
+  startTime: number;
+  durationMs: number;
+  reducedFade: boolean;
+  nextScene: Scene;
+  bars: MorphBarEntry[];
+  concretes: MorphConcreteEntry[];
 }
 
 interface ThemePalette {
@@ -144,9 +177,14 @@ export class SceneController {
   private barMeshes: THREE.Mesh[] = [];
   private loopMeshes: THREE.Mesh[] = [];
   private loopMaterials: THREE.MeshStandardMaterial[] = [];
+  private concreteEntries = new Map<
+    string,
+    { mesh: THREE.Mesh; outline: THREE.LineSegments; size: THREE.Vector3; center: THREE.Vector3 }
+  >();
   private concreteMeshes: THREE.Mesh[] = [];
   private concreteOutlines: THREE.LineSegments[] = [];
   private sceneBounds = new THREE.Box3();
+  private morphState: MorphState | null = null;
 
   private palette: ThemePalette;
   private reducedMotion = false;
@@ -296,6 +334,10 @@ export class SceneController {
     const now = performance.now();
     const delta = Math.min(0.1, (now - this.lastTime) / 1000);
     this.lastTime = now;
+    if (this.morphState) {
+      this.advanceMorph(now);
+      this.needsRender = true;
+    }
     const cameraMoved = this.controls.update(delta);
     if (cameraMoved || this.needsRender) {
       this.needsRender = false;
@@ -324,6 +366,7 @@ export class SceneController {
   }
 
   setScene(sceneData: Scene) {
+    this.morphState = null;
     this.clearSceneObjects();
 
     for (const c of sceneData.concrete) {
@@ -344,8 +387,224 @@ export class SceneController {
     this.needsRender = true;
   }
 
+  /**
+   * Morph cleanly from the current 3D scene to `nextScene` matching bars by `bar.id`:
+   * moved bars tween (durationMs), removed bars shrink along length (300 ms),
+   * added bars grow from centre after 200 ms; under reducedMotion, runs a 120 ms crossfade.
+   */
+  morphToScene(nextScene: Scene, options?: { durationMs?: number; instant?: boolean }) {
+    if (options?.instant) {
+      this.setScene(nextScene);
+      this.renderImmediate();
+      return;
+    }
+    if (this.morphState) {
+      const prevTarget = this.morphState.nextScene;
+      this.morphState = null;
+      this.setScene(prevTarget);
+    }
+    if (this.reducedMotion) {
+      this.setScene(nextScene);
+      for (const entry of this.barEntries.values()) {
+        entry.material.transparent = true;
+        entry.material.opacity = 0.15;
+      }
+      this.morphState = {
+        startTime: performance.now(),
+        durationMs: 120,
+        reducedFade: true,
+        nextScene,
+        bars: [],
+        concretes: [],
+      };
+      this.renderImmediate();
+      return;
+    }
+
+    const durationMs = options?.durationMs ?? 700;
+    const prevBars = [...this.barEntries.values()].map((e) => e.bar);
+    const { matched, added, removed } = partitionSceneBars(prevBars, nextScene.bars);
+
+    const morphBars: MorphBarEntry[] = [];
+
+    const barTransform = (bar: SceneBar) => {
+      const p0 = new THREE.Vector3(...ifcToThree(bar.p0));
+      const p1 = new THREE.Vector3(...ifcToThree(bar.p1));
+      const center = p0.clone().add(p1).multiplyScalar(0.5);
+      const dir = p1.clone().sub(p0);
+      const length = Math.max(dir.length(), 0.001);
+      const quat = new THREE.Quaternion().setFromUnitVectors(UP_Y, dir.clone().normalize());
+      const radius = (bar.dia * MM_TO_M) / 2;
+      return { center, length, quat, radius };
+    };
+
+    for (const { prev, next } of matched) {
+      const entry = this.barEntries.get(prev.id);
+      if (!entry) continue;
+      const tNext = barTransform(next);
+      morphBars.push({
+        kind: "tween",
+        entry,
+        fromPos: entry.mesh.position.clone(),
+        toPos: tNext.center,
+        fromQuat: entry.mesh.quaternion.clone(),
+        toQuat: tNext.quat,
+        fromRadius: entry.radius,
+        toRadius: tNext.radius,
+        fromLength: entry.length,
+        toLength: tNext.length,
+        fromFail: prev.status === "fail" ? 1 : 0,
+        toFail: next.status === "fail" ? 1 : 0,
+      });
+    }
+
+    for (const bar of removed) {
+      const entry = this.barEntries.get(bar.id);
+      if (!entry) continue;
+      morphBars.push({
+        kind: "shrink",
+        entry,
+        fromPos: entry.mesh.position.clone(),
+        toPos: entry.mesh.position.clone(),
+        fromQuat: entry.mesh.quaternion.clone(),
+        toQuat: entry.mesh.quaternion.clone(),
+        fromRadius: entry.radius,
+        toRadius: entry.radius,
+        fromLength: entry.length,
+        toLength: 0.0001,
+        fromFail: bar.status === "fail" ? 1 : 0,
+        toFail: bar.status === "fail" ? 1 : 0,
+      });
+    }
+
+    for (const bar of added) {
+      const entry = this.addBar(bar);
+      entry.mesh.scale.set(entry.radius, 0.0001, entry.radius);
+      entry.mesh.visible = false;
+      morphBars.push({
+        kind: "grow",
+        entry,
+        fromPos: entry.mesh.position.clone(),
+        toPos: entry.mesh.position.clone(),
+        fromQuat: entry.mesh.quaternion.clone(),
+        toQuat: entry.mesh.quaternion.clone(),
+        fromRadius: entry.radius,
+        toRadius: entry.radius,
+        fromLength: 0.0001,
+        toLength: entry.length,
+        fromFail: bar.status === "fail" ? 1 : 0,
+        toFail: bar.status === "fail" ? 1 : 0,
+      });
+    }
+
+    const morphConcretes: MorphConcreteEntry[] = [];
+    for (const c of nextScene.concrete) {
+      const prev = this.concreteEntries.get(c.id);
+      if (!prev) continue;
+      const a = ifcToThree(c.min);
+      const b = ifcToThree(c.max);
+      const min = new THREE.Vector3(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2]));
+      const max = new THREE.Vector3(Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2]));
+      const targetSize = max.clone().sub(min);
+      const targetCenter = min.clone().add(max).multiplyScalar(0.5);
+      morphConcretes.push({
+        mesh: prev.mesh,
+        outline: prev.outline,
+        fromPos: prev.center.clone(),
+        toPos: targetCenter,
+        toScale: new THREE.Vector3(
+          targetSize.x / Math.max(prev.size.x, 0.001),
+          targetSize.y / Math.max(prev.size.y, 0.001),
+          targetSize.z / Math.max(prev.size.z, 0.001),
+        ),
+      });
+    }
+
+    this.morphState = {
+      startTime: performance.now(),
+      durationMs,
+      reducedFade: false,
+      nextScene,
+      bars: morphBars,
+      concretes: morphConcretes,
+    };
+    this.needsRender = true;
+  }
+
+  private advanceMorph(now: number) {
+    const morph = this.morphState;
+    if (!morph) return;
+    const raw = (now - morph.startTime) / Math.max(morph.durationMs, 1);
+    const u = Math.min(1, Math.max(0, raw));
+
+    if (morph.reducedFade) {
+      const alpha = 0.15 + 0.85 * easeInOutCubic(u);
+      for (const entry of this.barEntries.values()) {
+        entry.material.transparent = u < 1;
+        entry.material.opacity = alpha;
+      }
+      if (u >= 1) {
+        this.morphState = null;
+        this.refreshMaterials();
+      }
+      return;
+    }
+
+    const e = easeInOutCubic(u);
+    for (const item of morph.bars) {
+      const { entry } = item;
+      if (item.kind === "tween") {
+        entry.mesh.position.lerpVectors(item.fromPos, item.toPos, e);
+        entry.mesh.quaternion.slerpQuaternions(item.fromQuat, item.toQuat, e);
+        const r = THREE.MathUtils.lerp(item.fromRadius, item.toRadius, e);
+        const len = THREE.MathUtils.lerp(item.fromLength, item.toLength, e);
+        entry.mesh.scale.set(r, len, r);
+        entry.rimMesh.position.copy(entry.mesh.position);
+        entry.rimMesh.quaternion.copy(entry.mesh.quaternion);
+        entry.rimMesh.scale.set(r * 1.24, len * 1.004, r * 1.24);
+        const failMix = THREE.MathUtils.lerp(item.fromFail, item.toFail, e);
+        entry.material.color.copy(this.palette.steel).lerp(this.palette.fail, failMix);
+        entry.material.emissive.copy(this.palette.fail).multiplyScalar(failMix);
+        entry.material.emissiveIntensity = failMix * 0.42;
+      } else if (item.kind === "shrink") {
+        const ks = Math.min(1, u / 0.43);
+        const s = 1 - easeInOutCubic(ks);
+        entry.mesh.visible = ks < 1;
+        entry.mesh.scale.set(item.fromRadius, Math.max(0.0001, item.fromLength * s), item.fromRadius);
+      } else {
+        // Grow new bars from center after 200 ms delay
+        const kg = u <= 0.285 ? 0 : Math.min(1, (u - 0.285) / 0.57);
+        entry.mesh.visible = kg > 0;
+        const g = easeInOutCubic(kg);
+        entry.mesh.scale.set(
+          item.toRadius,
+          Math.max(0.0001, item.toLength * g),
+          item.toRadius,
+        );
+      }
+    }
+
+    for (const c of morph.concretes) {
+      c.mesh.position.lerpVectors(c.fromPos, c.toPos, e);
+      c.outline.position.copy(c.mesh.position);
+      const sx = THREE.MathUtils.lerp(1, c.toScale.x, e);
+      const sy = THREE.MathUtils.lerp(1, c.toScale.y, e);
+      const sz = THREE.MathUtils.lerp(1, c.toScale.z, e);
+      c.mesh.scale.set(sx, sy, sz);
+      c.outline.scale.set(sx, sy, sz);
+    }
+
+    if (u >= 1) {
+      const target = morph.nextScene;
+      this.morphState = null;
+      this.setScene(target);
+      this.renderImmediate();
+    }
+  }
+
   private clearSceneObjects() {
     this.barEntries.clear();
+    this.concreteEntries.clear();
     this.barMeshes = [];
     this.loopMeshes = [];
     this.loopMaterials = [];
@@ -415,9 +674,10 @@ export class SceneController {
     outline.renderOrder = 3;
     this.root.add(outline);
     this.concreteOutlines.push(outline);
+    this.concreteEntries.set(c.id, { mesh, outline, size, center });
   }
 
-  private addBar(bar: SceneBar) {
+  private addBar(bar: SceneBar): BarEntry {
     const p0 = new THREE.Vector3(...ifcToThree(bar.p0));
     const p1 = new THREE.Vector3(...ifcToThree(bar.p1));
     const center = p0.clone().add(p1).multiplyScalar(0.5);
@@ -453,8 +713,7 @@ export class SceneController {
     rimMesh.visible = false;
     this.root.add(rimMesh);
 
-    this.barMeshes.push(mesh);
-    this.barEntries.set(bar.id, {
+    const entry: BarEntry = {
       bar,
       mesh,
       rimMesh,
@@ -462,7 +721,10 @@ export class SceneController {
       rimMaterial,
       radius,
       length,
-    });
+    };
+    this.barMeshes.push(mesh);
+    this.barEntries.set(bar.id, entry);
+    return entry;
   }
 
   private addLoop(loop: SceneLoop) {

@@ -55,6 +55,7 @@ interface WorkspaceState {
   frameVersion: number;
   mode: ViewMode;
   optionIndex: number;
+  chosenOptionIndex: number | null;
   concreteMode: ConcreteMode;
   labelMode: LabelMode;
   cameraPreset: CameraPreset;
@@ -75,6 +76,7 @@ interface WorkspaceState {
   triggerFrame: () => void;
   setMode: (mode: ViewMode) => void;
   setOptionIndex: (index: number) => void;
+  setChosenOptionIndex: (index: number | null) => void;
   setConcreteMode: (mode: ConcreteMode) => void;
   setLabelMode: (mode: LabelMode) => void;
   setCameraPreset: (preset: CameraPreset) => void;
@@ -109,6 +111,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   frameVersion: 0,
   mode: "before",
   optionIndex: 0,
+  chosenOptionIndex: null,
   concreteMode: "translucent",
   labelMode: "failures",
   cameraPreset: "iso",
@@ -137,6 +140,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   triggerFrame: () => set((s) => ({ frameVersion: s.frameVersion + 1 })),
   setMode: (mode) => set({ mode }),
   setOptionIndex: (optionIndex) => set({ optionIndex }),
+  setChosenOptionIndex: (chosenOptionIndex) => set({ chosenOptionIndex }),
   setConcreteMode: (concreteMode) => set({ concreteMode }),
   setLabelMode: (labelMode) => set({ labelMode }),
   setCameraPreset: (cameraPreset) => set({ cameraPreset }),

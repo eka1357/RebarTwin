@@ -152,6 +152,29 @@ test.describe("Demo 3D Scene W3", () => {
     await page.getByRole("button", { name: /Open full sheet/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
+
+    // W6: Fix tab renders FixOptionCards with SectionGlyphs, Preview After morphs matched bar ids + toast, Use in report
+    await page.getByRole("tab", { name: "Fix" }).click();
+    await expect(page.getByText(/2-25 over 2-20/i)).toBeVisible();
+    await expect(
+      page.getByRole("img", {
+        name: /Beam B12 top face cross-section: layer 1 has 2 bars of 25 millimetres, layer 2 has 2 bars of 20 millimetres/i,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText(/Recheck/i).first()).toBeVisible();
+
+    await page.getByRole("button", { name: /Preview After/i }).first().click();
+    await expect(wrapForFrame).toHaveAttribute("data-scene-mode", "after");
+    const afterIds = (await wrapForFrame.getAttribute("data-scene-bar-ids")) ?? "";
+    expect(afterIds).toContain("B12/T2-1");
+    expect(afterIds).not.toContain("B12/T1-5");
+    await expect(page.getByText(/\+39\s+mm², 4 bars instead of 5/i)).toBeVisible();
+
+    await page.getByRole("button", { name: /Use in report/i }).first().click();
+    await expect(page.getByRole("button", { name: /Used in report/i })).toBeVisible();
+    await page.getByRole("button", { name: /Show Before/i }).first().click();
+    await expect(wrapForFrame).toHaveAttribute("data-scene-mode", "before");
+
     await page.getByRole("tab", { name: "Findings" }).click();
 
     // Switching to Labels: All caps at 8 pills and shows +9 more without overlaps

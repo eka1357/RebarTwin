@@ -56,6 +56,10 @@ Built `web/` W4 on `feature/w4-callouts`: 3D CAD gap dimension lines with extens
 
 Built `web/` W5 on `feature/w5-inspector`: `ToleranceGauge` (SVG hairline scale, limit tick, diamond marker settling in 160 ms, hatched wrong side and negative overlap zone, plain-sentence `aria-label` via `describeToleranceGauge`), focusable `ClauseChip` (`RuleMeta` basis popover with verification badge and Escape close), `BarChip` (two-way hover/focus highlight and full accessible name), `FindingCard` (two-way selection framing 3D bars and scrolling within inspector `ScrollArea`), warm-paper `SourceCrop` (`data-theme="light" surface-paper`, zoom/pan controls, full-sheet dialog, placeholder drawing crop clearly disclosed until R5), and 4-tab `JointInspector`. Verified with Vitest (13 passed) and Playwright + axe (9 passed across dark/light themes and viewports).
 
+## 17 November 2026: Fix options, SectionGlyphs, and Before/After 3D morph (W6)
+
+Built `web/` W6 on `feature/w6-fixes`: `SectionGlyph` SVG beam cross-sections drawn to scale from scene bar coordinates (`aria-label` listing layers in words), `FixOptionCard` (rank, plain title, Recheck/Redesign pills, Before/After glyphs, steel area and effective depth metrics, flag list, Preview After, Use in report), `FixPanel` with Before/After switcher and Sonner summary toast (`+39 mm², 4 bars instead of 5`), and `SceneController.morphToScene` matching bars by `bar.id` (700 ms tween/shrink/grow; 120 ms crossfade under reduced motion; Zone III column concrete resize tweening). Verified with Vitest (14 passed) and Playwright + axe (9 passed).
+
 ## Next: built in Google Antigravity
 
 The Gemini reader, the Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

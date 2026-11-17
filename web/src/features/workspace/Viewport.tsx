@@ -1,5 +1,6 @@
 import { useReducedMotion } from "motion/react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DURATION_MS } from "../../lib/motion";
 import { useWorkspaceStore } from "../../stores/workspace";
 import type { Bundle, Finding } from "../../types/bundle";
 import { SceneController } from "./SceneController";
@@ -88,6 +89,10 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   const highlightedRef = useRef(highlightedBarIds);
   const activeFindingsRef = useRef(activeFindings);
   const lastFramedVersionRef = useRef(frameVersion);
+  const prevBundleKeyRef = useRef<string | null>(null);
+  const hasLoadedSceneRef = useRef(false);
+
+  const setMode = useWorkspaceStore((s) => s.setMode);
 
   useEffect(() => {
     activeFindingsRef.current = activeFindings;
@@ -174,9 +179,16 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   useEffect(() => {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
-    ctrl.setScene(activeScene);
-    ctrl.setPreset(useWorkspaceStore.getState().cameraPreset, false);
-  }, [activeScene]);
+    const bundleKey = `${bundle.joint.id}|${bundle.report.seismic_zone}`;
+    if (!hasLoadedSceneRef.current || prevBundleKeyRef.current !== bundleKey) {
+      hasLoadedSceneRef.current = true;
+      prevBundleKeyRef.current = bundleKey;
+      ctrl.setScene(activeScene);
+      ctrl.setPreset(useWorkspaceStore.getState().cameraPreset, false);
+    } else {
+      ctrl.morphToScene(activeScene, { durationMs: DURATION_MS.morph });
+    }
+  }, [activeScene, bundle.joint.id, bundle.report.seismic_zone]);
 
   useEffect(() => {
     const ctrl = controllerRef.current;
@@ -297,7 +309,29 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
         onKeyDown={handleKeyDown}
         className="relative flex-1 min-h-0 overflow-hidden focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]"
       >
-        <div ref={canvasWrapRef} role="img" aria-label={summaryText} className="h-full w-full" />
+        <div
+          ref={canvasWrapRef}
+          role="img"
+          aria-label={summaryText}
+          data-scene-mode={mode}
+          data-scene-bar-ids={activeScene.bars.map((b) => b.id).join(",")}
+          className="h-full w-full"
+        />
+
+        {mode === "after" && (
+          <div className="pointer-events-auto absolute top-3 left-3 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-strong bg-surface-raised/95 px-2.5 py-1 text-xs shadow-[var(--shadow-overlay)]">
+            <span className="font-num font-medium text-foreground">
+              After · Option #{optionIndex + 1}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMode("before")}
+              className="rounded-[var(--radius-xs)] border border-control-border bg-surface px-1.5 py-0.5 text-xs text-foreground hover:bg-surface-sunken cursor-pointer"
+            >
+              Show Before
+            </button>
+          </div>
+        )}
 
         <ViewportCallouts
           ref={calloutsRef}

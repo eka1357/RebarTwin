@@ -10,6 +10,7 @@ import { useWorkspaceStore, type InspectorTab } from "../../stores/workspace";
 import type { Bundle, Finding } from "../../types/bundle";
 import { BarChip } from "../findings/BarChip";
 import { FindingCard } from "../findings/FindingCard";
+import { FixPanel } from "../fixes/FixPanel";
 import { SourceCrop } from "../source/SourceCrop";
 
 type FindingFilter = "fail" | "pass" | "all";
@@ -248,8 +249,8 @@ export function JointInspector({ bundle }: { bundle: Bundle }) {
             </section>
           </TabsContent>
 
-          <TabsContent value="fix" className="mt-0 text-xs text-muted-foreground">
-            Ranked fix options and Before / After 3D morph arrive in W6.
+          <TabsContent value="fix" className="mt-0">
+            <FixPanel bundle={bundle} />
           </TabsContent>
 
           <TabsContent value="workings" className="mt-0 text-xs text-muted-foreground">

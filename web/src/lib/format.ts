@@ -202,3 +202,30 @@ export function describeToleranceGauge(f: {
   }
   return `${mStr} ${unitName}; needs at least ${lStr}; passes with ${diffStr} margin`;
 }
+
+/** Parse layer specs like "5-20" or "2-25 / 2-20" into total bar count and total steel area in mm². */
+export function summarizeLayerSpec(spec: string): { count: number; areaMm2: number } {
+  let count = 0;
+  let areaMm2 = 0;
+  for (const part of spec.split("/")) {
+    const match = part.trim().match(/^(\d+)\s*-\s*(\d+(?:\.\d+)?)$/);
+    if (!match) continue;
+    const n = Number(match[1]);
+    const dia = Number(match[2]);
+    count += n;
+    areaMm2 += n * Math.PI * (dia / 2) ** 2;
+  }
+  return { count, areaMm2 };
+}
+
+/** Format Before -> After morph summary for Sonner toast ("+39 mm², 4 bars instead of 5"). */
+export function formatFixToastSummary(faces: { before: string; after: string; area_provided: number }[]): string {
+  const f0 = faces[0];
+  if (!f0) return "Previewing repaired joint in 3D";
+  const prev = summarizeLayerSpec(f0.before);
+  const next = summarizeLayerSpec(f0.after);
+  const deltaArea = Math.round(f0.area_provided - prev.areaMm2);
+  const sign = deltaArea > 0 ? "+" : deltaArea < 0 ? "-" : "";
+  const absStr = formatNumber(Math.abs(deltaArea));
+  return `${sign}${absStr}${NBSP}mm², ${next.count} bars instead of ${prev.count}`;
+}

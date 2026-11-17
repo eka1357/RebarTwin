@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import demoBundleRaw from "../../../../public/demo/C4xB12/bundle.json";
 import { ifcToThree } from "../../../lib/coords";
+import { formatFixToastSummary, NBSP } from "../../../lib/format";
 import type { Bundle } from "../../../types/bundle";
+import { FixPanel } from "../../fixes/FixPanel";
+import { SectionGlyph } from "../../fixes/SectionGlyph";
+import { partitionSceneBars } from "../sceneMorph";
 import { JointInspector } from "../JointInspector";
 
 describe("W3 Scene & Demo Bundle", () => {
@@ -36,5 +40,41 @@ describe("W3 Scene & Demo Bundle", () => {
     // Clicking Source button inside a FindingCard switches tab and renders warm paper crop
     fireEvent.click(screen.getAllByRole("button", { name: "Source" })[0]);
     expect(screen.getByText(/Schedule callout/i)).toBeInTheDocument();
+  });
+
+  it("partitions bars by id for Before -> After morph and renders to-scale SectionGlyphs", () => {
+    const bundle = demoBundleRaw as unknown as Bundle;
+    const afterScene = bundle.option_scenes[0];
+    const part = partitionSceneBars(bundle.scene.bars, afterScene.bars);
+
+    expect(part.matched.length).toBe(14);
+    expect(part.removed.map((b) => b.id)).toEqual(["B12/T1-3", "B12/T1-4", "B12/T1-5"]);
+    expect(part.added.map((b) => b.id)).toEqual(["B12/T2-1", "B12/T2-2"]);
+    expect(formatFixToastSummary(bundle.fix.options[0].faces)).toBe(
+      `+39${NBSP}mm², 4 bars instead of 5`,
+    );
+
+    render(
+      <>
+        <SectionGlyph
+          scene={afterScene}
+          beamId="B12"
+          face="top"
+          caption="After"
+          faceSummary="2-25 / 2-20"
+        />
+        <FixPanel bundle={bundle} />
+      </>,
+    );
+
+    expect(
+      screen
+        .getAllByRole("img", {
+          name: /Beam B12 top face cross-section: layer 1 has 2 bars of 25 millimetres, layer 2 has 2 bars of 20 millimetres/i,
+        })
+        .length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/2-25 over 2-20/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Use in report/i })).toHaveLength(3);
   });
 });

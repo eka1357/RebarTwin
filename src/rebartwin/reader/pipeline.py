@@ -103,11 +103,12 @@ def source_entries(v: Verified, fields: dict[str, Accepted]) -> list[dict]:
                 "path": path, "member": a.member if a else None, "field": a.field if a else None,
                 "layer": a.layer if a else None, "page": p["page"], "box_2d": p["box_2d"], "text": p["text"],
                 "gemini": p["gemini"], "parser": p["parser"], "status": p["status"],
-                "ocr_raw": p.get("ocr_raw"), "page_image": f"pages/page-{p['page']}.png"})
+                "ocr_raw": p.get("ocr_raw"), "joined_from": p.get("joined_from"),
+                "page_image": f"pages/page-{p['page']}.png"})
     for path, value in v.defaults.items():
         entries.append({"path": path, "member": None, "field": None, "layer": None, "page": None, "box_2d": None,
                         "text": None, "gemini": None, "parser": value, "status": "default", "ocr_raw": None,
-                        "page_image": None})
+                        "joined_from": None, "page_image": None})
     return entries
 
 

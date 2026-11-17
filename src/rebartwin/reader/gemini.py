@@ -345,7 +345,7 @@ def prompt(page: Page, tile: Tile, n_tiles: int) -> str:
     from dataclasses import replace
 
     lines = []
-    for line in visual_lines(replace(page, words=[w for w in page.words if w.source != "ocr"])):
+    for line in visual_lines(replace(page, words=[w for w in page.words if w.source != "ocr"]), tokens=False):
         if not any(_inside(w, tile.box) for w in line):
             continue
         b = to_tile(union([w.box for w in line]), tile.box)

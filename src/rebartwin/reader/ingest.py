@@ -42,6 +42,7 @@ class Word:
     line: tuple[int, int]                # PyMuPDF (block, line): words of one text entity share it
     source: str = "text"                 # "text" (the PDF text layer), "annotation" (a comment) or "ocr"
     raw: str | None = None               # OCR only: the text as Vision read it, when a misread Ø was repaired
+    joined: tuple[str, ...] | None = None  # parser view only: the comments a split Ø callout was joined from
 
 
 @dataclass

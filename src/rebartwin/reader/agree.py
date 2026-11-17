@@ -79,11 +79,12 @@ class Accepted:
     call: str = ""
     level: str | None = None      # as written on the drawing: the storey header or the sheet's floor
     ocr_raw: str | None = None    # what OCR read before a misread Ø was repaired; None when nothing was repaired
+    joined_from: list[str] | None = None   # the comments a split Ø callout was joined from (tokens.py)
 
     def provenance(self) -> dict:
         return {"page": self.page, "box_2d": box_2d(self.box), "text": self.text, "gemini": self.gemini,
                 "parser": self.value, "status": "agreed", "field_id": self.id, "level": self.level,
-                "ocr_raw": self.ocr_raw}
+                "ocr_raw": self.ocr_raw, "joined_from": self.joined_from}
 
 
 @dataclass
@@ -119,14 +120,45 @@ def _member_kind(member: str) -> str:
     return "column" if member.startswith("C") and not member.startswith("CB") else "beam"
 
 
-def _tied(member: str, box: Box, members: list[Match], line_of: dict[int, int]) -> tuple[bool, str | None]:
-    """Is `member` the label this value belongs to? Returns (tied, the member named there instead).
+TIE_NEAR = 1.5          # text heights: a label this close to a value is its label ...
+TIE_CROWD = 3.0         # ... unless another label of the same kind is within this many: then it is ambiguous
 
-    Drawings put the label before the value in reading order: to its left in a schedule row or a plan callout,
-    or above it in a transposed schedule's column. So the label is the nearest member id of the same kind to the
-    left in the value's row, else the nearest above in its column. Ids on that label's own line count too, for rows
-    like "B1, B2". Anywhere else on the sheet does not count: a long row or column band crosses unrelated tables."""
+
+def _gap_pt(page: Page, a: Box, b: Box) -> float:
+    """Shortest distance between two boxes, in points (0 when they touch or overlap)."""
+    sx, sy = page.width / 1000, page.height / 1000
+    dx = max(0.0, b[1] - a[3], a[1] - b[3]) * sx
+    dy = max(0.0, b[0] - a[2], a[0] - b[2]) * sy
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def _tied(member: str, value: Match, members: list[Match], line_of: dict[int, int],
+          page: Page) -> tuple[bool, str | None, str | None]:
+    """Is `member` the label this value belongs to? Returns (tied, the member named there instead, why ambiguous).
+
+    In order:
+    1. A label in the same text as the value ("XB1(200x600-inv)") is its label.
+    2. The nearest label of the same kind within TIE_NEAR text heights in any direction (a plan callout's id above,
+       below or beside its size) is its label, unless a second, different label of that kind is within TIE_CROWD:
+       then which one is meant is ambiguous.
+    3. Otherwise reading order: the nearest label to the left in the value's row, else above it in its column, with
+       ids on that label's own line ("B1, B2"). Anywhere else on the sheet does not count."""
+    box = value.box
     same = [m for m in members if _member_kind(m.value) == _member_kind(member)]
+    inside = [m for m in same if {id(w) for w in m.words} & {id(w) for w in value.words}]
+    if inside:
+        names = {m.value for m in inside}
+        return (True, None, None) if member in names else (False, sorted(names)[0], None)
+    height = (box[2] - box[0]) * page.height / 1000
+    by_gap = sorted(((_gap_pt(page, m.box, box), k, m) for k, m in enumerate(same)), key=lambda t: (t[0], t[1]))
+    close = [(g, m) for g, _, m in by_gap if g <= TIE_NEAR * height]
+    if close:
+        nearest = close[0][1]
+        crowd = {m.value for g, _, m in by_gap if g <= TIE_CROWD * height} - {nearest.value}
+        if crowd:
+            return False, None, (f"labels {', '.join(sorted({nearest.value} | crowd))} are all within "
+                                 f"{TIE_CROWD:g} text heights of this value")
+        return (True, None, None) if nearest.value == member else (False, nearest.value, None)
     left = [m for m in same if m.box[0] < box[2] and box[0] < m.box[2] and m.box[3] <= box[1] + 2]
     above = [m for m in same if m.box[1] < box[3] and box[1] < m.box[3] and m.box[2] <= box[0] + 2]
     for found, gap in ((left, lambda m: box[1] - m.box[3]), (above, lambda m: box[0] - m.box[2])):
@@ -135,8 +167,8 @@ def _tied(member: str, box: Box, members: list[Match], line_of: dict[int, int]) 
             line = line_of.get(id(nearest.words[0])) if nearest.words else None
             group = {m.value for m in same if m is nearest or (line is not None and m.words and
                                                                 line_of.get(id(m.words[0])) == line)}
-            return (True, None) if member in group else (False, nearest.value)
-    return False, None
+            return (True, None, None) if member in group else (False, nearest.value, None)
+    return False, None, None
 
 
 def _face_label(page: Page, box: Box) -> str | None:
@@ -258,11 +290,12 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
                  ", ".join(sorted(values)))
             continue
         if c.member not in GLOBAL_MEMBERS:
-            tied, other = _tied(c.member, here[0].box, members, line_of)
+            tied, other, crowded = _tied(c.member, here[0], members, line_of, by_page[c.page])
             if not tied:
-                if other:
-                    flag(r, "disagree", f"Gemini says {c.member}; the row or column of this value names {other}",
-                         value)
+                if crowded:
+                    flag(r, "ambiguous", f"Gemini says {c.member}; {crowded}", value)
+                elif other:
+                    flag(r, "disagree", f"Gemini says {c.member}; the label of this value is {other}", value)
                 else:
                     flag(r, "ambiguous", f"{c.member} is not in the same row or column as this value", value)
                 continue
@@ -278,8 +311,9 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
             continue
         m = here[0]
         raw = " ".join(w.raw or w.text for w in m.words) if any(w.raw for w in m.words) else None
+        joined = [t for w in m.words for t in (w.joined or ())] or None
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
-                                        r.box, r.call, level, raw))
+                                        r.box, r.call, level, raw, joined))
 
     # Rule 6: one value per member, field and layer; project-wide settings get one value whatever their scope.
     groups: dict[tuple, list[Accepted]] = {}

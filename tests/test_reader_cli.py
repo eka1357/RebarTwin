@@ -90,7 +90,7 @@ def test_bundle_carries_its_sources_and_page_images(tmp_path: Path, recorded):
     bundle = json.loads((folder / "bundle.json").read_text(encoding="utf-8"))
     assert bundle["pages"] == {"1": "pages/page-1.png"}
     assert (folder / "pages" / "page-1.png").is_file()
-    keys = {"path", "member", "field", "layer", "page", "box_2d", "text", "gemini", "parser", "status", "ocr_raw",
+    keys = {"path", "member", "field", "layer", "page", "box_2d", "text", "gemini", "parser", "status", "ocr_raw", "joined_from",
             "page_image"}
     assert all(set(e) == keys for e in bundle["provenance"])
     top = next(e for e in bundle["provenance"] if e["path"] == "beams[0].top[0].bars")

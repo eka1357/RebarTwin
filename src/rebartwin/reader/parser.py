@@ -167,7 +167,7 @@ def union(boxes: list[Box]) -> Box:
     return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
 
 
-def visual_lines(page: Page) -> list[list[Word]]:
+def visual_lines(page: Page, tokens: bool = True) -> list[list[Word]]:
     """Words that sit on one baseline and close together, left to right.
 
     CAD exports often write "8φ", "@", "150" and "c/c" as separate text objects, so PyMuPDF's own lines would split a
@@ -175,8 +175,15 @@ def visual_lines(page: Page) -> list[list[Word]]:
     under one text height, measured in points (box units differ in x and y on a non-square sheet).
 
     On a page with drawn table rules, words inside one small table cell are one run instead, whatever their lines
-    (cells.py): a two-line header reads whole and neighbouring cells never run together."""
+    (cells.py): a two-line header reads whole and neighbouring cells never run together.
+
+    With `tokens` (the parser's view) split Ø callouts are joined first (tokens.py); without, the stored words
+    exactly, as Gemini's prompt shows them."""
     from .cells import cell_lines
+    from .tokens import token_page
+
+    if tokens:
+        page = token_page(page)
 
     in_cells, loose = cell_lines(page)
     sx, sy = page.width / 1000, page.height / 1000

@@ -39,7 +39,7 @@ from .parser import union, visual_lines
 log = logging.getLogger("rebartwin.reader")
 
 PROMPTS = Path(__file__).parent / "prompts"
-READ_PROMPT = "read_v1"
+READ_PROMPT = "read_v2"
 DEFAULT_READ_MODEL = "gemini-3.8-flash"
 RETRY = {"attempts": 4, "initial_delay": 1.0, "max_delay": 60.0, "http_status_codes": [408, 429, 500, 502, 503, 504]}
 
@@ -58,6 +58,10 @@ class Callout(BaseModel):
                                     "for a general note")
     field: FieldName
     layer: int = Field(default=1, ge=1, le=3, description="bar layer for top and bottom bars, 1 = outermost")
+    level: str | None = Field(default=None, description="as written: for a column schedule value, the storey header "
+                                                        "it sits under ('FOUNDATION TO FIRST FLOOR'); for a beam "
+                                                        "value or frames_into, the floor of the schedule or plan "
+                                                        "('FIRST FLOOR'); null when the sheet gives none")
     value: str = Field(description="the value exactly as written on the drawing, e.g. '5-20', '230x450', "
                                    "'8φ @ 150 c/c'; for frames_into, the column id")
     box_2d: list[int] = Field(min_length=4, max_length=4, description="[ymin, xmin, ymax, xmax], 0 to 1000")
@@ -317,8 +321,12 @@ def _inside(word: Word, tile: Box) -> bool:
 
 
 def prompt(page: Page, tile: Tile, n_tiles: int) -> str:
+    """The read prompt for one tile, with the drawing's own text (text layer and comments). OCR words are left out:
+    on a page only OCR can read, Gemini sees just the image, so its reading stays independent of the parser's."""
+    from dataclasses import replace
+
     lines = []
-    for line in visual_lines(page):
+    for line in visual_lines(replace(page, words=[w for w in page.words if w.source != "ocr"])):
         if not any(_inside(w, tile.box) for w in line):
             continue
         b = to_tile(union([w.box for w in line]), tile.box)

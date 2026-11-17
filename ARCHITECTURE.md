@@ -100,7 +100,8 @@ A list, one entry per linked joint:
 ```
 [{ "joint": "C4xB12",
    "fields": { "beams[0].top[0].bars": { "page": 3, "box_2d": [ymin, xmin, ymax, xmax], "text": "5-20",
-               "gemini": "5-20", "parser": "5-20", "status": "agreed", "field_id": "f0012" },
+               "gemini": "5-20", "parser": "5-20", "status": "agreed", "field_id": "f0012",
+               "level": "FIRST FLOOR" | "FOUNDATION TO FIRST FLOOR" | null },
                "beams[0].top": [ {...}, {...} ] },
    "link_notes": ["what the linking model said, kept for a person; never copied into the joint"] }]
 ```
@@ -115,7 +116,8 @@ from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face
 
 ```
 [{ "id": "tc_0007", "joint": "C4xB12" | null, "member": "B12" | null, "field": "top" | "beams[0].top",
-   "layer": 1, "page": 3, "box_2d": [...] | null, "gemini": {"value": "5-20"} | null,
+   "layer": 1, "level": "FOUNDATION TO FIRST FLOOR" | null, "page": 3, "box_2d": [...] | null,
+   "gemini": {"value": "5-20"} | null,
    "parser": {"value": "5-16"} | null, "reason": "disagree|missing|ambiguous", "detail": "a sentence for a person",
    "resolution": null | {"value": "5-20", "by": "person", "at": "2026-11-19T10:02:00Z"} }]
 ```
@@ -138,13 +140,19 @@ page (words, annotations by author, whether annotations were read), counts, toke
 
 ## Reader (Claude Code; `src/rebartwin/reader/`, `rebartwin read <pdf> --out out/<project>`)
 
-1. **Ingest** (`ingest.py`). PyMuPDF renders each page at 200 dpi to `pages/page-<n>.png` and returns the text layer
-   as words with `box_2d` boxes, mapped through the page rotation so they match the rendered image. A page with few
-   words and many annotations with content (AutoCAD SHX text) uses the annotations as its words. `--probe` prints
-   the counts per page, never the text.
+1. **Ingest** (`ingest.py`, `ocr.py`). PyMuPDF renders each page at 200 dpi to `pages/page-<n>.png` and returns its
+   text as words with `box_2d` boxes, mapped through the page rotation so they match the rendered image. Comments
+   (annotations with content, such as "AutoCAD SHX Text", which hold the callouts on SHX-font sheets) are always
+   merged as words, AutoCAD codes translated (%%C Ø, %%D °, %%P ±, %%% %, %%U and %%O dropped); a comment repeating a
+   text-layer word in the same place is dropped. A page with no comments and fewer than 20 words (text exported as
+   lines) is read by Cloud Vision DOCUMENT_TEXT_DETECTION (`VISION_API_KEY`), tiled like Gemini, replies saved and
+   replayed; those OCR words feed the parser only, never Gemini's prompt. `--probe` prints words, comments by author,
+   comments merged, vector paths and whether OCR is needed, per page; never the text.
 2. **Gemini channel** (`gemini.py`). `REBARTWIN_MODEL_READ` (default `gemini-3.8-flash`), no sampling parameters
    (Gemini 3.6+ ignores and will reject temperature, top_p, top_k), JSON
-   schema `PageReading`: callouts with member, field, layer, value as written, `box_2d`, page. Members ALL,
+   schema `PageReading`: callouts with member, field, layer, level, value as written, `box_2d`, page. `level` is
+   the storey header a column value sits under ("FOUNDATION TO FIRST FLOOR") or the floor of a beam schedule or
+   plan ("FIRST FLOOR"); prompt `read_v2`. Members ALL,
    ALL_BEAMS and ALL_COLUMNS mark general notes; `frames_into` (member = beam, value = column, box around both
    labels) is how the plan's topology is read. The prompt (`prompts/read_v1.md`) sends the image plus its text-layer
    lines and says numbers come only from the drawing. Sheets larger than 3000 px are read in overlapping tiles and
@@ -160,7 +168,9 @@ page (words, annotations by author, whether annotations were read), counts, toke
 4. **Agreement** (`agree.py`). Accept a callout only when both channels give the same canonical value at the same
    place (IoU at least 0.3, or one centre inside the other), the member is the label for that value in reading
    order (nearest same-kind id to its left in the row, else above in the column), a top or bottom label does not
-   contradict the face, and no other accepted callout gives the field another value. Everything else becomes a To
+   contradict the face, a column value's storey is the storey header above it (or beside it in its row) and a beam's
+   or plan's floor is named on its sheet, and no other accepted callout gives the field another value at that
+   level. Everything else becomes a To
    check item with a reason.
 5. **Linking** (`link.py`). `REBARTWIN_MODEL_LINK` (default `gemini-4-argon`; on model-not-found
    `REBARTWIN_MODEL_FALLBACK`) returns `{joints: [{joint, sources, unresolved}]}`, `joint` being
@@ -168,7 +178,10 @@ page (words, annotations by author, whether annotations were read), counts, toke
    used. Code then proves every number from the cited fields: a value that differs, has no field, or leaves out a
    drawn field becomes a To check item tied to the joint. Defaults and the model's structural choices (direction,
    column orientation, cover measured to, layer arrangement) are written into `Joint.notes` by code, never by the
-   model. Joint ids are rebuilt from the members: `C4xB12xB13`.
+   model. Joint ids are rebuilt from the members: `C4xB12xB13`, with `@<floor>` when the plans give one
+   (`C4xB12@FIRST`). A joint's floor is the floor of the plans its beams were read on; its column values must be
+   from the storey that ends there and its beam values from that floor, and that choice is a note. Without a floor,
+   a column with values for several storeys goes to To check. Prompt `link_v2`.
 6. **Evaluation.** A golden set of 60 hand-labelled callouts; report accuracy per field. Target: at least 95%
    accepted and correct, zero wrong values accepted.
 

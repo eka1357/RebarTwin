@@ -1,0 +1,16 @@
+{
+ "_about": "Hand-written stand-in for a Cloud Vision DOCUMENT_TEXT_DETECTION response to tests/reader_pdf.py make_vector_pdf at 200 dpi (one tile, 2339 x 1653 px). Pixel boxes; Vision omits a coordinate that is 0. '8Ø' is a rotated quadrilateral to test the axis-aligned box.",
+ "responses": [{
+  "textAnnotations": [
+   {"description": "C4 300x450 8-16 8Ø @ 150 c/c", "boundingPoly": {"vertices": [{"x": 300, "y": 400}, {"x": 1100, "y": 400}, {"x": 1100, "y": 430}, {"x": 300, "y": 430}]}},
+   {"description": "C4", "boundingPoly": {"vertices": [{"x": 300, "y": 400}, {"x": 340, "y": 400}, {"x": 340, "y": 430}, {"x": 300, "y": 430}]}},
+   {"description": "300x450", "boundingPoly": {"vertices": [{"x": 500, "y": 400}, {"x": 640, "y": 400}, {"x": 640, "y": 430}, {"x": 500, "y": 430}]}},
+   {"description": "8-16", "boundingPoly": {"vertices": [{"x": 700, "y": 400}, {"x": 780, "y": 400}, {"x": 780, "y": 430}, {"x": 700, "y": 430}]}},
+   {"description": "8Ø", "boundingPoly": {"vertices": [{"x": 902, "y": 400}, {"x": 940, "y": 402}, {"x": 938, "y": 430}, {"x": 900, "y": 428}]}},
+   {"description": "@", "boundingPoly": {"vertices": [{"x": 950, "y": 400}, {"x": 970, "y": 400}, {"x": 970, "y": 430}, {"x": 950, "y": 430}]}},
+   {"description": "150", "boundingPoly": {"vertices": [{"x": 980, "y": 400}, {"x": 1040, "y": 400}, {"x": 1040, "y": 430}, {"x": 980, "y": 430}]}},
+   {"description": "c/c", "boundingPoly": {"vertices": [{"x": 1050, "y": 400}, {"x": 1100, "y": 400}, {"x": 1100, "y": 430}, {"x": 1050, "y": 430}]}},
+   {"description": "TOP", "boundingPoly": {"vertices": [{"y": 10}, {"x": 60, "y": 10}, {"x": 60, "y": 40}, {"y": 40}]}}
+  ]
+ }]
+}

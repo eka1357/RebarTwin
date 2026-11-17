@@ -111,20 +111,25 @@ def read_command(args) -> int:
         for row in probe(args.pdf):
             notes = ", ".join(f"{n} by {a}" for a, n in sorted(row["annotations"].items())) or "none"
             print(f"page {row['page']}: {row['size_pt'][0]} x {row['size_pt'][1]} pt, rotation {row['rotation']}, "
-                  f"{row['words']} words, annotations with content: {notes}"
-                  f"{'; parser will read the annotations' if row['uses_annotations'] else ''}")
+                  f"{row['words']} words, comments: {notes} ({row['comments']} merged as words), "
+                  f"{row['paths']} vector paths{'; needs OCR' if row['needs_ocr'] else ''}")
         return 0
     if args.out is None:
         print("rebartwin read: --out is required")
         return 2
 
+    import os
+
+    from .reader.ocr import VisionTransport
     from .reader.pipeline import attach_sources
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     load_env()
     try:
         transport = None if args.replay else GenAITransport()
-        result = read(args.pdf, args.out, transport, pages=_pages(args.pages), dpi=args.dpi, tile_px=args.tile,
+        ocr = None if args.replay or not os.environ.get("VISION_API_KEY") else VisionTransport()
+        result = read(args.pdf, args.out, transport, ocr=ocr, pages=_pages(args.pages), dpi=args.dpi,
+                      tile_px=args.tile,
                       concurrency=args.concurrency)
     except ReadError as e:
         print(f"Read stopped: {e}")

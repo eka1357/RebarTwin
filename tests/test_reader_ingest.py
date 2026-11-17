@@ -64,17 +64,19 @@ def test_page_filter(tmp_path: Path):
 
 
 def test_probe_counts_words_and_annotations_without_text(tmp_path: Path):
-    """The plain sheet has its words in the text layer and no annotations. The SHX sheet has no words and one
-    annotation per string in the beam schedule (rows at y = 90 to 150: 5 headers + 3 beams x 5 cells = 20), all by
-    'AutoCAD SHX Text', so the parser reads the annotations."""
+    """The plain sheet has its words in the text layer and no comments. The SHX sheet has no words and one comment
+    per string in the beam schedule (rows at y = 90 to 150: 5 headers + 3 beams x 5 cells = 20), all by
+    'AutoCAD SHX Text', all merged as words. Neither needs OCR."""
     from reader_pdf import TEXT, make_shx_pdf
     from rebartwin.reader.ingest import probe
     expected = sum(1 for _, y, _ in TEXT if 90 <= y <= 150)
     assert expected == 20
     [plain] = probe(make_pdf(tmp_path / "plain.pdf"))
-    assert plain["words"] > 50 and plain["annotations"] == {} and not plain["uses_annotations"]
+    assert plain["words"] > 50 and plain["annotations"] == {} and plain["comments"] == 0
+    assert not plain["needs_ocr"]
     [shx] = probe(make_shx_pdf(tmp_path / "shx.pdf"))
-    assert shx["words"] == 0 and shx["annotations"] == {"AutoCAD SHX Text": expected} and shx["uses_annotations"]
+    assert shx["words"] == 0 and shx["annotations"] == {"AutoCAD SHX Text": expected} and shx["comments"] == expected
+    assert not shx["needs_ocr"] and isinstance(shx["paths"], int)
     assert all(isinstance(v, (int, bool, list, dict)) for v in shx.values() if v is not None)
     assert "230x450" not in str(shx) and "5-20" not in str(shx)          # counts only, never the text
 
@@ -86,7 +88,7 @@ def test_shx_annotations_become_words_on_the_ink(tmp_path: Path, rotate):
     from reader_pdf import make_shx_pdf
     from rebartwin.reader.parser import parse_page
     page = ingest(make_shx_pdf(tmp_path / "shx.pdf", rotate=rotate))[0]
-    assert page.uses_annotations and page.text_words == 0
+    assert page.comments == 20 and page.text_words == 0 and not page.needs_ocr
     assert {w.source for w in page.words} == {"annotation"}
     values = {(m.kind, m.value) for m in parse_page(page)}
     assert {("section", "230x450"), ("bars", "5-20"), ("links", "2L-8@100"), ("member", "B13")} <= values

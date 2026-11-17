@@ -21,6 +21,7 @@ from pathlib import Path
 from .agree import Accepted, Agreement, agree
 from .gemini import READ_PROMPT, CachingTransport, Transport, read_pages
 from .ingest import ingest
+from .ocr import CachingOcr, OcrTransport, ocr_pages
 from .link import LINK_PROMPT, Linked, Verified, blocks, link
 from .parser import parse_page
 
@@ -40,14 +41,18 @@ class Result:
         return [v.joint.id for v in self.linked.joints if not self.blocked.get(v.joint.id)]
 
 
-def read(pdf: Path, out: Path, transport: Transport | None, *, pages: list[int] | None = None, dpi: int = 200,
-         tile_px: int = 3000, concurrency: int = 3, read_model: str | None = None,
+def read(pdf: Path, out: Path, transport: Transport | None, *, ocr: OcrTransport | None = None,
+         pages: list[int] | None = None, dpi: int = 200, tile_px: int = 3000, concurrency: int = 3,
+         read_model: str | None = None,
          link_model: str | None = None) -> Result:
-    """Read a drawing. `transport` None replays saved replies only."""
+    """Read a drawing. `transport` None replays saved Gemini replies only; `ocr` None replays saved OCR replies
+    only (a page with neither is left without a parser channel and listed in reading.json)."""
     t0 = time.perf_counter()
     out.mkdir(parents=True, exist_ok=True)
     cache = CachingTransport(transport, out / "replies")
     sheets = ingest(pdf, out, dpi=dpi, pages=pages)
+    ocr_skipped = ocr_pages(sheets, CachingOcr(ocr, out / "replies", cache.ledger), tile_px, concurrency) \
+        if any(p.needs_ocr for p in sheets) else []
     matches = [m for page in sheets for m in parse_page(page)]
     reads = read_pages(sheets, cache, read_model, tile_px=tile_px, concurrency=concurrency)
     agreement = agree(reads, matches, sheets)
@@ -70,7 +75,8 @@ def read(pdf: Path, out: Path, transport: Transport | None, *, pages: list[int] 
         "pdf": pdf.name, "pages": [p.number for p in sheets], "dpi": dpi, "tile_px": tile_px,
         "prompts": {"read": READ_PROMPT, "link": LINK_PROMPT}, "link_model": linked.model, "seconds": seconds,
         "text_layer": [{"page": p.number, "words": p.text_words, "annotations": p.annotations,
-                        "uses_annotations": p.uses_annotations} for p in sheets],
+                        "comments": p.comments, "ocr": p.needs_ocr, "ocr_words": p.ocr_words} for p in sheets],
+        "ocr_skipped": ocr_skipped,
         "counts": {"callouts": len(reads), "parser_matches": len(matches), "accepted": len(agreement.accepted),
                    "to_check": len(linked.to_check), "unassigned": len(agreement.unassigned),
                    "joints": len(linked.joints)},

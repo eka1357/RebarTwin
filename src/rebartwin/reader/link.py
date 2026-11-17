@@ -24,8 +24,9 @@ from pydantic import BaseModel, Field, ValidationError
 from ..model import Beam, Column, Joint, Settings, parse_bars
 from .agree import Accepted, Agreement, ToCheck
 from .gemini import GLOBAL_MEMBERS, PROMPTS, ModelNotFound, Transport, call
+from .levels import ends_at, floor, storey
 
-LINK_PROMPT = "link_v1"
+LINK_PROMPT = "link_v2"
 DEFAULT_LINK_MODEL = "gemini-4-argon"
 DEFAULT_FALLBACK = "gemini-3.8-flash"
 
@@ -64,6 +65,7 @@ class Verified:
     provenance: dict
     issues: list[Issue]
     defaults: dict[str, str] = field(default_factory=dict)     # path -> the default used, e.g. "8 mm"
+    floor: str | None = None       # the beams' floor, from the plans they were read on ("FIRST")
 
 
 def _bars(value: str) -> Counter:
@@ -104,16 +106,36 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                                 "fields"))
         cited.setdefault(s.path, []).extend(fields[i] for i in s.field_ids if i in fields)
 
+    # The joint's floor: the floor of the plans its beams were read on. Column values are then the storey that ends
+    # there, beam values that floor's; values with no level fit any floor.
+    plan_floors = sorted({floor(a.level) for k, got in cited.items() if k.endswith(".frames_into") for a in got
+                          if floor(a.level)})
+    at_floor = plan_floors[0] if len(plan_floors) == 1 else None
+    if len(plan_floors) > 1:
+        issues.append(Issue("beams", "ambiguous", f"the beams were read on plans of different floors: "
+                            f"{', '.join(plan_floors)}"))
+
+    def fits(a: Accepted) -> bool:
+        if a.level is None or at_floor is None:
+            return True
+        return ends_at(a.level, at_floor) if storey(a.level) else floor(a.level) == at_floor
+
     def of(member: str, *names: str, scope: tuple[str, ...] = ()) -> list[Accepted]:
-        """Accepted fields for a member; general notes in `scope` only when the member has none of its own."""
-        own = [a for a in accepted if a.member == member and a.field in names]
-        return own or [a for a in accepted if a.member in scope and a.field in names]
+        """Accepted fields for a member at this joint's floor; general notes in `scope` only when the member has none
+        of its own."""
+        own = [a for a in accepted if a.member == member and a.field in names and fits(a)]
+        return own or [a for a in accepted if a.member in scope and a.field in names and fits(a)]
 
     def use(path: str, expected: list[Accepted], names: tuple[str, ...], check: Callable[[list[Accepted]], str | None],
             *, required: bool = True, value=None, default=None, label: str = "", note_default: bool = True) -> bool:
         """One path: the cited fields are the expected ones, none is left out, and the value matches them.
         An optional value with no field must equal the model default, which becomes a note."""
         got = cited.get(path, [])
+        levels = sorted({a.level for a in expected if a.level})
+        if len({storey(x) or floor(x) for x in levels}) > 1:
+            issues.append(Issue(path, "ambiguous", f"{path}: the drawing gives a value for each of "
+                                f"{'; '.join(levels)}, and no plan floor picks one", expected))
+            return False
         wrong = [a for a in got if a.field not in names or a not in expected]
         if wrong:
             issues.append(Issue(path, "disagree", f"{path} cites {', '.join(a.id for a in wrong)}, which belong to "
@@ -164,6 +186,11 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         if (col.n_bars, col.bar_dia) != (n, dia):
             return f"{col.id} has {col.n_bars}-{col.bar_dia:g} in the joint, {got[0].value} on the drawing"
     use("column.main", of(col.id, "main"), ("main",), main_col)
+    storeys = sorted({a.level for k in ("column.section", "column.main", "column.ties") for a in cited.get(k, [])
+                      if a.level and storey(a.level)})
+    if storeys and at_floor:
+        notes.append(f"{col.id} takes the storey {', '.join(storeys)}, which ends at the beams' floor, {at_floor} "
+                     "(chosen by code from the plan's floor).")
 
     use("column.ties", of(col.id, "links"), ("links",),
         lambda got: None if col.tie_dia == _link_dia(got[0].value) else
@@ -240,12 +267,14 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
 
     for u in linked.unresolved:
         issues.append(Issue(u.path, "ambiguous", f"Linking model: {u.reason}"))
+    if at_floor:
+        j.id = f"{j.id}@{at_floor.replace(' ', '_')}"
     j.notes = list(dict.fromkeys(notes))
     for key in [k for k in provenance if re.fullmatch(r"beams\[\d+\]\.(top|bottom)", k)]:
         face = j.beams[int(key[6:key.index("]")])].face(key.rsplit(".", 1)[1])
         if len(face) == 1 and isinstance(provenance[key], dict):
             provenance[f"{key}[0].bars"] = provenance.pop(key)
-    return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults)
+    return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults, at_floor)
 
 
 def _members(j: Joint) -> set[str]:
@@ -261,8 +290,8 @@ class Linked:
 
 
 def _inputs(agreement: Agreement) -> str:
-    accepted = [{"id": a.id, "member": a.member, "field": a.field, "layer": a.layer, "value": a.value,
-                 "page": a.page} for a in agreement.accepted]
+    accepted = [{"id": a.id, "member": a.member, "field": a.field, "layer": a.layer, "level": a.level,
+                 "value": a.value, "page": a.page} for a in agreement.accepted]
     pending = [{"member": t.member, "field": t.field, "reason": t.reason} for t in agreement.to_check]
     template = (PROMPTS / f"{LINK_PROMPT}.md").read_text(encoding="utf-8")
     return (template.replace("{accepted}", json.dumps(accepted, ensure_ascii=False, indent=0))
@@ -348,7 +377,8 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
     # settings stay as one project-level item (joint null), which blocks every joint (see `blocks`).
     for t in to_check:
         if t.joint is None and t.field in USED_FIELDS and not project_level(t):
-            hits = [v.joint.id for v in joints if t.member in _members(v.joint)]
+            hits = [v.joint.id for v in joints if t.member in _members(v.joint) and (
+                not t.level or v.floor is None or ends_at(t.level, v.floor) or floor(t.level) == v.floor)]
             if len(hits) == 1:
                 t.joint = hits[0]
             elif hits:                                   # a beam in two joints: one item per joint

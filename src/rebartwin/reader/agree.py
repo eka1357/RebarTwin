@@ -12,8 +12,12 @@ A Gemini callout is accepted only when all of these hold; otherwise it becomes a
    is none). General notes (ALL, ALL_BEAMS, ALL_COLUMNS) skip this.
 5. Top and bottom bars are not contradicted by a "top" or "bottom" label on the value's line or in the nearest
    header above it (`disagree`).
-6. No other accepted callout gives the same member and field a different value (`ambiguous`, both go to To check).
-   `frames_into` is exempt: a beam meets a column at each end. Zone, exposure and grades are project-wide: two
+6. Levels: a column value in a schedule laid out by storey must name the storey header above it (or beside it in
+   its row) on the sheet (`disagree` if Gemini names another, `ambiguous` if Gemini names none, or names one where
+   the sheet has no header); a beam value or `frames_into` with a floor must be on a sheet that names that floor.
+7. No other accepted callout gives the same member and field a different value (`ambiguous`, both go to To check).
+   `frames_into` is exempt: a beam meets a column at each end. Each level is separate: a column has a value per
+   storey. Zone, exposure and grades are project-wide: two
    values under any scopes conflict.
 
 Parser values of the main kinds that no callout claimed are listed too, as unassigned items, so a person can see what
@@ -25,7 +29,8 @@ from dataclasses import asdict, dataclass, field
 
 from .gemini import FIELD_KIND, GLOBAL_MEMBERS, Read
 from .ingest import Box, Page
-from .parser import Match, normalise, visual_lines
+from .levels import floor, is_storey_header, same_level, storey
+from .parser import Match, normalise, union, visual_lines
 
 IOU_MIN = 0.3
 PROJECT_WIDE = {"seismic_zone", "exposure", "concrete_grade", "steel_grade"}
@@ -72,10 +77,11 @@ class Accepted:
     gemini: str                   # as Gemini wrote it
     gemini_box: Box
     call: str = ""
+    level: str | None = None      # as written on the drawing: the storey header or the sheet's floor
 
     def provenance(self) -> dict:
         return {"page": self.page, "box_2d": list(self.box), "text": self.text, "gemini": self.gemini,
-                "parser": self.value, "status": "agreed", "field_id": self.id}
+                "parser": self.value, "status": "agreed", "field_id": self.id, "level": self.level}
 
 
 @dataclass
@@ -92,6 +98,7 @@ class ToCheck:
     layer: int = 1
     joint: str | None = None
     resolution: dict | None = None
+    level: str | None = None
 
     def to_json(self) -> dict:
         d = asdict(self)
@@ -146,6 +153,51 @@ def _face_label(page: Page, box: Box) -> str | None:
     return min(above)[1] if above else None
 
 
+COLUMN_FIELDS = {"section", "main", "links"}
+
+
+def _storey_header(page: Page, box: Box) -> str | None:
+    """The storey header a column value sits under: the nearest storey-range line above it in its column, else the
+    nearest to its left in its row. As written on the sheet."""
+    headers = [(line, union([w.box for w in line])) for line in visual_lines(page)
+               if is_storey_header(" ".join(w.text for w in line))]
+    above = [(box[0] - b[2], line) for line, b in headers if b[1] < box[3] and box[1] < b[3] and b[2] <= box[0] + 2]
+    left = [(box[1] - b[3], line) for line, b in headers if b[0] < box[2] and box[0] < b[2] and b[3] <= box[1] + 2]
+    for found in (above, left):
+        if found:
+            return " ".join(w.text for w in min(found, key=lambda f: f[0])[1])
+    return None
+
+
+def _names_floor(page: Page, level: str) -> bool:
+    """Does some line on the sheet name this floor (a title such as 'FIRST FLOOR BEAM LAYOUT')?"""
+    want = floor(level)
+    if not want:
+        return False
+    for line in visual_lines(page):
+        have = floor(" ".join(w.text for w in line))
+        if have and f" {want} " in f" {have} ":
+            return True
+    return False
+
+
+def _level_problem(c, page: Page, box: Box) -> tuple[str | None, str, str | None]:
+    """(reason, detail, level to keep). `reason` None means the level holds; the level kept is the sheet's own text
+    for a storey header, else Gemini's."""
+    if _member_kind(c.member) == "column" and c.member not in GLOBAL_MEMBERS and c.field in COLUMN_FIELDS:
+        header = _storey_header(page, box)
+        if header and not c.level:
+            return "ambiguous", f"this value sits under the storey header {header!r}; Gemini gave no storey", header
+        if header and not same_level(c.level, header):
+            return "disagree", f"Gemini says storey {c.level!r}; the header above says {header!r}", header
+        if not header and c.level and storey(c.level):
+            return "ambiguous", f"Gemini says storey {c.level!r}; no storey header is above or beside it", None
+        return None, "", header or c.level
+    if c.level and not _names_floor(page, c.level):
+        return "ambiguous", f"Gemini says floor {c.level!r}; nothing on this sheet names it", None
+    return None, "", c.level
+
+
 def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreement:
     by_page = {p.number: p for p in pages}
     line_of = {id(w): (p.number, k) for p in pages for k, line in enumerate(visual_lines(p)) for w in line}
@@ -158,7 +210,7 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
         c = r.callout
         result.to_check.append(ToCheck(
             f"tc_{n_tc:04d}", c.member, c.field, c.page, r.box, {"value": c.value},
-            {"value": parser_value} if parser_value is not None else None, reason, detail, c.layer))
+            {"value": parser_value} if parser_value is not None else None, reason, detail, c.layer, level=c.level))
 
     claimed: set[int] = set()
     for r in reads:
@@ -174,11 +226,15 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
                     centre_inside(m.box, _expand(r.box, 10))]
             names = {m.value for m in near}
             if c.member in names and c.value in names:
+                if c.level and not _names_floor(by_page[c.page], c.level):
+                    flag(r, "ambiguous", f"Gemini says floor {c.level!r}; nothing on this sheet names it")
+                    continue
                 both = [m for m in near if m.value in (c.member, c.value)]
                 result.accepted.append(Accepted(
                     "", c.member, c.field, c.layer, c.value, c.page,
                     (min(m.box[0] for m in both), min(m.box[1] for m in both), max(m.box[2] for m in both),
-                     max(m.box[3] for m in both)), " / ".join(m.text for m in both), c.value, r.box, r.call))
+                     max(m.box[3] for m in both)), " / ".join(m.text for m in both), c.value, r.box, r.call,
+                    c.level))
             else:
                 flag(r, "missing", f"the text layer does not show both {c.member} and {c.value} in the box")
             continue
@@ -214,17 +270,21 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
             if label and label != said:
                 flag(r, "disagree", f"Gemini says {said} bars; the drawing labels this value {label}", value)
                 continue
+        reason, detail, level = _level_problem(c, by_page[c.page], here[0].box)
+        if reason:
+            flag(r, reason, detail, value)
+            continue
         m = here[0]
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
-                                        r.box, r.call))
+                                        r.box, r.call, level))
 
     # Rule 6: one value per member, field and layer; project-wide settings get one value whatever their scope.
-    groups: dict[tuple[str, str, int], list[Accepted]] = {}
+    groups: dict[tuple, list[Accepted]] = {}
     for a in result.accepted:
         scope = "*" if a.field in PROJECT_WIDE else a.member
-        groups.setdefault((scope, a.field, a.layer), []).append(a)
+        groups.setdefault((scope, a.field, a.layer, storey(a.level) or floor(a.level)), []).append(a)
     keep = []
-    for (_scope, fld, layer), group in groups.items():
+    for (_scope, fld, layer, _level), group in groups.items():
         values = {a.value for a in group}
         if len(values) == 1:
             keep.append(group[0])
@@ -237,8 +297,8 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
             result.to_check.append(ToCheck(
                 f"tc_{n_tc:04d}", a.member, fld, a.page, a.box, {"value": a.gemini}, {"value": a.value}, "ambiguous",
                 f"the drawing gives {a.member} {fld.replace('_', ' ')} more than one value: "
-                f"{', '.join(sorted(values))}", layer))
-    for i, a in enumerate(sorted(keep, key=lambda a: (a.page, a.member, a.field, a.layer)), 1):
+                f"{', '.join(sorted(values))}", layer, level=a.level))
+    for i, a in enumerate(sorted(keep, key=lambda a: (a.page, a.member, a.field, a.layer, a.level or "")), 1):
         a.id = f"f{i:04d}"
     result.accepted = sorted(keep, key=lambda a: a.id)
 

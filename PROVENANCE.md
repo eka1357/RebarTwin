@@ -85,6 +85,13 @@ Engine: `Finding.margin` and `span` (IS 13920 cl. 7.1.1), face `area_before`, `n
 and half-up rounding for numbers in text; no rule's limit changed. Demo bundles in `web/public/demo/` regenerated.
 167 tests, no key needed; still not run on a real drawing.
 
+## 17 November 2026: comments, OCR and storeys (`feature/R-ocr`)
+
+Claude Code, after Eka's probe of the IIT Hyderabad tender set: comments ("AutoCAD SHX Text") always merged with the
+text layer, AutoCAD codes translated, Cloud Vision OCR for sheets with text as lines (kept out of Gemini's prompt),
+and storeys: column values tied to their storey header, joints at the floor of their beams' plan, the storey that
+ends there chosen by code and noted. Prompts `read_v2`, `link_v2`. 199 tests, no key needed.
+
 ## Next: built in Google Antigravity
 
 The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

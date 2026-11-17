@@ -86,3 +86,64 @@ def make_shx_pdf(path: Path, rotate: int = 0) -> Path:
     doc.save(path)
     doc.close()
     return path
+
+
+def make_mixed_pdf(path: Path) -> Path:
+    """The plain sheet plus three AutoCAD SHX comments: one repeating the plan's 'B12' label in the same place
+    (dropped), one new callout written with AutoCAD codes, '8%%C @ 200 C/C' (kept, read as 8Ø @ 200 C/C), and an
+    underlined title, '%%UCOLUMN DETAIL%%U' (kept as COLUMN DETAIL)."""
+    import pymupdf
+
+    make_pdf(path)
+    doc = pymupdf.open(path)
+    page = doc[0]
+    b12 = next(w for w in page.get_text("words") if w[4] == "B12" and w[0] > 600)
+    for rect, text in ((pymupdf.Rect(b12[:4]), "B12"), (pymupdf.Rect(560, 440, 640, 452), "8%%C @ 200 C/C"),
+                       (pymupdf.Rect(560, 470, 660, 482), "%%UCOLUMN DETAIL%%U")):
+        a = page.add_rect_annot(rect)
+        a.set_info(title="AutoCAD SHX Text", content=text)
+        a.update()
+    doc.saveIncr()
+    doc.close()
+    return path
+
+
+def make_vector_pdf(path: Path) -> Path:
+    """A sheet whose text was exported as lines: no text layer and no comments, only vector paths. The words its
+    OCR reply holds are in tests/fixtures/reader/ocr-p1-t0.json."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page(width=842, height=595)
+    for k in range(40):                                   # strokes standing in for the outlined text and table
+        page.draw_line((100 + 10 * k, 140), (105 + 10 * k, 160))
+    page.draw_rect(pymupdf.Rect(90, 130, 520, 170))
+    doc.save(path)
+    doc.close()
+    return path
+
+
+# A column schedule laid out by storey, a beam schedule, and a first-floor beam layout, on one A4 sheet.
+STOREY_TEXT = [
+    (40, 60, "COLUMN SCHEDULE"),
+    (120, 90, "FOUNDATION TO FIRST FLOOR"), (330, 90, "FIRST FLOOR TO TERRACE FLOOR"),
+    (40, 120, "C4"), (120, 120, "300x450"), (200, 120, "8-20"), (330, 120, "300x450"), (410, 120, "8-16"),
+    (40, 300, "BEAM SCHEDULE"),
+    (40, 320, "B12"), (110, 320, "230x450"), (200, 320, "4-16"), (290, 320, "3-16"),
+    (560, 60, "FIRST FLOOR BEAM LAYOUT"),
+    (600, 200, "C4"), (660, 200, "B12"),
+]
+
+
+def make_storey_pdf(path: Path) -> Path:
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page(width=842, height=595)
+    tw = pymupdf.TextWriter(page.rect)
+    for x, y, text in STOREY_TEXT:
+        tw.append((x, y), text, font=pymupdf.Font("cjk"), fontsize=9)
+    tw.write_text(page)
+    doc.save(path)
+    doc.close()
+    return path

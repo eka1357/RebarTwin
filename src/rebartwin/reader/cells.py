@@ -124,3 +124,49 @@ def cell_lines(page: Page) -> tuple[list[list[Word]], list[Word]]:
                 rows.append([w])
         lines.append([w for row in rows for w in sorted(row, key=lambda w: w.box[1])])
     return lines, loose
+
+
+MAX_STRIP_H = 600.0      # box units: a ruled table's body can be tall when its rows are not ruled
+
+
+def _rules(page: Page) -> tuple[_Index, _Index, list[Rule]]:
+    cached = getattr(page, "_rule_index", None)
+    key = (len(page.words), len(page.h_rules), len(page.v_rules))
+    if cached and cached[0] == key:
+        return cached[1]
+    hs, vs = _not_letters(page)
+    value = (_Index(hs), _Index(vs), vs)
+    object.__setattr__(page, "_rule_index", (key, value))
+    return value
+
+
+def strip(page: Page, box: Box) -> Box | None:
+    """The ruled strip holding a box's centre: vertical rules either side at most MAX_CELL_W apart, horizontal rules
+    above and below at most MAX_STRIP_H apart. A sub-column of a table whose rows are not ruled is one tall strip.
+    None outside ruled tables (plans, notes, the sheet border)."""
+    h, v, _ = _rules(page)
+    cy, cx = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+    top, bottom, left, right = h.before(cx, cy), h.after(cx, cy), v.before(cy, cx), v.after(cy, cx)
+    if None in (top, bottom, left, right) or right - left > MAX_CELL_W or bottom - top > MAX_STRIP_H:
+        return None
+    return top, left, bottom, right
+
+
+def table_left(page: Page, y: float, x: float) -> float | None:
+    """The left edge of the ruled table at height y, walking left from x along vertical rules no further apart than
+    MAX_CELL_W."""
+    _, v, vs = _rules(page)
+    xs = sorted({r[0] for r in vs if r[1] <= y <= r[2] and r[0] <= x})
+    edge = None
+    for x_rule in reversed(xs):
+        if edge is not None and edge - x_rule > MAX_CELL_W:
+            break
+        if edge is None and x - x_rule > MAX_CELL_W:
+            break
+        edge = x_rule
+    return edge
+
+
+def rule_right_of(page: Page, y: float, x: float) -> float | None:
+    _, v, _ = _rules(page)
+    return v.after(y, x)

@@ -157,3 +157,58 @@ def test_two_members_sharing_one_value_in_one_field_stay():
     m = next(m for m in parse_page(p) if m.kind == "section")
     reads = [size_read("B1", m), size_read("B2", m)]
     assert sorted(a.member for a in agree(reads, parse_page(p), [p]).accepted) == ["B1", "B2"]
+
+
+# --- ruled schedules by storey (sheet 8's layout) -------------------------------------------------------------------
+
+def storey_table():
+    """Box units on a 2384 x 3370 pt sheet. Two storey groups, each three narrow sub-columns (size, main, spare) and a
+    sketch column titled by the storey header; rows are not ruled (one body from y 60 to 400), as on sheet 8.
+    Group 1 spans x 100 to 230 (table left edge to the right rule of its header's sketch column), group 2 x 230 to
+    360. Column marks sit in the sketch column, to the right of their values, at the same height."""
+    hs = [(20.0, 100.0, 360.0), (60.0, 100.0, 360.0), (400.0, 100.0, 360.0)]
+    vs = [(x, 20.0, 400.0) for x in (100.0, 110.0, 120.0, 130.0, 230.0, 240.0, 250.0, 260.0, 360.0)]
+    def w(text, y0, x0, y1, x1):
+        return Word(text, (y0, x0, y1, x1), 1, (0, 0), "ocr")
+    words = [w("FOUNDATION", 30, 140, 38, 200), w("TO", 30, 202, 38, 210), w("FIRST", 40, 150, 48, 180),
+             w("FLOOR", 40, 182, 48, 215),
+             w("FIRST", 30, 270, 38, 300), w("FLOOR", 30, 302, 38, 335), w("TO", 30, 337, 38, 345),
+             w("TERRACE", 40, 275, 48, 320), w("FLOOR", 40, 322, 48, 350),
+             w("300x450", 100, 101, 130, 109), w("8Ø20", 100, 111, 130, 119), w("C1A", 110, 170, 120, 190),
+             w("300x450", 100, 231, 130, 239), w("8Ø16", 100, 241, 130, 249), w("C1A", 110, 300, 120, 320),
+             w("230x450", 200, 231, 230, 239), w("4Ø12", 200, 241, 230, 249), w("C1B", 210, 300, 220, 320)]
+    return Page(1, 2384, 3370, words, h_rules=hs, v_rules=vs)
+
+
+def bars_at(p, value):
+    return next(m for m in parse_page(p) if m.kind == "bars" and m.value == value)
+
+
+def col_read(member, m, level):
+    box = tuple(round(v) for v in m.box)
+    return Read(Callout(member=member, field="main", value=m.value, box_2d=list(box), level=level), box, "t", "m")
+
+
+def test_storey_group_owns_its_sub_columns():
+    """8Ø16 is in sub-column x 240 to 250, under no header text, but inside group 2 (230 to 360): its storey is
+    group 2's header. 8Ø20 at x 110 to 120 is in group 1 (table left edge 100 to 230)."""
+    from rebartwin.reader.agree import _storey_header
+    p = storey_table()
+    assert _storey_header(p, bars_at(p, "8-16").box) == "FIRST FLOOR TO TERRACE FLOOR"
+    assert _storey_header(p, bars_at(p, "8-20").box) == "FOUNDATION TO FIRST FLOOR"
+
+
+def test_column_mark_ties_by_row_and_group_not_distance():
+    """C1A's mark sits to the right of 8Ø16 in the same row and group: tied. C1B is the mark of the row below, so
+    C1B for 8Ø16 disagrees; C1B for 4Ø12 is tied. The two C1A marks (one per group) and C1B are all within a few text
+    heights, but inside a ruled table distance does not crowd."""
+    p = storey_table()
+    upper = "FIRST FLOOR TO TERRACE FLOOR"
+    [a] = agree([col_read("C1A", bars_at(p, "8-16"), upper)], parse_page(p), [p]).accepted
+    assert (a.member, a.value, a.level) == ("C1A", "8-16", upper)
+    result = agree([col_read("C1B", bars_at(p, "8-16"), upper)], parse_page(p), [p])
+    assert result.accepted == [] and result.to_check[0].reason == "disagree" and "C1A" in result.to_check[0].detail
+    [b] = agree([col_read("C1B", bars_at(p, "4-12"), upper)], parse_page(p), [p]).accepted
+    assert (b.member, b.value) == ("C1B", "4-12")
+    [c] = agree([col_read("C1A", bars_at(p, "8-20"), "FOUNDATION TO FIRST FLOOR")], parse_page(p), [p]).accepted
+    assert c.level == "FOUNDATION TO FIRST FLOOR"

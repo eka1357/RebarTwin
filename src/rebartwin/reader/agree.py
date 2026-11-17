@@ -32,6 +32,7 @@ from dataclasses import asdict, dataclass, field
 from .gemini import FIELD_KIND, GLOBAL_MEMBERS, Read
 from .ingest import Box, Page, box_2d
 from .levels import floor, is_storey_header, same_level, storey
+from .cells import rule_right_of, strip, table_left
 from .parser import Match, normalise, union, visual_lines
 
 IOU_MIN = 0.3
@@ -151,6 +152,19 @@ def _tied(member: str, value: Match, members: list[Match], line_of: dict[int, in
     if inside:
         names = {m.value for m in inside}
         return (True, None, None) if member in names else (False, sorted(names)[0], None)
+    if strip(page, box) is not None:
+        # In a ruled table, structure decides, not distance: a label in the same row (its height range overlapping
+        # the value's), inside the same storey group when the table has groups, in either direction.
+        group = _group_of(page, box)
+        row = {m.value for m in same if m.box[0] < box[2] + 2 and box[0] - 2 < m.box[2]
+               and strip(page, m.box) is not None
+               and (group is None or group[2] < (m.box[1] + m.box[3]) / 2 <= group[3])}
+        if len(row) == 1:
+            name = row.pop()
+            return (True, None, None) if name == member else (False, name, None)
+        if len(row) > 1:
+            return False, None, f"labels {', '.join(sorted(row))} share this row of the table"
+        return _reading_order(member, box, same, line_of)
     height = (box[2] - box[0]) * page.height / 1000
     by_gap = sorted(((_gap_pt(page, m.box, box), k, m) for k, m in enumerate(same)), key=lambda t: (t[0], t[1]))
     close = [(g, m) for g, _, m in by_gap if g <= TIE_NEAR * height]
@@ -161,6 +175,12 @@ def _tied(member: str, value: Match, members: list[Match], line_of: dict[int, in
             return False, None, (f"labels {', '.join(sorted({nearest.value} | crowd))} are all within "
                                  f"{TIE_CROWD:g} text heights of this value")
         return (True, None, None) if nearest.value == member else (False, nearest.value, None)
+    return _reading_order(member, box, same, line_of)
+
+
+def _reading_order(member: str, box: Box, same: list[Match], line_of: dict[int, int]):
+    """The nearest label to the left in the value's row, else above it in its column, with ids on that label's own
+    line ("B1, B2")."""
     left = [m for m in same if m.box[0] < box[2] and box[0] < m.box[2] and m.box[3] <= box[1] + 2]
     above = [m for m in same if m.box[1] < box[3] and box[1] < m.box[3] and m.box[2] <= box[0] + 2]
     for found, gap in ((left, lambda m: box[1] - m.box[3]), (above, lambda m: box[0] - m.box[2])):
@@ -192,9 +212,54 @@ def _face_label(page: Page, box: Box) -> str | None:
 COLUMN_FIELDS = {"section", "main", "links"}
 
 
+def _storey_groups(page: Page) -> list[tuple[str, Box, float, float]]:
+    """Storey groups of ruled schedules: (header text, header box, left, right). A schedule by storey puts each
+    storey's sub-columns (size, mix, stirrups, reinforcement) beside a sketch column titled by the storey header, so
+    a group runs from the previous header's right-hand rule (for the first, the table's left edge) to this header's
+    right-hand rule. Headers with no rule to their right are not in a ruled table and make no group. Cached."""
+    cached = getattr(page, "_storey_groups", None)
+    if cached is not None and cached[0] == len(page.words):
+        return cached[1]
+    headers = []
+    for line in visual_lines(page):
+        text = " ".join(w.text for w in line)
+        if is_storey_header(text):
+            b = union([w.box for w in line])
+            right = rule_right_of(page, (b[0] + b[2]) / 2, b[3])
+            if right is not None:
+                headers.append((text, b, right))
+    groups = []
+    rows: list[list[tuple[str, Box, float]]] = []
+    for h in sorted(headers, key=lambda h: (h[1][0], h[2])):
+        row = next((r for r in rows if r[0][1][0] < h[1][2] and h[1][0] < r[0][1][2]), None)
+        if row is not None:
+            row.append(h)
+        else:
+            rows.append([h])
+    for row in rows:
+        row.sort(key=lambda h: h[2])
+        for k, (text, b, right) in enumerate(row):
+            left = row[k - 1][2] if k else table_left(page, (b[0] + b[2]) / 2, b[1])
+            if left is not None:
+                groups.append((text, b, left, right))
+    object.__setattr__(page, "_storey_groups", (len(page.words), groups))
+    return groups
+
+
+def _group_of(page: Page, box: Box) -> tuple[str, Box, float, float] | None:
+    """The storey group a value sits in: its centre inside the group's span, below the group's header."""
+    cx = (box[1] + box[3]) / 2
+    inside = [g for g in _storey_groups(page) if g[2] < cx <= g[3] and box[0] >= g[1][2] - 2]
+    return min(inside, key=lambda g: box[0] - g[1][2]) if inside else None
+
+
 def _storey_header(page: Page, box: Box) -> str | None:
-    """The storey header a column value sits under: the nearest storey-range line above it in its column, else the
-    nearest to its left in its row. As written on the sheet."""
+    """The storey header a column value sits under. In a ruled schedule, the header of the storey group the value
+    is in (`_storey_groups`). Otherwise the nearest storey-range line above it in its column, else the nearest to its
+    left in its row. As written on the sheet."""
+    group = _group_of(page, box)
+    if group is not None:
+        return group[0]
     headers = [(line, union([w.box for w in line])) for line in visual_lines(page)
                if is_storey_header(" ".join(w.text for w in line))]
     above = [(box[0] - b[2], line) for line, b in headers if b[1] < box[3] and box[1] < b[3] and b[2] <= box[0] + 2]

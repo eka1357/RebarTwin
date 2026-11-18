@@ -103,6 +103,10 @@ def _column_bars(c: Column, z0: float, z1: float) -> tuple[list[Bar], dict[str, 
     fx = c.b / 2 - c.main_cover - fd / 2
     fy = c.h / 2 - c.main_cover - fd / 2
     xs, ys = spread(-ix, ix, c.bars_x), spread(-iy, iy, c.bars_y)
+    if c.face_along_x is not None:                     # face bars placed by a fix, else spread evenly
+        xs = [xs[0], *c.face_along_x, xs[-1]]
+    if c.face_along_y is not None:
+        ys = [ys[0], *c.face_along_y, ys[-1]]
 
     def along_x(x: float, side: int) -> tuple[float, float, float]:      # on a face that runs along X
         corner = x in (xs[0], xs[-1])

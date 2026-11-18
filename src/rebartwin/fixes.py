@@ -34,7 +34,15 @@ class ResizeColumn(BaseModel):
     h: float = Field(gt=0)
 
 
-Edit = Annotated[SetFace | ResizeColumn, Field(discriminator="kind")]
+class PlaceFaceBars(BaseModel):
+    """Place a column's bars between the corners (the schedule does not dimension them): positions along the faces,
+    mm from the centre line, symmetric. None leaves that pair of faces as it is."""
+    kind: Literal["place_face_bars"] = "place_face_bars"
+    along_x: list[float] | None = None     # on the two faces that run along X (crossed by beams along Y)
+    along_y: list[float] | None = None     # on the two faces that run along Y (crossed by beams along X)
+
+
+Edit = Annotated[SetFace | ResizeColumn | PlaceFaceBars, Field(discriminator="kind")]
 
 
 class Candidate(BaseModel):
@@ -47,6 +55,11 @@ class Candidate(BaseModel):
     def redesign(self) -> bool:
         """Changes a member's size, not just its bars: the engineer of record must redesign, not just re-detail."""
         return any(isinstance(e, ResizeColumn) for e in self.edits)
+
+    @property
+    def placement(self) -> bool:
+        """Places a column's face bars: a detailing choice the schedule leaves open."""
+        return any(isinstance(e, PlaceFaceBars) for e in self.edits)
 
 
 class Attempt(BaseModel):
@@ -100,6 +113,11 @@ def apply(joint: Joint, cand: Candidate) -> Joint:
         if isinstance(e, SetFace):
             beam = out.beam(e.beam)
             setattr(beam, e.face, [Layer(bars=s) for s in e.layers])
+        elif isinstance(e, PlaceFaceBars):
+            if e.along_x is not None:
+                out.column.face_along_x = list(e.along_x)
+            if e.along_y is not None:
+                out.column.face_along_y = list(e.along_y)
         else:
             out.column.b, out.column.h = e.b, e.h
     return out
@@ -165,6 +183,73 @@ def _faces_at_fault(joint: Joint, report: Report) -> list[tuple[str, Face]]:
     return faces
 
 
+PLACE_STEP = 5.0         # mm: face bar positions tried, measured from the column's centre line
+PLACE_CLEAR = 5.0        # mm: clear gap kept from every crossing beam bar; a placing tolerance, not a code rule
+PLACE_KEEP = 6           # placements tried per joint, the smallest moves first
+
+
+def _symmetric(k: int, inner: float) -> list[list[float]]:
+    """Symmetric positions for k face bars strictly between -inner and inner, on PLACE_STEP mm steps: one or two
+    pairs, with a bar on the centre line when k is odd. More than five face bars: none (not searched)."""
+    steps = [PLACE_STEP * i for i in range(1, int(inner // PLACE_STEP) + 1) if PLACE_STEP * i < inner]
+    if k in (2, 3):
+        return [[-s, *([0.0] if k == 3 else []), s] for s in steps]
+    if k in (4, 5):
+        return [[-b, -a, *([0.0] if k == 5 else []), a, b] for a in steps for b in steps if b > a]
+    return []
+
+
+def _current(c, n: int, size: float, placed: list[float] | None) -> tuple[float, list[float]]:
+    from .layout import spread
+    inner = size / 2 - c.main_cover - c.bar_dia / 2            # corner bar centres
+    return inner, list(placed) if placed is not None else spread(-inner, inner, n)[1:-1]
+
+
+def placements(joint: Joint) -> list[PlaceFaceBars]:
+    """Face bar placements that clear every crossing beam bar by PLACE_CLEAR mm, for each pair of column faces whose
+    bars between the corners do not: beams along X cross the faces that run along Y (their bars' lateral positions
+    are y), beams along Y the faces that run along X. Also kept: each face bar at least the larger of the two bar
+    sizes and aggregate + 5 mm clear of its neighbours (IS 456 cl. 26.3.2), so `check` is not asked about hopeless
+    ones; `check` still decides. Ordered by how far the bars move, smallest first."""
+    _, cage = check(joint)
+    c, agg = joint.column, joint.settings.aggregate
+    fd = c.face_dia if c.face_dia is not None else c.bar_dia
+    crossing: dict[str, list[tuple[float, float]]] = {"x": [], "y": []}
+    for bar in cage.bars:
+        if bar.role in ("top", "bottom"):
+            crossing[joint.beam(bar.member).direction].append((bar.lateral, bar.dia))
+    out: dict[str, list] = {}
+    for axis, n, size, placed, beams in (("along_y", c.bars_y, c.h, c.face_along_y, crossing["x"]),
+                                         ("along_x", c.bars_x, c.b, c.face_along_x, crossing["y"])):
+        inner, now = _current(c, n, size, placed)
+
+        def clear(pos: list[float], beams=beams) -> bool:
+            return all(abs(p - lat) - (fd + d) / 2 >= PLACE_CLEAR - 1e-9 for p in pos for lat, d in beams)
+
+        def spaced(pos: list[float], inner=inner) -> bool:
+            row = [-inner, *pos, inner]
+            for a, b in zip(row, row[1:]):
+                da = c.bar_dia if a in (-inner, inner) else fd
+                db = c.bar_dia if b in (-inner, inner) else fd
+                if (b - a) - (da + db) / 2 < max(da, db, agg + 5) - 1e-9:
+                    return False
+            return True
+        if not now or clear(now):
+            out[axis] = [None]
+            continue
+        found = [p for p in _symmetric(n - 2, inner) if clear(p) and spaced(p)]
+        found.sort(key=lambda p, now=now: (sum(abs(a - b) for a, b in zip(p, now)), p))
+        out[axis] = found
+    combos = [PlaceFaceBars(along_x=x, along_y=y) for y in out["along_y"] for x in out["along_x"]
+              if x is not None or y is not None]
+    return combos[:PLACE_KEEP]
+
+
+def _where(e: PlaceFaceBars) -> str:
+    return "; ".join(f"{n} = " + ", ".join(f"{p:g}" for p in pos) + " mm"
+                     for n, pos in (("y", e.along_y), ("x", e.along_x)) if pos)
+
+
 def _layers_text(layers: list[str]) -> str:
     if len(layers) == 1:
         return layers[0]
@@ -187,6 +272,11 @@ class Enumerator:
         s = joint.settings
         if round == 1:
             cands = []
+            col = joint.column.id + "/"
+            if any(f.rule == "GEOM-CLASH" and any(b.startswith(col) for b in f.bars) for f in report.failures):
+                for e in placements(joint):
+                    cands.append(Candidate(title=f"{joint.column.id} face bars at {_where(e)}", edits=[e],
+                                           rationale="move the column's face bars clear of the beam bars"))
             for beam_id, face in _faces_at_fault(joint, report):
                 need = joint.required(beam_id, face)
                 if face == "bottom" and s.is13920:
@@ -199,6 +289,15 @@ class Enumerator:
             return cands
         if round == 2:
             cands = []
+            col = joint.column.id + "/"
+            for a in history:                  # a beam change whose only failures are clashes with column bars
+                if a.passed or a.candidate.placement or not a.failures or not all(
+                        f["rule"] == "GEOM-CLASH" and any(b.startswith(col) for b in f["bars"]) for f in a.failures):
+                    continue
+                for e in placements(apply(joint, a.candidate)):
+                    cands.append(Candidate(title=f"{a.candidate.title}; {joint.column.id} face bars at {_where(e)}",
+                                           edits=[*a.candidate.edits, e],
+                                           rationale="the beam change, with the column's face bars placed clear of it"))
             for a in history:
                 rules = {f["rule"] for f in a.failures}
                 if a.passed or not rules or not rules <= KNOCK_ON:
@@ -259,6 +358,14 @@ def _option(joint: Joint, cand: Candidate, base_cage_depths: dict) -> Option:
             flags.append(f"{e.beam} {e.face} steel's effective depth drops from {fmt(d0)} to {fmt(d1)} mm: recheck "
                          f"the section's strength")
     column = None
+    for e in cand.edits:
+        if isinstance(e, PlaceFaceBars):
+            c1 = trial.column
+            fd = c1.face_dia if c1.face_dia is not None else c1.bar_dia
+            column = f"{c1.id} face bars at {_where(e)}"
+            flags.append(f"{c1.id}'s {fd:g} mm face bars placed at {_where(e)} from its centre line (the schedule "
+                         f"does not dimension them), each at least {PLACE_CLEAR:g} mm clear of the beams' bars: a "
+                         "placing tolerance chosen here, not a code rule. Show these positions on the drawing.")
     if cand.redesign:
         c0, c1 = joint.column, trial.column
         column = f"{c0.b:g} × {c0.h:g} -> {c1.b:g} × {c1.h:g}"
@@ -276,7 +383,17 @@ def _rank(opt: Option, joint: Joint) -> tuple:
     bars = sum(f.n_bars for f in opt.faces)
     layers = sum(f.n_layers for f in opt.faces)
     depth_loss = max((f.depth_before - f.depth_after for f in opt.faces), default=0.0)
-    return (opt.candidate.redesign, growth, int(over // 5), bars, layers, round(depth_loss, 1), over)
+    move = 0.0                         # how far placed face bars move from where the drawing spreads them
+    c = joint.column
+    for e in opt.candidate.edits:
+        if isinstance(e, PlaceFaceBars):
+            for pos, n, size, placed in ((e.along_y, c.bars_y, c.h, c.face_along_y),
+                                         (e.along_x, c.bars_x, c.b, c.face_along_x)):
+                if pos:
+                    move += sum(abs(a - b) for a, b in zip(pos, _current(c, n, size, placed)[1]))
+    # beam-only changes first, then face bar placements (alone or with a beam change), then redesigns
+    return (opt.candidate.redesign, opt.candidate.placement, growth, round(move, 1), int(over // 5), bars, layers,
+            round(depth_loss, 1), over)
 
 
 def resolve(joint: Joint, proposers: list[Proposer] | None = None, max_rounds: int = 2, keep: int = 3) -> FixResult:

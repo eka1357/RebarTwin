@@ -158,6 +158,11 @@ model's "unresolved" ignored where code proved or defaulted the value; prompt `l
 Then: engine text never rounds a failing value onto its limit (format.ts's rule; XB17's top bars read 24.7 mm
 against 25 mm); demo bundles unchanged. 292 tests.
 
+Then: the fix loop can place a column's face bars (symmetric, 5 mm steps, 5 mm clear of crossing beam bars as a
+placing tolerance), alone or with a beam change, ranked after beam-only changes and before redesigns. C1 x XB17 at
+L1/M/M1-28 is now fixed without a redesign: XB17 top 2-16 over 2-12, C1 face bars at y = +-40 mm. Demo bundles
+unchanged. 297 tests.
+
 ## Next: built in Google Antigravity
 
 The API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

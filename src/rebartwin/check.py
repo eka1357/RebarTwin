@@ -36,8 +36,8 @@ def check(joint: Joint) -> tuple[Report, Cage]:
     findings, run, skipped = [], [], {}
     for rule in RULES:
         if rule.seismic and not joint.settings.is13920:
-            skipped[rule.id] = (f"IS 13920 is off: seismic zone {joint.settings.seismic_zone}. It runs in zones III, "
-                                "IV and V, or when apply_is13920 is true.")
+            skipped[rule.id] = (f"IS 13920 is off: the joint is in seismic zone {joint.settings.seismic_zone}. It "
+                                "applies in zones III to V, or when the designer turns it on.")
             continue
         run.append(rule.id)
         findings += rule.run(cage, joint)

@@ -549,8 +549,8 @@
    "GEOM-CLASH"
   ],
   "rules_skipped": {
-   "IS13920-7.1.1": "IS 13920 is off: seismic zone II. It runs in zones III, IV and V, or when apply_is13920 is true.",
-   "IS13920-6.2.3": "IS 13920 is off: seismic zone II. It runs in zones III, IV and V, or when apply_is13920 is true."
+   "IS13920-7.1.1": "IS 13920 is off: the joint is in seismic zone II. It applies in zones III to V, or when the designer turns it on.",
+   "IS13920-6.2.3": "IS 13920 is off: the joint is in seismic zone II. It applies in zones III to V, or when the designer turns it on."
   },
   "passed": {
    "IS456-26.3.2-H": 11,

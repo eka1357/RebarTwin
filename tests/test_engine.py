@@ -117,3 +117,12 @@ def test_a_model_proposal_is_shown_only_if_the_checker_passes_it():
     rejected = [a for a in result.attempts if not a.passed]
     assert [a.candidate.title for a in rejected] == ["six 20s in one row"]
     assert {f["rule"] for f in rejected[0].failures} >= {"IS456-26.3.2-H"}
+
+
+def test_is13920_skip_note_is_written_for_engineers():
+    """In zone II, IS 13920 rules are not run; the reason goes into printed reports, so it names the zone and the
+    designer's choice, not a setting name."""
+    report, _ = check(joint("II"))
+    note = "IS 13920 is off: the joint is in seismic zone II. It applies in zones III to V, or when the designer turns it on."
+    assert set(report.rules_skipped.values()) == {note}
+    assert all("apply_is13920" not in why for why in report.rules_skipped.values())

@@ -477,42 +477,72 @@ class Beam:
     grid: list[str] = field(default_factory=list)    # the grid line(s) the band lies on
 
 
-def beams(page: Page, g: Grid) -> tuple[list[Beam], list[Problem]]:
-    """XB and YB labels tied to the band they sit on: a band along the label's stated direction (XB along x), the
-    label's centre within the band's length (give or take a text height), and the label within NEAR text heights of
-    it. One candidate: that band. Candidates on both sides of the label: it sits between two bands, a problem. All on
-    one side: the nearest, if the next is at least twice as far; else a problem. Then the band's grid line: the grid
-    lines of the other axis between its edges, give or take the grid tolerance."""
+def tie_to_band(page: Page, box: Box, axis: str) -> Band | str:
+    """The band a label sits on, along `axis`, or why there is none. A candidate band runs along `axis`, has the
+    label's centre within its length (give or take a text height), and is within NEAR text heights of the label. One
+    candidate: that band. Candidates on both sides of the label: it sits between two bands. All on one side: the
+    nearest, if the next is at least twice as far; else it is about as near two."""
     h = text_height(page)
-    bs = bands(page)
+    cy, cx = _centre(box)
+    c_along = cx if axis == "h" else cy
+    slack = h * 1000 / (page.width if axis == "h" else page.height)
+    cands = sorted(((b.gap_to(page, box), k, b) for k, b in enumerate(bands(page)) if b.axis == axis
+                    and b.lo - slack <= c_along <= b.hi + slack), key=lambda t: (t[0], t[1]))
+    cands = [(d, b) for d, _, b in cands if d <= NEAR * _height_pt(page, box)]
+    if not cands:
+        return "no beam band found under it"
+    sides = {b.side(box) for _, b in cands}
+    if len(cands) > 1 and -1 in sides and 1 in sides:
+        return "it sits between two beam bands"
+    if len(cands) > 1 and cands[1][0] < 2 * cands[0][0]:
+        return "it is about as near two beam bands"
+    return cands[0][1]
+
+
+def beams(page: Page, g: Grid) -> tuple[list[Beam], list[Problem]]:
+    """XB and YB labels tied to the band they sit on, along their stated direction (XB along x; `tie_to_band`), and
+    the band's grid line: the grid lines of the other axis between its edges, give or take the grid tolerance."""
     out: list[Beam] = []
     problems: list[Problem] = []
     for bid, box in member_labels(page):
         if bid[:2] not in ("XB", "YB"):
             continue
         axis = "h" if bid.startswith("XB") else "v"
-        cy, cx = _centre(box)
-        c_along = cx if axis == "h" else cy
-        slack = h * 1000 / (page.width if axis == "h" else page.height)
-        cands = sorted(((b.gap_to(page, box), k, b) for k, b in enumerate(bs) if b.axis == axis
-                        and b.lo - slack <= c_along <= b.hi + slack), key=lambda t: (t[0], t[1]))
-        cands = [(d, b) for d, _, b in cands if d <= NEAR * _height_pt(page, box)]
-        beam = Beam(bid, box)
-        if not cands:
-            problems.append(Problem(bid, page.number, box, f"no beam band found under the label {bid}"))
+        band = tie_to_band(page, box, axis)
+        if isinstance(band, str):
+            problems.append(Problem(bid, page.number, box, f"the label {bid}: {band}"))
             continue
-        sides = {b.side(box) for _, b in cands}
-        if len(cands) > 1 and -1 in sides and 1 in sides:
-            problems.append(Problem(bid, page.number, box, f"the label {bid} sits between two beam bands"))
-            continue
-        if len(cands) > 1 and cands[1][0] < 2 * cands[0][0]:
-            problems.append(Problem(bid, page.number, box, f"the label {bid} is about as near two beam bands"))
-            continue
-        beam.band = cands[0][1]
         pos, tol = (g.ys, g.tol("y")) if axis == "h" else (g.xs, g.tol("x"))
-        beam.grid = sorted((k for k, v in pos.items() if beam.band.e0 - tol <= v <= beam.band.e1 + tol), key=pos.get)
-        out.append(beam)
+        out.append(Beam(bid, box, band, sorted((k for k, v in pos.items() if band.e0 - tol <= v <= band.e1 + tol),
+                                                key=pos.get)))
     return out, problems
+
+
+def band_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
+    """On a plan, the beam a value (a size label) belongs to by geometry: the band the value sits on, read along its
+    text (horizontal text along x, vertical along y), and the XB or YB labels tied to that same band. Returns (the
+    beam ids on that band, "") or (empty, why) when the value sits on no single band; None on a sheet with no tied
+    beam labels, where geometry says nothing."""
+    cache = getattr(page, "_plan_cache", None)
+    if cache is None:
+        cache = {}
+        object.__setattr__(page, "_plan_cache", cache)
+    if "tied" not in cache:
+        tied: dict[int, set[str]] = {}
+        for bid, b in member_labels(page):
+            if bid[:2] in ("XB", "YB"):
+                band = tie_to_band(page, b, "h" if bid.startswith("XB") else "v")
+                if not isinstance(band, str):
+                    tied.setdefault(id(band), set()).add(bid)
+        cache["tied"] = tied
+    tied = cache["tied"]
+    if not tied:
+        return None
+    vertical = (box[2] - box[0]) * page.height > (box[3] - box[1]) * page.width
+    band = tie_to_band(page, box, "v" if vertical else "h")
+    if isinstance(band, str):
+        return set(), band
+    return tied.get(id(band), set()), ""
 
 
 # --- 5 to 7. joints --------------------------------------------------------------------------------------------------
@@ -633,3 +663,137 @@ def meet(beam_page: Page, column_page: Page) -> Plans:
                                         "direction, so which one is this joint's needs a person"))
     out.problems += [p for p in col_problems]
     return out
+
+
+# --- into the reading ------------------------------------------------------------------------------------------------
+
+def roles(pages: list[Page]) -> tuple[list[Page], list[Page]]:
+    """Beam layouts (a grid on both axes and at least one XB or YB label tied to a band) and column layouts (a grid on
+    both axes, at least three columns on it, and no tied beam label)."""
+    beam_pages, column_pages = [], []
+    for p in pages:
+        g = grid(p)
+        if len(g.xs) < 2 or len(g.ys) < 2:
+            continue
+        bms, _ = beams(p, g)
+        if bms:
+            beam_pages.append(p)
+        elif len(columns(p, g)[0]) >= 3:
+            column_pages.append(p)
+    return beam_pages, column_pages
+
+
+def read_plans(pages: list[Page], agreement) -> dict:
+    """Add a code-made `frames_into` field (status "geometry") for each beam that meets a column on a beam layout and
+    its column layout, and a To check item for each problem; return what reading.json records: the alignment, the
+    joints found, and the beam-on-beam junctions. A beam layout pairs with the one column layout its grid fits; with
+    none or several, its beams' joints need a person."""
+    from .agree import Accepted, ToCheck
+    from .ingest import box_2d
+
+    beam_pages, column_pages = roles(pages)
+    info: dict = {"beam_layouts": [p.number for p in beam_pages], "column_layouts": [p.number for p in column_pages],
+                  "alignment": [], "joints": [], "junctions": []}
+    n_tc = len(agreement.to_check) + len(agreement.unassigned)
+
+    def flag(member: str | None, page: int, box: Box | None, reason: str, detail: str) -> None:
+        nonlocal n_tc
+        n_tc += 1
+        agreement.to_check.append(ToCheck(f"tc_{n_tc:04d}", member, "frames_into", page, box, None, None, reason,
+                                          detail))
+
+    have = {(a.member, a.value, a.level) for a in agreement.accepted if a.field == "frames_into"}
+    made: list[Accepted] = []
+    for bp in beam_pages:
+        fits = [cp for cp in column_pages if all(align(grid(bp), grid(cp))[:2])]
+        if len(fits) != 1:
+            flag(None, bp.number, None, "missing" if not fits else "ambiguous",
+                 f"the beam layout on sheet {bp.number} lines up with "
+                 f"{'no column layout' if not fits else 'column layouts on sheets ' + ', '.join(str(p.number) for p in fits)}"
+                 "; which column each beam meets needs a person")
+            continue
+        r = meet(bp, fits[0])
+        info["alignment"].append(r.alignment)
+        info["junctions"] += r.junctions
+        for p in r.problems:
+            flag(None if p.member == "ALL" else p.member, p.page, p.box, "ambiguous", p.detail)
+        for m in r.meets:
+            info["joints"].append({"beam": m.beam, "column": m.column, "at": m.at, "level": m.level,
+                                   "beam_page": m.beam_page, "column_page": m.column_page})
+            if (m.beam, m.column, m.level) in have:
+                continue
+            have.add((m.beam, m.column, m.level))
+            made.append(Accepted(
+                "", m.beam, "frames_into", 1, m.column, m.beam_page, m.beam_box, f"{m.beam} / {m.column} at {m.at}",
+                "", (0.0, 0.0, 0.0, 0.0), "geometry", m.level, status="geometry",
+                refs=[{"page": m.column_page, "box_2d": box_2d(m.column_box), "text": m.column, "at": m.at}]))
+    start = len(agreement.accepted)
+    for i, a in enumerate(made, start + 1):
+        a.id = f"f{i:04d}"
+    agreement.accepted += made
+    return info
+
+
+# --- 8. beam elevations ----------------------------------------------------------------------------------------------
+
+TITLE = re.compile(r"((?:XB|YB|FB|PB|RB|GB|TB|LB|SB|CB|B)\d{1,3}[A-Z]?)\s*\(")
+SPAN_ABOVE = 3.0         # text heights: the lines that give an elevation's length are this close above its title
+SPAN_LEFT = 2.0          # text heights: ... and start this close to the title's left end
+
+
+@dataclass
+class Elevation:
+    member: str
+    title: Box
+    lo: float                # the elevation's x-span
+    hi: float
+
+
+def elevations(page: Page) -> list[Elevation]:
+    """Beam elevations on a detail sheet: each titled below by "XB1(200x600-inv)". The elevation's x-span is the
+    reach of the long horizontal lines (dimension lines, the beam's edges) within SPAN_ABOVE text heights above the
+    title that start within SPAN_LEFT text heights of its left end: an elevation and its title share a left end.
+    Cached."""
+    cache = getattr(page, "_plan_cache", None)
+    if cache is None:
+        cache = {}
+        object.__setattr__(page, "_plan_cache", cache)
+    if "elevations" in cache:
+        return cache["elevations"]
+    out: list[Elevation] = []
+    titles = [(m.group(1), w.box) for w in page.words if (m := TITLE.match(w.text.strip()))]
+    if titles and page.shapes is not None:
+        h = median(_height_pt(page, b) for _, b in titles)
+        hx, hy = h * 1000 / page.width, h * 1000 / page.height
+        long = [ln for ln in lines(page.shapes.segments, (hx, hy)) if ln.axis == "h" and ln.length >= 5 * hx]
+        for member, b in titles:
+            near = [ln for ln in long if b[0] - SPAN_ABOVE * hy <= ln.at < b[0] and abs(ln.lo - b[1]) <= SPAN_LEFT * hx]
+            if near:
+                out.append(Elevation(member, b, min(ln.lo for ln in near), max(ln.hi for ln in near)))
+    cache["elevations"] = out
+    return out
+
+
+def elevation_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
+    """On a detail sheet, the beam a callout belongs to by geometry: the elevation whose title is the nearest below
+    the callout among those whose x-span holds the callout's centre, provided no other title lies between them across
+    that span (the callout would then be above another elevation's title, so in that elevation's band or above it).
+    Returns ({member}, "") for exactly one such elevation, (empty, why) when two fit equally; None on a sheet with no
+    elevation titles, or a callout under no elevation, where geometry says nothing."""
+    els = elevations(page)
+    if not els:
+        return None
+    cy, cx = _centre(box)
+    below = sorted((e for e in els if e.title[0] >= box[2] and e.lo <= cx <= e.hi), key=lambda e: e.title[0])
+    if not below:
+        return None
+    first = below[0]
+    between = [e for e in els if e is not first and box[2] <= e.title[0] < first.title[0]
+               and e.title[1] < first.hi and first.lo < e.title[3]]
+    if between:
+        return None
+    same = [e for e in below if abs(e.title[0] - first.title[0]) < (first.title[2] - first.title[0])]
+    names = {e.member for e in same}
+    if len(names) > 1:
+        return set(), f"elevations {', '.join(sorted(names))} both lie below this callout"
+    return names, ""

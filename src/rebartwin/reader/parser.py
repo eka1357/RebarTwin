@@ -224,7 +224,10 @@ def visual_lines(page: Page, tokens: bool = True) -> list[list[Word]]:
 
 
 def parse_page(page: Page) -> list[Match]:
-    """Every notation match on a page, each mapped to the words it covers."""
+    """Every notation match on a page, each mapped to the words it covers. A grid bubble is never a member id: bubble
+    "C1" names grid line C1, not column C1 (plan.py)."""
+    from .plan import bubbles
+    in_bubble = {(b.word.text, b.word.box) for b in bubbles(page)}
     out = []
     for line in visual_lines(page):
         text, spans, pos = "", [], 0
@@ -237,5 +240,7 @@ def parse_page(page: Page) -> list[Match]:
             pos += len(w.text)
         for kind, value, start, end in scan(text):
             covered = tuple(w for w, (s, e) in zip(line, spans) if s < end and start < e)
+            if kind == "member" and all((w.text, w.box) in in_bubble for w in covered):
+                continue
             out.append(Match(kind, value, text[start:end], page.number, union([w.box for w in covered]), covered))
     return out

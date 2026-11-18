@@ -83,11 +83,16 @@ class Accepted:
     level: str | None = None      # as written on the drawing: the storey header or the sheet's floor
     ocr_raw: str | None = None    # what OCR read before a misread Ø was repaired; None when nothing was repaired
     joined_from: list[str] | None = None   # the comments a split Ø callout was joined from (tokens.py)
+    status: str = "agreed"        # "agreed" (both channels) or "geometry" (made by code from the drawing's geometry)
+    refs: list[dict] | None = None   # further places on the drawing that back it: [{page, box_2d, text, at}]
 
     def provenance(self) -> dict:
-        return {"page": self.page, "box_2d": box_2d(self.box), "text": self.text, "gemini": self.gemini,
-                "parser": self.value, "status": "agreed", "field_id": self.id, "level": self.level,
-                "ocr_raw": self.ocr_raw, "joined_from": self.joined_from}
+        p = {"page": self.page, "box_2d": box_2d(self.box), "text": self.text, "gemini": self.gemini,
+             "parser": self.value, "status": self.status, "field_id": self.id, "level": self.level,
+             "ocr_raw": self.ocr_raw, "joined_from": self.joined_from}
+        if self.refs:
+            p["refs"] = self.refs
+        return p
 
 
 @dataclass
@@ -141,6 +146,10 @@ def _tied(member: str, value: Match, members: list[Match], line_of: dict[int, in
 
     In order:
     1. A label in the same text as the value ("XB1(200x600-inv)") is its label.
+    1a. On a plan, a beam size on a beam band belongs to the XB or YB label tied to that band (plan.py, `band_tie`);
+       two different labels on the band make it ambiguous.
+    1b. On a detail sheet, a beam value belongs to the elevation whose title ("XB1(200x600-inv)") is below it
+       (plan.py, `elevation_tie`).
     2. The nearest label of the same kind within TIE_NEAR text heights in any direction (a plan callout's id above,
        below or beside its size) is its label, unless a second, different label of that kind is within TIE_CROWD:
        then which one is meant is ambiguous.
@@ -165,6 +174,27 @@ def _tied(member: str, value: Match, members: list[Match], line_of: dict[int, in
         if len(row) > 1:
             return False, None, f"labels {', '.join(sorted(row))} share this row of the table"
         return _reading_order(member, box, same, line_of)
+    if value.kind == "section" and _member_kind(member) == "beam":
+        # On a plan, geometry decides before distance: a size on a beam band belongs to the beam labelled on that
+        # band (plan.py). A band with no label, or no band, leaves it to the rules below.
+        from .plan import band_tie
+        found = band_tie(page, box)
+        if found and found[0]:
+            names = found[0]
+            if len(names) == 1:
+                name = next(iter(names))
+                return (True, None, None) if name == member else (False, name, None)
+            return False, None, f"labels {', '.join(sorted(names))} are on the beam band this value sits on"
+    if _member_kind(member) == "beam":
+        # On a detail sheet, a callout belongs to the beam elevation whose title is below it (plan.py).
+        from .plan import elevation_tie
+        found = elevation_tie(page, box)
+        if found is not None:
+            names, why = found
+            if len(names) == 1:
+                name = next(iter(names))
+                return (True, None, None) if name == member else (False, name, None)
+            return False, None, why
     height = (box[2] - box[0]) * page.height / 1000
     by_gap = sorted(((_gap_pt(page, m.box, box), k, m) for k, m in enumerate(same)), key=lambda t: (t[0], t[1]))
     close = [(g, m) for g, _, m in by_gap if g <= TIE_NEAR * height]

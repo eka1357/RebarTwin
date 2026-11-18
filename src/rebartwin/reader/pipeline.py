@@ -8,7 +8,8 @@
     out/provenance.json       [{joint, fields: {path: {page, box_2d, text, gemini, parser, status}}, link_notes}]
     out/to_check.json         every item a person must decide; joint null + member ALL = project-level
     out/reading.json          the run: models, prompt versions, counts, calls (tokens, latency, cached), accepted
-                              fields, unassigned values
+                              fields, unassigned values, and `plans`: beam and column layouts, their grid alignment,
+                              the joints found from geometry, and beam-on-beam junctions (plan.py)
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from .ingest import box_2d, ingest
 from .ocr import CachingOcr, OcrTransport, ocr_pages
 from .link import LINK_PROMPT, Linked, Verified, blocks, link
 from .parser import parse_page
+from .plan import read_plans
 
 
 @dataclass
@@ -56,6 +58,7 @@ def read(pdf: Path, out: Path, transport: Transport | None, *, ocr: OcrTransport
     matches = [m for page in sheets for m in parse_page(page)]
     reads = read_pages(sheets, cache, read_model, tile_px=tile_px, concurrency=concurrency)
     agreement = agree(reads, matches, sheets)
+    plans = read_plans(sheets, agreement)            # joints from geometry: code-made frames_into fields
     linked = link(agreement, cache, link_model)
 
     joints_dir = out / "joints"
@@ -87,6 +90,7 @@ def read(pdf: Path, out: Path, transport: Transport | None, *, ocr: OcrTransport
         "accepted": [{**asdict(a), "box": box_2d(a.box), "gemini_box": box_2d(a.gemini_box)}
                      for a in agreement.accepted],
         "unassigned": [t.to_json() for t in agreement.unassigned],
+        "plans": plans,
     }
     (out / "reading.json").write_text(json.dumps(reading, indent=1, ensure_ascii=False), encoding="utf-8")
     return Result(out, len(sheets), agreement, linked, seconds, calls, blocked)

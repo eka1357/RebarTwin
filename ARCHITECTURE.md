@@ -199,7 +199,8 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    (close sub-grids such as B and B1 can both cross one column); a column off the grid is To check. A band meets a
    column when, mapped onto the column layout, it overlaps the outline across and reaches it along (one text height
    of slack, since edges stop at column faces): that is a `frames_into` field with status `geometry`, level the
-   layout's title ("FIRST FLOOR BEAM LAYOUT"). Different marks along one direction at a column, or a label between
+   layout's title ("FIRST FLOOR BEAM LAYOUT") and `at` its place ("F-14"); one field per place. Slab marks in
+   circles (S1, S14) are never bubbles. Different marks along one direction at a column, or a label between
    two bands, go to To check; a band ending where no column is, is a beam-on-beam junction in reading.json.
    `scripts/plan_joints.py` prints them with no API call.
 5. **Linking** (`link.py`). `REBARTWIN_MODEL_LINK` (default `gemini-4-argon`; on model-not-found
@@ -209,9 +210,15 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    drawn field becomes a To check item tied to the joint. Defaults and the model's structural choices (direction,
    column orientation, cover measured to, layer arrangement) are written into `Joint.notes` by code, never by the
    model. Joint ids are rebuilt from the members: `C4xB12xB13`, with `@<floor>` when the plans give one
-   (`C4xB12@FIRST`). A joint's floor is the floor of the plans its beams were read on; its column values must be
+   (`C4xB12@FIRST`) and `@<place>` when geometry gives the column's grid place (`C5xXB8@FIRST@F-14`,
+   `C5xXB3xYB14@FIRST@C+C1-25`): one column type stands at many places, so the place keeps ids unique. Id parts are
+   safe as Windows file names and URL path segments: "/" becomes "+", spaces "_", other characters outside
+   letters, digits, `_ + . -` become "_". In a joint with a place, a beam's `top_extra` counts only if its `at` (the
+   grid bubble under it on the detail sheet) is the beam's support line there (the number for a beam along X, the
+   letter along Y); an extra with no `at` is an `ambiguous` item on `beams[i].top`, never a guess. A joint's floor is the floor of the plans its beams were read on; its column values must be
    from the storey that ends there and its beam values from that floor, and that choice is a note. Without a floor,
-   a column with values for several storeys goes to To check. Prompt `link_v2`.
+   a column with values for several storeys goes to To check. Prompt `link_v3` (adds `at`: one joint per place, top
+   extras by support).
 6. **Evaluation.** A golden set of 60 hand-labelled callouts; report accuracy per field. Target: at least 95%
    accepted and correct, zero wrong values accepted.
 

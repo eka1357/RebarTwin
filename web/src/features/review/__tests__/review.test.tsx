@@ -42,6 +42,22 @@ describe("W9 To Check & Callout Grammar", () => {
   it("places unresolved project-level items first before joint items", () => {
     const sample: ToCheckItem[] = [
       {
+        id: "tc_nonblock",
+        joint: null,
+        member: "PC1",
+        field: "section",
+        layer: 1,
+        level: "FOUNDATION",
+        page: 7,
+        box_2d: [58, 552, 70, 558],
+        gemini: { value: "200x200" },
+        parser: { value: "200x200" },
+        reason: "ambiguous",
+        detail: "PC1 does not belong to any joint",
+        resolution: null,
+        blocks_joint: false,
+      },
+      {
         id: "tc_1",
         joint: "C4xB12@FIRST",
         member: "B12",
@@ -76,8 +92,12 @@ describe("W9 To Check & Callout Grammar", () => {
     const sorted = sortToCheckQueue(sample);
     expect(sorted[0].id).toBe("tc_zone");
     expect(sorted[0].project_level).toBe(true);
+    expect(sorted[0].blocks_joint).toBe(true);
     expect(sorted[1].id).toBe("tc_1");
     expect(sorted[1].project_level).toBe(false);
+    expect(sorted[1].blocks_joint).toBe(true);
+    expect(sorted[2].id).toBe("tc_nonblock");
+    expect(sorted[2].blocks_joint).toBe(false);
   });
 
   it("supports keys 1, 2, E (validated), S, J/K and unlocks joint via API", async () => {

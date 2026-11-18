@@ -214,4 +214,21 @@ describe("W10 Project Overview (IIT 45-joint fixture)", () => {
     expect(within(rows[1]).queryByText("SECOND")).toBeNull();
     expect(within(rows[1]).queryByText("H-9")).toBeNull();
   });
+
+  it("shows joint-blocking To check items separately from non-blocking readings", () => {
+    render(
+      <ProjectSummaryCards
+        counts={{ found: 45, checked: 0, failing: 0, blocked: 45, passing: 0 }}
+        unresolvedToCheck={1340}
+        blockingToCheck={24}
+        nonBlockingToCheck={1316}
+        statusFilter="all"
+        onSelectFilter={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByText("24 block joints · 1,316 other readings, none blocking"),
+    ).toBeInTheDocument();
+  });
 });

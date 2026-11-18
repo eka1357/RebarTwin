@@ -7,8 +7,24 @@ export type ProjectStatusFilter = "all" | "fail" | "to_check" | "pass";
 interface ProjectSummaryCardsProps {
   counts: ProjectCounts;
   unresolvedToCheck: number;
+  blockingToCheck?: number;
+  nonBlockingToCheck?: number;
   statusFilter: ProjectStatusFilter;
   onSelectFilter: (next: ProjectStatusFilter) => void;
+}
+
+function formatToCheckDetail(
+  unresolvedToCheck: number,
+  blockingToCheck?: number,
+  nonBlockingToCheck?: number,
+): string {
+  const blocking = blockingToCheck ?? unresolvedToCheck;
+  const nonBlocking = nonBlockingToCheck ?? Math.max(0, unresolvedToCheck - blocking);
+  const blockingText = `${formatNumber(blocking)} ${blocking === 1 ? "blocks a joint" : "block joints"}`;
+  if (nonBlocking <= 0) {
+    return blockingText;
+  }
+  return `${blockingText} · ${formatNumber(nonBlocking)} ${nonBlocking === 1 ? "other reading" : "other readings"}, none blocking`;
 }
 
 /**
@@ -18,6 +34,8 @@ interface ProjectSummaryCardsProps {
 export function ProjectSummaryCards({
   counts,
   unresolvedToCheck,
+  blockingToCheck,
+  nonBlockingToCheck,
   statusFilter,
   onSelectFilter,
 }: ProjectSummaryCardsProps) {
@@ -61,7 +79,7 @@ export function ProjectSummaryCards({
       key: "to_check",
       label: "Blocked by To check",
       value: counts.blocked,
-      detail: `${formatNumber(unresolvedToCheck)} unresolved ${unresolvedToCheck === 1 ? "item" : "items"}`,
+      detail: formatToCheckDetail(unresolvedToCheck, blockingToCheck, nonBlockingToCheck),
       Icon: HelpCircle,
       toneClass: "text-check",
       borderClass: "border-check/40",

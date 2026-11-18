@@ -48,19 +48,27 @@ Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/) in Chrome.
 
 ## 3. Live Drawing Click Path (IIT Hyderabad Residence Set)
 
-1. From the landing page, click **Upload drawings**.
+**Pre-stage at least 15 minutes before a 3-minute pitch.** Even with saved replies in `REBARTWIN_REPLIES_DIR`, reading all 10 A1 sheets (`pages 7-9,15-21`) takes about 3 to 4 minutes on CPU for PNG rasterization, OCR, and geometry alignment, which is too slow for a 3-minute pitch. Upload and read the drawing set before the session, and open the already-read project directly during the demo.
+
+### A. Pre-stage (at least 15 minutes before presenting)
+
+1. Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/) and click **Upload drawings**.
 2. In **Pages (optional)**, enter `7-9,15-21`.
 3. Click **Upload a drawing set** (or drag and drop `uploads/iith-director-residence-structural.pdf`).
-4. Watch **ReadingBoard** stream pages `7`, `8`, `9`, `15` through `21` and **ReadingLog** log dual-channel progress using the saved replies in `REBARTWIN_REPLIES_DIR` (zero live Gemini tokens when cached; takes about 3 to 4 minutes on CPU for first-time A1 PNG rasterization and geometry alignment). When reading finishes, the app navigates to the project overview `/projects/<id>`.
-5. On **Joints Overview** (`/projects/<id>`):
-   - Review the summary counts (`45` joints found across the 10 sheets, initially blocked by `To check`), **Failures by rule**, sorted **Joints** rows (including `Draft` joints showing accepted values beside `not on the drawing yet` for nulls), and **Beam-on-beam junctions (`35`)** shown as **Information**.
-6. Click **Resolve project items** (or **To check** in the top navigation bar) to open `/projects/<id>/review`.
+4. Let **ReadingBoard** and **ReadingLog** finish all 10 pages from `REBARTWIN_REPLIES_DIR` (takes ~3 to 4 minutes on CPU) until the app navigates to `/projects/<id>`.
+5. Bookmark or note that `/projects/<id>` URL (or ensure **Project** points to it) and keep both servers running.
+
+### B. Live pitch click path (starts from the already-read project)
+
+1. Open the pre-read project overview at `http://127.0.0.1:4173/projects/<id>` (do not re-upload during the pitch):
+   - Review the summary counts (`45` joints found, initially blocked by project-wide `To check` items alongside non-blocking other readings listed separately), **Failures by rule**, sorted **Joints** rows (including `Draft` joints with `"not on the drawing yet"` for nulls), and **Beam-on-beam junctions (`35`)** shown as **Information**.
+2. Click **Resolve project items** (or **To check** in the header) to open `/projects/<id>/review` (blocking items appear first):
    - Confirm **ALL · seismic_zone** using quick chip **Zone II (IS 13920 off)**.
    - Confirm **ALL · exposure** using quick chip **Mild**.
-7. Return to **Project** overview and open **C1xXB17@FIRST@L1+M+M1-28**:
+3. Return to **Project** overview and click **Joint** on **C1xXB17@FIRST@L1+M+M1-28**:
    - Answering `seismic_zone = II` and `exposure = mild` unlocks `C1xXB17@FIRST@L1+M+M1-28` immediately (`9 Fails`: `8` clashes between `XB17`'s outer bars and `C1`'s 12 mm face bars, plus `1` bar gap at `IS 456 cl. 26.3.2`). Its row displays `C1 200 × 450 (4-16 corners + 4-12 faces) · XB17 200 × 450`.
-8. Click **Joint** on `C1xXB17@FIRST@L1+M+M1-28` to inspect the **3D Joint Workspace**: verify `4-16 corners + 4-12 faces` in the Inspector header and Column `C1` `SectionGlyph`, pick any failing bar or finding, and open the **Source** tab to see the red bounding box over real CAD schedule/plan sheets (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
-9. Click **Report** to open `/projects/<id>/report?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, verify the light-theme A4 layout, mixed corner/face column glyphs, failing-check grouping, assumptions, provenance ledger, sign-off block, and `joint.ifc` / `issues.bcf` export links, and click **Print or save as PDF** (`window.print()`).
+4. In the **3D Joint Workspace**, verify `4-16 corners + 4-12 faces` in the Inspector header and Column `C1` `SectionGlyph`, toggle concrete visibility, pick a failing bar or finding, and open **Source** to show the red bounding box over real CAD schedule/plan sheets (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
+5. Click **Report** to open `/projects/<id>/report?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, verify the light-theme A4 layout, mixed corner/face column glyphs, failing-check grouping, assumptions, provenance ledger, sign-off block, and `joint.ifc` / `issues.bcf` export links, and click **Print or save as PDF** (`window.print()`).
 
 ## 4. Offline Fallback (`/demo`) If Network Fails
 

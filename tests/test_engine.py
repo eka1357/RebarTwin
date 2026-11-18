@@ -190,3 +190,32 @@ def test_a_column_resize_keeps_its_bar_groups():
     out = apply(mixed_c1(), Candidate(title="resize", edits=[ResizeColumn(b=250, h=450)]))
     c = out.column
     assert (c.b, c.h, c.n_bars, c.bar_dia, c.face_dia, c.bars_x, c.bars_y) == (250, 450, 8, 16, 12, 2, 4)
+
+
+def test_a_failing_value_never_reads_as_its_limit():
+    """The web's rule (format.ts) for every number in engine text: whole numbers unless a failing value would round
+    onto or across its limit, then more decimals. 24.6 failing >= 25 reads "24.6"; 24.96 reads "24.96" (24.96 to one
+    place is 25.0, still on the limit); 16 failing stays "16"; 26 passing stays "26". An overlap of 0.3 mm against 0
+    (<=) reads "0.3", never "0"."""
+    from rebartwin.numbers import shown
+    assert shown(24.6, 25) == "24.6" and shown(24.96, 25) == "24.96" and shown(16, 25) == "16"
+    assert shown(26, 25) == "26" and shown(0.3, 0, "<=") == "0.3" and shown(18, 0, "<=") == "18"
+
+
+def test_xb17_top_bars_read_on_the_failing_side():
+    """XB17 (IITH sheet 17): 200 mm wide, 25 mm cover to 8 mm stirrups, top "2-12 + 2-16" (12s outside, 16s inside).
+    Bar centres from -(100 - 33 - 6) = -61 to 61, four bars evenly: -61, -20.333, 20.333, 61, 40.667 apart. Bars 2 and
+    3 (16 mm): 40.667 - 16 = 24.667 mm against max(16, 20 + 5) = 25: fails, and the message says 24.7 mm, not 25 mm.
+    Bars 1 and 2: 40.667 - 14 = 26.667: passes."""
+    from rebartwin.model import Layer
+    j = mixed_c1()
+    j.beams = [j.beams[0].model_copy(update={"id": "XB17", "b": 200, "D": 450, "stirrup_dia": 8, "cover": 25,
+                                              "cover_to": "links", "top": [Layer(bars="2-12 + 2-16")],
+                                              "bottom": [Layer(bars="2-12")]})]
+    report, _ = check(Joint.model_validate(j.model_dump()))
+    top = {tuple(f.bars): f for f in report.findings if f.rule == "IS456-26.3.2-H" and f.members == ["XB17"]
+           and "top" in f.message}
+    mid = top[("XB17/T1-2", "XB17/T1-3")]
+    assert (mid.measured, mid.limit, mid.status) == (24.667, 25.0, "fail")
+    assert "are 24.7 mm apart" in mid.message and "needs 25 mm" in mid.message
+    assert top[("XB17/T1-1", "XB17/T1-2")].measured == 26.667

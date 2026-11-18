@@ -53,11 +53,10 @@ export function FixOptionCard({
 
   return (
     <article
-      className={`rounded-[var(--radius-md)] border p-3 transition-colors duration-[var(--dur-1)] ${
-        isPreviewing
-          ? "border-2 border-ring bg-surface-raised"
-          : "border-border bg-surface-raised hover:border-border-strong"
-      }`}
+      className={`rounded-[var(--radius-md)] border p-3 transition-colors duration-[var(--dur-1)] ${isPreviewing
+        ? "border-2 border-ring bg-surface-raised"
+        : "border-border bg-surface-raised hover:border-border-strong"
+        }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-0.5">

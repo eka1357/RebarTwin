@@ -170,6 +170,13 @@ test.describe("Project Overview W10", () => {
       ...fixture.joints.filter((j) => j.status === "pass").slice(0, 1),
     ];
     fixture.counts = { found: 4, checked: 3, failing: 2, blocked: 1, passing: 1 };
+    fixture.to_check_counts = {
+      total: 1340,
+      unresolved: 1340,
+      blocking_unresolved: 24,
+      non_blocking_unresolved: 1316,
+      project_level_unresolved: 2,
+    };
 
     await page.route("**/api/projects/iit-drafts**", async (route) => {
       return route.fulfill({
@@ -181,6 +188,9 @@ test.describe("Project Overview W10", () => {
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/projects/iit-drafts");
+
+    await expect(page.getByText("24 block joints · 1,316 other readings, none blocking")).toBeVisible();
+    await expect(page.getByRole("link", { name: /^To check \(24\)$/i })).toBeVisible();
 
     const list = page.getByRole("list", { name: "Project joints list" });
     const draftRow = list.locator("> li").nth(2);

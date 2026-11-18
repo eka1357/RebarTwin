@@ -119,6 +119,8 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
               </>
             ) : item.project_level ? (
               "Applies project-wide"
+            ) : item.blocks_joint === false ? (
+              "Other reading · does not block a joint"
             ) : (
               "Unlinked member item"
             )}

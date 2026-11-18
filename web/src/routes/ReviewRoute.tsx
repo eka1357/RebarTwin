@@ -13,7 +13,8 @@ import {
   resolveToCheckItem,
   type ToCheckItem,
 } from "../lib/api";
-import { sortToCheckQueue } from "../lib/calloutGrammar";
+import { isBlockingItem, sortToCheckQueue } from "../lib/calloutGrammar";
+import { formatNumber } from "../lib/format";
 import { jointPath, projectPath } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
 
@@ -65,6 +66,11 @@ export function ReviewRoute() {
     () => items.filter((t) => !t.resolution).length,
     [items],
   );
+  const blockingUnresolvedCount = useMemo(
+    () => items.filter((t) => !t.resolution && isBlockingItem(t)).length,
+    [items],
+  );
+  const nonBlockingUnresolvedCount = Math.max(0, unresolvedCount - blockingUnresolvedCount);
   const projectBlockersCount = useMemo(
     () => items.filter((t) => !t.resolution && t.project_level).length,
     [items],
@@ -75,8 +81,8 @@ export function ReviewRoute() {
 
   useEffect(() => {
     if (!rawItems) return;
-    setStatus({ toCheckCount: unresolvedCount, activity: null });
-  }, [rawItems, unresolvedCount, setStatus]);
+    setStatus({ toCheckCount: blockingUnresolvedCount, activity: null });
+  }, [rawItems, blockingUnresolvedCount, setStatus]);
 
   const focusNextUnresolved = useCallback(
     (list: ToCheckItem[], afterIdx: number) => {
@@ -199,14 +205,16 @@ export function ReviewRoute() {
         <div>
           <h1 className="font-display text-2xl font-semibold">To Check Queue</h1>
           <p className="text-sm text-muted-foreground">
-            Project-level items appear first because they block every joint. Shortcuts: 1 Gemini, 2
-            Parser, E edit, S skip, J/K move.
+            {nonBlockingUnresolvedCount > 0 && !jointFilter
+              ? `${formatNumber(blockingUnresolvedCount)} ${blockingUnresolvedCount === 1 ? "blocks a joint" : "block joints"} · ${formatNumber(nonBlockingUnresolvedCount)} ${nonBlockingUnresolvedCount === 1 ? "other reading" : "other readings"}, none blocking. Blocking items appear first. `
+              : "Items that block joints appear first because they unlock checking. "}
+            Shortcuts: 1 Gemini, 2 Parser, E edit, S skip, J/K move.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <StatusPill
-            status={unresolvedCount > 0 ? "to_check" : "pass"}
-            count={unresolvedCount}
+            status={blockingUnresolvedCount > 0 ? "to_check" : "pass"}
+            count={blockingUnresolvedCount}
           />
           <Button variant="outline" size="sm" asChild>
             <Link to={projectPath(id)}>Project</Link>
@@ -307,7 +315,7 @@ export function ReviewRoute() {
             {items.length > visibleLimit && (
               <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-xs">
                 <span className="text-muted-foreground">
-                  Showing {visibleLimit} of {items.length} items (project-level items appear first).
+                  Showing {visibleLimit} of {items.length} items (joint-blocking items appear first).
                 </span>
                 <Button
                   type="button"

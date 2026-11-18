@@ -266,6 +266,33 @@ def _dict_blocks_joint(item: dict[str, Any], joint_id: str) -> bool:
     return item.get("resolution") is None and (item.get("joint") == joint_id or _dict_is_project_level(item))
 
 
+def _project_joint_ids(p_dir: Path) -> set[str]:
+    """Return every joint or draft id on disk in `joints/`."""
+    joints_dir = p_dir / "joints"
+    if not joints_dir.is_dir():
+        return set()
+    ids: set[str] = set()
+    for jf in joints_dir.glob("*.json"):
+        is_draft = jf.name.endswith(".draft.json")
+        fallback_id = jf.name[: -len(".draft.json")] if is_draft else jf.stem
+        j_data = _read_json(jf, {})
+        if isinstance(j_data, dict):
+            ids.add(str(j_data.get("id") or fallback_id))
+        else:
+            ids.add(fallback_id)
+    return ids
+
+
+def _dict_blocks_any_joint(item: dict[str, Any], known_joint_ids: set[str]) -> bool:
+    """True when resolving this item can unlock a joint or draft (vs non-blocking readings)."""
+    if _dict_is_project_level(item):
+        return True
+    jid = item.get("joint")
+    if not jid:
+        return False
+    return (not known_joint_ids) or (str(jid) in known_joint_ids)
+
+
 def _dict_is_assigned_to_joint(item: dict[str, Any], joint_id: str, member_ids: set[str]) -> bool:
     if _dict_is_project_level(item):
         return True
@@ -1190,6 +1217,16 @@ def create_app(
 
         unresolved = [t for t in tc_items if t.get("resolution") is None]
         proj_level_unresolved = [t for t in unresolved if _dict_is_project_level(t)]
+        all_blocking_ids = {
+            str(bid) for j in joints_list for bid in j.get("blocking_item_ids", []) if bid
+        }
+        blocking_tc = [
+            t for t in unresolved
+            if (t.get("id") in all_blocking_ids) or _dict_is_project_level(t)
+        ]
+        extra_inline_blocking = sum(1 for bid in all_blocking_ids if bid not in tc_by_id)
+        blocking_unresolved_count = len(blocking_tc) + extra_inline_blocking
+        non_blocking_unresolved_count = max(0, len(unresolved) - len(blocking_tc))
         sheets_info = reading.get("text_layer", [])
         if not sheets_info and isinstance(meta.get("pages"), list):
             sheets_info = [{"page": p} for p in meta["pages"]]
@@ -1210,6 +1247,8 @@ def create_app(
             "to_check_counts": {
                 "total": len(tc_items),
                 "unresolved": len(unresolved),
+                "blocking_unresolved": blocking_unresolved_count,
+                "non_blocking_unresolved": non_blocking_unresolved_count,
                 "project_level_unresolved": len(proj_level_unresolved),
             },
             "reading": {
@@ -1224,16 +1263,20 @@ def create_app(
     def get_to_check(project_id: str) -> list[dict[str, Any]]:
         p_dir = _project_dir(project_id)
         items: list[dict[str, Any]] = _read_json(p_dir / "to_check.json", [])
+        known_joint_ids = _project_joint_ids(p_dir)
         enriched: list[dict[str, Any]] = []
         for idx, item in enumerate(items):
             is_proj = _dict_is_project_level(item)
+            is_blocking = _dict_blocks_any_joint(item, known_joint_ids)
             enriched.append({
                 **item,
                 "project_level": is_proj,
+                "blocks_joint": is_blocking,
                 "resolved": item.get("resolution") is not None,
                 "_order": (
                     0 if item.get("resolution") is None else 1,
                     0 if is_proj else 1,
+                    0 if is_blocking else 1,
                     idx,
                 ),
             })

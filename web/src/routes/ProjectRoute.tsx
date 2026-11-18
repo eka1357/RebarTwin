@@ -11,6 +11,7 @@ import {
   type ProjectStatusFilter,
 } from "../features/project/ProjectSummaryCards";
 import { getProject, type ProjectDetail, type RuleFailureStat } from "../lib/api";
+import { formatNumber } from "../lib/format";
 import {
   projectReportPath,
   projectReviewPath,
@@ -126,16 +127,24 @@ export function ProjectRoute() {
 
   const project = isOfflineDemo ? OFFLINE_DEMO_PROJECT : fetchedProject;
 
+  const blockingToCheck = project
+    ? (project.to_check_counts.blocking_unresolved ?? project.to_check_counts.unresolved)
+    : 0;
+  const nonBlockingToCheck = project
+    ? (project.to_check_counts.non_blocking_unresolved ??
+      Math.max(0, project.to_check_counts.unresolved - blockingToCheck))
+    : 0;
+
   useEffect(() => {
     if (!project) return;
     const counts = deriveCounts(project);
     setStatus({
       jointLabel: project.name || project.id,
       failCount: counts.failing,
-      toCheckCount: project.to_check_counts.unresolved,
+      toCheckCount: blockingToCheck,
       activity: project.status === "reading" ? "Reading drawing set" : null,
     });
-  }, [project, setStatus]);
+  }, [project, blockingToCheck, setStatus]);
 
   const counts = project ? deriveCounts(project) : null;
   const ruleStats = project ? deriveRuleStats(project) : [];
@@ -155,14 +164,12 @@ export function ProjectRoute() {
             <Link to={projectUploadPath(id)}>Upload PDF</Link>
           </Button>
           <Button
-            variant={
-              project && project.to_check_counts.unresolved > 0 ? "default" : "outline"
-            }
+            variant={blockingToCheck > 0 ? "default" : "outline"}
             size="sm"
             asChild
           >
             <Link to={projectReviewPath(id)}>
-              To check ({project?.to_check_counts.unresolved ?? 0})
+              To check ({formatNumber(blockingToCheck)})
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
@@ -209,6 +216,8 @@ export function ProjectRoute() {
           <ProjectSummaryCards
             counts={counts}
             unresolvedToCheck={project.to_check_counts.unresolved}
+            blockingToCheck={blockingToCheck}
+            nonBlockingToCheck={nonBlockingToCheck}
             statusFilter={statusFilter}
             onSelectFilter={setStatusFilter}
           />

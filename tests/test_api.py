@@ -390,6 +390,14 @@ def test_draft_joints_and_shared_rebartwin_replies_dir(tmp_path: Path, monkeypat
         ]),
         encoding="utf-8",
     )
+    amb_ov = client.get("/projects/cascade-proj").json()
+    assert amb_ov["to_check_counts"]["unresolved"] == 3
+    assert amb_ov["to_check_counts"]["blocking_unresolved"] == 2
+    assert amb_ov["to_check_counts"]["non_blocking_unresolved"] == 1
+    amb_queue = client.get("/projects/cascade-proj/to-check").json()
+    assert [row["id"] for row in amb_queue] == ["tc_col", "tc_link_amb", "tc_unlinked"]
+    assert [row["blocks_joint"] for row in amb_queue] == [True, True, False]
+
     rc = client.post("/projects/cascade-proj/to-check/tc_col/resolve?no_ifc=true", json={"value": "8-16"})
     assert rc.status_code == 200
     assert rc.json()["checked_joints"] == ["C1xXB17@FIRST@L1"]

@@ -151,6 +151,8 @@ export interface ProjectDetail extends ProjectSummary {
   to_check_counts: {
     total: number;
     unresolved: number;
+    blocking_unresolved?: number;
+    non_blocking_unresolved?: number;
     project_level_unresolved: number;
   };
   reading?: {
@@ -176,6 +178,7 @@ export interface ToCheckItem {
   detail: string;
   resolution: { value: string; by: string; at: string; via?: string } | null;
   project_level?: boolean;
+  blocks_joint?: boolean;
   resolved?: boolean;
 }
 

@@ -42,17 +42,28 @@ export function isProjectLevelItem(item: ToCheckItem): boolean {
   );
 }
 
+export function isBlockingItem(item: ToCheckItem): boolean {
+  if (typeof item.blocks_joint === "boolean") return item.blocks_joint;
+  return isProjectLevelItem(item) || Boolean(item.joint);
+}
+
 export function sortToCheckQueue(items: ToCheckItem[]): ToCheckItem[] {
   return [...items]
-    .map((item, idx) => ({ item, idx, proj: isProjectLevelItem(item) }))
+    .map((item, idx) => ({
+      item,
+      idx,
+      proj: isProjectLevelItem(item),
+      blocking: isBlockingItem(item),
+    }))
     .sort((a, b) => {
       const aRes = a.item.resolution ? 1 : 0;
       const bRes = b.item.resolution ? 1 : 0;
       if (aRes !== bRes) return aRes - bRes;
       if (a.proj !== b.proj) return a.proj ? -1 : 1;
+      if (a.blocking !== b.blocking) return a.blocking ? -1 : 1;
       return a.idx - b.idx;
     })
-    .map((x) => ({ ...x.item, project_level: x.proj }));
+    .map((x) => ({ ...x.item, project_level: x.proj, blocks_joint: x.blocking }));
 }
 
 function fieldLeaf(field: string): string {

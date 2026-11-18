@@ -18,3 +18,17 @@ def fmt(x: float, places: int = 0) -> str:
     """`x` rounded by `half_up` and written with `places` decimals; never "-0"."""
     v = half_up(x, places)
     return f"{v:.{places}f}" if v != 0 else f"{0:.{places}f}"
+
+
+def shown(value: float, limit: float, compare: str = ">=") -> str:
+    """A measured value as text beside its limit, by the web's rule (format.ts `formatMeasure`): whole numbers,
+    unless a failing value would round onto (or across) its limit; then one more decimal at a time, up to three, until
+    it reads on the failing side. 24.96 failing >= 25 is "24.96", never "25"; 16 failing >= 25 stays "16"."""
+    failing = value > limit if compare == "<=" else value < limit
+    if not failing:
+        return fmt(value)
+    for d in range(4):
+        v, lim = half_up(value, d), half_up(limit, d)
+        if (v > lim) if compare == "<=" else (v < lim):
+            return fmt(value, d)
+    return fmt(value, 3)

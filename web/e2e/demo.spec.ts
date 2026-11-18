@@ -492,4 +492,89 @@ test.describe("Demo 3D Scene W3", () => {
       await context.setOffline(false);
     });
   }
+
+  test("serves /demo/iit offline from web/public/live/iit-demo with API down and network off", async ({
+    page,
+    context,
+  }) => {
+    const iitDir = path.resolve("public/live/iit-demo");
+    expect(fs.existsSync(path.join(iitDir, "bundle.json"))).toBe(true);
+
+    // Simulate API stopped and no external network connectivity
+    await page.route("**/api/**", (route) => route.abort("connectionrefused"));
+    await page.route("**/*", (route) => {
+      const url = new URL(route.request().url());
+      if (url.hostname !== "127.0.0.1" && url.hostname !== "localhost" && !url.protocol.startsWith("data") && !url.protocol.startsWith("blob")) {
+        return route.abort("internetdisconnected");
+      }
+      return route.continue();
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/demo/iit");
+
+    await expect(page.getByRole("heading", { name: /IIT Real Joint: C1 × XB17/i })).toBeVisible();
+    await expect(page.getByText(/9 Fails/i).first()).toBeVisible();
+    await expect(page.getByText(/4-16 corners \+ 4-12 faces/i).first()).toBeVisible();
+
+    // 3D canvas renders offline inside 100dvh without page scroll
+    const wrap = page.getByRole("img", { name: /Joint C1xXB17/i });
+    await expect(wrap).toBeVisible();
+    await expect(wrap.locator("canvas")).toBeVisible();
+    await expect
+      .poll(async () => wrap.getAttribute("data-joint-bounds"), { timeout: 5000 })
+      .not.toBeNull();
+    const hasVertOverflow = await page.evaluate(
+      () => document.documentElement.scrollHeight > window.innerHeight + 1,
+    );
+    expect(hasVertOverflow).toBe(false);
+
+    // Findings & column SectionGlyph render
+    await expect(page.getByText(/IS 456 cl\. 26\.3\.2/i).first()).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /Column C1 cross-section: 4 bars of 16 millimetres, 4 bars of 12 millimetres/i }).first(),
+    ).toBeVisible();
+
+    // Source tab renders copied CAD sheet PNGs from /live/iit-demo/pages/
+    await page.getByRole("tab", { name: /^Source$/i }).click();
+    const sheetImg = page.getByRole("img", { name: /Drawing sheet page 7/i });
+    await expect(sheetImg).toHaveAttribute("src", "/live/iit-demo/pages/page-7.png");
+    await expect
+      .poll(async () => sheetImg.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0))
+      .toBe(true);
+
+    // Fix tab shows face-bar placement (no redesign), moved After glyph, and 5 mm placing tolerance flag
+    await page.getByRole("tab", { name: /^Fix$/i }).click();
+    await expect(page.getByText(/XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm/i).first()).toBeVisible();
+    await expect(page.getByText(/^Recheck$/i).first()).toBeVisible();
+    await expect(page.getByText(/^Redesign$/i)).toHaveCount(0);
+    await expect(page.getByText(/placing tolerance chosen here, not a code rule/i).first()).toBeVisible();
+    const colSvgs = page.locator('#inspector svg[role="img"][aria-label*="Column C1 cross-section"]');
+    expect(await colSvgs.count()).toBeGreaterThanOrEqual(2);
+    const beforeYs = await colSvgs.nth(0).locator('circle[data-bar-dia="12"]').evaluateAll((els) =>
+      els.map((e) => e.getAttribute("cy")),
+    );
+    const afterYs = await colSvgs.nth(1).locator('circle[data-bar-dia="12"]').evaluateAll((els) =>
+      els.map((e) => e.getAttribute("cy")),
+    );
+    expect(afterYs).not.toEqual(beforeYs);
+
+    await page.getByRole("button", { name: /Preview After/i }).first().click();
+    await expect(wrap).toHaveAttribute("data-scene-mode", "after");
+
+    // Report works completely offline too
+    await page.locator("#main-content").getByRole("link", { name: /^Report$/i }).click();
+    await expect(page).toHaveURL(/\/demo\/iit\/report/);
+    await expect(page.getByRole("heading", { name: /Pre-pour check · C1 × XB17/i })).toBeVisible();
+    await expect(page.getByText(/Column face bars:/i)).toBeVisible();
+    await expect(page.getByText(/placing tolerance chosen here, not a code rule/i)).toBeVisible();
+    await expect(page.getByRole("link", { name: "joint.ifc" })).toHaveAttribute(
+      "href",
+      "/live/iit-demo/joint.ifc",
+    );
+
+    const axe = await new AxeBuilder({ page }).analyze();
+    expect(axe.violations).toEqual([]);
+    await context.setOffline(false);
+  });
 });

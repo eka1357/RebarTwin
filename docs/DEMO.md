@@ -70,15 +70,28 @@ Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/) in Chrome.
 4. In the **3D Joint Workspace**, verify `4-16 corners + 4-12 faces` in the Inspector header and Column `C1` `SectionGlyph`, toggle concrete visibility, pick a failing bar or finding, and open **Source** to show the red bounding box over real CAD schedule/plan sheets (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
 5. Click **Report** to open `/projects/<id>/report?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, verify the light-theme A4 layout, mixed corner/face column glyphs, failing-check grouping, assumptions, provenance ledger, sign-off block, and `joint.ifc` / `issues.bcf` export links, and click **Print or save as PDF** (`window.print()`).
 
-## 4. Offline Fallback (`/demo`) If Network Fails
+## 4. Offline Fallbacks If Network or API Fails
 
-Everything under `/demo` is pre-cached inside `web/public/demo/` and runs completely offline with the API stopped:
+### First fallback (`/demo/iit`): Real Pre-Checked IIT Joint (`C1xXB17@FIRST@L1+M+M1-28`)
+
+The checked IIT bundle, `option_scenes`, `attempt_scenes`, `joint.ifc` / `fixed.ifc` / `issues.bcf` exports, and PNG page crops (`pages/*.png`) live in `web/public/live/iit-demo/` (git-ignored) and run completely offline with the API stopped:
 
 ```powershell
 cd web
 npm run build
 npm run preview -- --host 127.0.0.1 --port 4173
 ```
+
+Open [http://127.0.0.1:4173/demo/iit](http://127.0.0.1:4173/demo/iit):
+
+- **3D & Findings**: inspects `C1 200 × 450 mm` (`4-16 corners + 4-12 faces`) and `XB17 200 × 450 mm` with all `9 Fails` (`8` clashes between `XB17` and `C1`'s 12 mm face bars + `1` bar gap at `IS 456 cl. 26.3.2`).
+- **Source**: opens real CAD schedule and plan crops from `/live/iit-demo/pages/` (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
+- **Fix**: shows Option #1 (`XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm`), `Recheck` (no redesign), moved **After column** `SectionGlyph`, effective depth drop (`410 -> 395 mm`), and the 5 mm placing tolerance note.
+- **Report**: click **Report** (or **Use in report** -> **Open report**) to open `/demo/iit/report` with light-theme A4 layout, failing-check grouping, Before/After `SectionGlyph`s, flags, provenance ledger, sign-off block, and static `.ifc` / `.bcf` downloads.
+
+### Second fallback (`/demo`): Worked Example (`C4 × B12`)
+
+Everything under `/demo` is pre-cached inside `web/public/demo/` and also runs completely offline with the API stopped.
 
 Open [http://127.0.0.1:4173/demo](http://127.0.0.1:4173/demo):
 

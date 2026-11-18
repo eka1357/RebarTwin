@@ -20,6 +20,7 @@ import { useWorkspaceStore } from "../stores/workspace";
 const ROUTE_ITEMS = [
   { label: "Landing", path: "/", shortcut: "" },
   { label: "Worked Example Demo (C4 × B12)", path: "/demo", shortcut: "" },
+  { label: "IIT Real Joint Offline (C1 × XB17)", path: "/demo/iit", shortcut: "" },
   { label: "Project Overview", path: projectPath("c4-b12"), shortcut: "" },
   { label: "Upload Drawings", path: projectUploadPath("c4-b12"), shortcut: "" },
   { label: "To Check Queue", path: projectReviewPath("c4-b12"), shortcut: "" },

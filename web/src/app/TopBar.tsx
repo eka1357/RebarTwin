@@ -22,6 +22,18 @@ import { useWorkspaceStore } from "../stores/workspace";
 import { StatusIsland } from "./StatusIsland";
 
 function buildNavLinks(pathname: string) {
+  if (pathname === "/demo/iit" || pathname.startsWith("/demo/iit/")) {
+    return [
+      { label: "Demo", to: "/demo" },
+      { label: "Project", to: projectPath("iit-demo") },
+      { label: "Upload", to: projectUploadPath("c4-b12") },
+      { label: "To check", to: projectReviewPath("iit-demo") },
+      { label: "Joint", to: "/demo/iit" },
+      { label: "Report", to: "/demo/iit/report" },
+      ...(import.meta.env.DEV ? [{ label: "Styleguide", to: "/styleguide" }] : []),
+    ];
+  }
+
   const projMatch = /^\/projects\/([^/]+)/.exec(pathname);
   const jointMatch = /^\/projects\/[^/]+\/joints\/([^/]+)/.exec(pathname);
   let activeProject = "c4-b12";
@@ -84,6 +96,7 @@ export function TopBar() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === "/demo" || item.to === "/demo/iit"}
               className={({ isActive }) =>
                 cn(
                   "inline-flex min-h-7 items-center rounded-[var(--radius-sm)] px-2.5 py-1 text-xs font-medium transition-colors duration-[var(--dur-1)]",

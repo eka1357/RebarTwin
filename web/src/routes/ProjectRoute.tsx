@@ -11,6 +11,7 @@ import {
   type ProjectStatusFilter,
 } from "../features/project/ProjectSummaryCards";
 import { getProject, type ProjectDetail, type RuleFailureStat } from "../lib/api";
+import { fetchDemoBundle } from "../lib/demoData";
 import { formatNumber } from "../lib/format";
 import {
   projectReportPath,
@@ -18,6 +19,98 @@ import {
   projectUploadPath,
 } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
+import type { Bundle } from "../types/bundle";
+
+function buildOfflineIitProject(bundle: Bundle): ProjectDetail {
+  const fails = bundle.report.findings.filter((f) => f.status === "fail");
+  const ruleMap = new Map<string, RuleFailureStat>();
+  for (const f of fails) {
+    const existing = ruleMap.get(f.rule);
+    if (existing) {
+      existing.failures += 1;
+    } else {
+      ruleMap.set(f.rule, {
+        rule: f.rule,
+        clause: f.clause,
+        title: f.title,
+        failures: 1,
+        joints: 1,
+      });
+    }
+  }
+  const worst = fails[0] ?? null;
+  const pageNums = Object.keys(bundle.pages ?? {})
+    .map((k) => Number.parseInt(k, 10))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .sort((a, b) => a - b);
+
+  return {
+    id: "iit-demo",
+    name: "IIT Hyderabad Director Residence (offline)",
+    pdf: "iith-director-residence-structural.pdf",
+    status: "done",
+    sheets: pageNums.map((page) => ({ page })),
+    counts: {
+      found: 1,
+      checked: 1,
+      failing: fails.length > 0 ? 1 : 0,
+      blocked: 0,
+      passing: fails.length === 0 ? 1 : 0,
+    },
+    failures_by_rule: [...ruleMap.values()].sort((a, b) => b.failures - a.failures),
+    beam_junctions: [],
+    joints: [
+      {
+        id: bundle.joint.id,
+        place: bundle.joint.place ?? null,
+        floor: bundle.joint.floor ?? null,
+        grid: bundle.joint.place ?? null,
+        level: bundle.joint.floor ?? null,
+        sheets: pageNums,
+        column: {
+          id: bundle.joint.column.id,
+          b: bundle.joint.column.b,
+          h: bundle.joint.column.h,
+          n_bars: bundle.joint.column.n_bars,
+          bar_dia: bundle.joint.column.bar_dia,
+          face_dia: bundle.joint.column.face_dia,
+        },
+        beams: bundle.joint.beams.map((b) => ({
+          id: b.id,
+          b: b.b,
+          D: b.D,
+          direction: b.direction,
+        })),
+        seismic_zone: bundle.report.seismic_zone,
+        exposure: bundle.joint.settings.exposure,
+        status: fails.length > 0 ? "fail" : "pass",
+        fix_status: bundle.fix.status,
+        fail_count: fails.length,
+        blocked_count: 0,
+        failing_rules: [...ruleMap.keys()],
+        worst_failure: worst
+          ? {
+              rule: worst.rule,
+              clause: worst.clause,
+              title: worst.title,
+              measured: worst.measured,
+              limit: worst.limit,
+              margin: worst.margin,
+              unit: worst.unit,
+            }
+          : null,
+        bundle_ready: true,
+      },
+    ],
+    to_check_counts: {
+      total: 0,
+      unresolved: 0,
+      blocking_unresolved: 0,
+      non_blocking_unresolved: 0,
+      project_level_unresolved: 0,
+    },
+  };
+}
 
 const OFFLINE_DEMO_PROJECT: ProjectDetail = {
   id: "c4-b12",
@@ -116,8 +209,11 @@ export function ProjectRoute() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>("all");
   const [ruleFilter, setRuleFilter] = useState<string | null>(null);
 
-  const isOfflineDemo = id === "c4-b12";
-  const { data: fetchedProject, isLoading, error } = useQuery({
+  const isIitOffline = id === "iit-demo";
+  const isWorkedOffline = id === "c4-b12";
+  const isOfflineDemo = isWorkedOffline || isIitOffline;
+
+  const { data: fetchedProject, isLoading: apiLoading, error: apiError } = useQuery({
     queryKey: ["project", id],
     queryFn: () => getProject(id),
     enabled: !isOfflineDemo,
@@ -125,7 +221,25 @@ export function ProjectRoute() {
     refetchInterval: (q) => (q.state.data?.status === "reading" ? 1500 : false),
   });
 
-  const project = isOfflineDemo ? OFFLINE_DEMO_PROJECT : fetchedProject;
+  const {
+    data: offlineIitProject,
+    isLoading: iitLoading,
+    error: iitError,
+  } = useQuery({
+    queryKey: ["offline-iit-project"],
+    queryFn: async () => buildOfflineIitProject(await fetchDemoBundle("iit")),
+    enabled: isIitOffline,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  const isLoading = isWorkedOffline ? false : isIitOffline ? iitLoading : apiLoading;
+  const error = isWorkedOffline ? null : isIitOffline ? iitError : apiError;
+  const project = isWorkedOffline
+    ? OFFLINE_DEMO_PROJECT
+    : isIitOffline
+      ? offlineIitProject
+      : fetchedProject;
 
   const blockingToCheck = project
     ? (project.to_check_counts.blocking_unresolved ?? project.to_check_counts.unresolved)

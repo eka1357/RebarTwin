@@ -49,6 +49,22 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "demo/iit",
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <JointRoute preset="iit" />
+          </Suspense>
+        ),
+      },
+      {
+        path: "demo/iit/report",
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <ReportRoute preset="iit" />
+          </Suspense>
+        ),
+      },
+      {
         path: "projects/:id",
         element: (
           <Suspense fallback={<RouteFallback />}>

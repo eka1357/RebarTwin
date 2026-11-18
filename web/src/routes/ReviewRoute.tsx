@@ -174,8 +174,8 @@ export function ReviewRoute() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeItem, moveFocus, skipActive, mutation]);
 
-  // Offline demo fallback for /projects/c4-b12/review
-  if (!rawItems && !isLoading && id === "c4-b12") {
+  // Offline demo fallback for /projects/c4-b12/review or /projects/iit-demo/review
+  if (!rawItems && !isLoading && (id === "c4-b12" || id === "iit-demo")) {
     return (
       <main className="mx-auto w-full max-w-4xl flex-1 space-y-4 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

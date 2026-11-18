@@ -15,19 +15,28 @@ import {
   jointIfcUrl,
   jointIssuesBcfUrl,
 } from "../lib/api";
-import { demoAssetUrl, fetchDemoBundle, type DemoVariant } from "../lib/demoData";
+import {
+  demoAssetUrl,
+  fetchDemoBundle,
+  type DemoVariant,
+  type OfflineBundleKey,
+} from "../lib/demoData";
 import { jointPath, projectPath, projectReviewPath } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
 
-export function ReportRoute() {
-  const { id = "c4-b12" } = useParams();
+export function ReportRoute({ preset }: { preset?: "iit" } = {}) {
+  const params = useParams();
+  const isIitOffline = preset === "iit" || params.id === "iit-demo";
+  const isWorkedDemo = !isIitOffline && (params.id ?? "c4-b12") === "c4-b12";
+  const isOfflineDemo = isWorkedDemo || isIitOffline;
+  const id = isIitOffline ? "iit-demo" : (params.id ?? "c4-b12");
   const [searchParams, setSearchParams] = useSearchParams();
   const setStatus = useWorkspaceStore((s) => s.setStatus);
   const chosenOptionByKey = useWorkspaceStore((s) => s.chosenOptionByKey);
   const chosenOptionIndex = useWorkspaceStore((s) => s.chosenOptionIndex);
 
-  const isOfflineDemo = id === "c4-b12";
   const demoVariant: DemoVariant = searchParams.get("variant") === "zone3" ? "zone3" : "zone2";
+  const offlineKey: OfflineBundleKey = isIitOffline ? "iit" : demoVariant;
   const requestedJoint = searchParams.get("joint");
 
   const {
@@ -42,12 +51,14 @@ export function ReportRoute() {
   });
 
   const readyJoints = (project?.joints ?? []).filter((j) => j.bundle_ready);
-  const targetJointId = isOfflineDemo
-    ? "C4xB12"
-    : requestedJoint ??
-      readyJoints[0]?.id ??
-      project?.joints[0]?.id ??
-      null;
+  const targetJointId = isIitOffline
+    ? "C1xXB17@FIRST@L1+M+M1-28"
+    : isWorkedDemo
+      ? "C4xB12"
+      : requestedJoint ??
+        readyJoints[0]?.id ??
+        project?.joints[0]?.id ??
+        null;
 
   const {
     data: bundle,
@@ -55,11 +66,11 @@ export function ReportRoute() {
     error: bundleError,
   } = useQuery({
     queryKey: isOfflineDemo
-      ? ["demo-bundle", demoVariant]
+      ? ["demo-bundle", offlineKey]
       : ["joint-bundle", id, targetJointId],
     queryFn: async () => {
       if (isOfflineDemo) {
-        return fetchDemoBundle(demoVariant);
+        return fetchDemoBundle(offlineKey);
       }
       if (!targetJointId) {
         throw new Error("No ready joint found in project.");
@@ -67,18 +78,22 @@ export function ReportRoute() {
       return getJointBundle(id, targetJointId);
     },
     enabled: isOfflineDemo || Boolean(targetJointId),
+    staleTime: isOfflineDemo ? Infinity : 0,
     retry: false,
   });
 
-  const resolvedJointId = bundle?.joint.id ?? targetJointId ?? "C4xB12";
-  const reportKey = isOfflineDemo
-    ? `c4-b12:${demoVariant}:${resolvedJointId}`
-    : `${id}:${resolvedJointId}`;
+  const resolvedJointId =
+    bundle?.joint.id ?? targetJointId ?? (isIitOffline ? "C1xXB17@FIRST@L1+M+M1-28" : "C4xB12");
+  const reportKey = isIitOffline
+    ? `iit-demo:${resolvedJointId}`
+    : isWorkedDemo
+      ? `c4-b12:${demoVariant}:${resolvedJointId}`
+      : `${id}:${resolvedJointId}`;
 
   const rawOptParam = searchParams.get("option");
   const parsedOptParam = rawOptParam !== null ? Number.parseInt(rawOptParam, 10) : Number.NaN;
   const storedOpt =
-    chosenOptionByKey[reportKey] ?? (isOfflineDemo ? chosenOptionIndex : null);
+    chosenOptionByKey[reportKey] ?? (isWorkedDemo ? chosenOptionIndex : null);
 
   const optionCount = bundle?.fix.options.length ?? 0;
   let effectiveOptionIndex = 0;
@@ -97,21 +112,26 @@ export function ReportRoute() {
     setStatus({
       jointLabel: `${bundle.joint.column.id} × ${bundle.joint.beams.map((b) => b.id).join(" / ")}`,
       failCount,
+      ...(isOfflineDemo ? { toCheckCount: 0 } : {}),
       zone: bundle.report.seismic_zone,
       is13920: bundle.report.is13920,
       activity: null,
     });
-  }, [bundle, setStatus]);
+  }, [bundle, isOfflineDemo, setStatus]);
 
   const isLoading = (!isOfflineDemo && projectLoading) || bundleLoading;
   const activeError = projectError ?? bundleError;
   const isBlocked = activeError instanceof ApiError && activeError.status === 409;
 
-  const backToJointHref = isOfflineDemo
-    ? "/demo"
-    : targetJointId
-      ? jointPath(id, targetJointId)
-      : projectPath(id);
+  const backToJointHref = preset === "iit"
+    ? "/demo/iit"
+    : isIitOffline
+      ? jointPath("iit-demo", resolvedJointId)
+      : isWorkedDemo
+        ? "/demo"
+        : targetJointId
+          ? jointPath(id, targetJointId)
+          : projectPath(id);
 
   const updateParam = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
@@ -140,7 +160,7 @@ export function ReportRoute() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {isOfflineDemo && (
+          {isWorkedDemo && (
             <ToggleGroup
               type="single"
               value={demoVariant}
@@ -215,13 +235,23 @@ export function ReportRoute() {
         </div>
       ) : (
         <PrePourReport
-          projectName={isOfflineDemo ? "C4 × B12 Worked Example (c4-b12)" : project?.name || id}
-          projectPdf={project?.pdf ?? null}
+          projectName={
+            isIitOffline
+              ? "IIT Hyderabad Director Residence (offline)"
+              : isWorkedDemo
+                ? "C4 × B12 Worked Example (c4-b12)"
+                : project?.name || id
+          }
+          projectPdf={
+            isIitOffline
+              ? "iith-director-residence-structural.pdf"
+              : (project?.pdf ?? null)
+          }
           reportDateIso={project?.created_at ?? null}
           bundle={bundle}
           bundleUrl={
             isOfflineDemo
-              ? demoAssetUrl(demoVariant, "bundle.json")
+              ? demoAssetUrl(offlineKey, "bundle.json")
               : jointBundleUrl(id, resolvedJointId)
           }
           chosenOptionIndex={effectiveOptionIndex}
@@ -229,10 +259,10 @@ export function ReportRoute() {
           exports={
             isOfflineDemo
               ? {
-                  jointIfc: demoAssetUrl(demoVariant, "joint.ifc"),
+                  jointIfc: demoAssetUrl(offlineKey, "joint.ifc"),
                   fixedIfc:
-                    bundle.fix.options.length > 0 ? demoAssetUrl(demoVariant, "fixed.ifc") : null,
-                  issuesBcf: demoAssetUrl(demoVariant, "issues.bcf"),
+                    bundle.fix.options.length > 0 ? demoAssetUrl(offlineKey, "fixed.ifc") : null,
+                  issuesBcf: demoAssetUrl(offlineKey, "issues.bcf"),
                 }
               : {
                   jointIfc: jointIfcUrl(id, resolvedJointId),

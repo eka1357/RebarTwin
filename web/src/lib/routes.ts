@@ -41,6 +41,15 @@ export function jointPath(projectId: string, jointId: string): string {
   return `/projects/${encodeURIComponent(projectId)}/joints/${encodeURIComponent(jointId)}`;
 }
 
+export function iitDemoReportPath(opts?: { option?: number | null }): string {
+  if (opts?.option !== undefined && opts.option !== null && opts.option >= 0) {
+    const params = new URLSearchParams();
+    params.set("option", String(opts.option));
+    return `/demo/iit/report?${params.toString()}`;
+  }
+  return "/demo/iit/report";
+}
+
 export function resolveBundlePageImageUrl(
   pageImage: string | null | undefined,
   bundleUrl?: string,

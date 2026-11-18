@@ -17,7 +17,8 @@ const TITLES: Array<[RegExp, string]> = [
 
 export function AppShell() {
   const { pathname } = useLocation();
-  const isWorkspace = pathname === "/demo" || pathname.includes("/joints/");
+  const isWorkspace =
+    pathname === "/demo" || pathname === "/demo/iit" || pathname.includes("/joints/");
 
   useEffect(() => {
     const match = TITLES.find(([re]) => re.test(pathname));

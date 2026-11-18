@@ -15,7 +15,7 @@ Seismic zone II (IS 13920 off), mild exposure, 20 mm aggregate. Advisory: the en
 
 ## Fix
 
-7 of 34 candidates pass every rule. Best: B12 top: 2-25 in layer 1, 2-20 in layer 2.
+7 of 36 candidates pass every rule. Best: B12 top: 2-25 in layer 1, 2-20 in layer 2.
 
 **Option 1: B12 top: 2-25 in layer 1, 2-20 in layer 2**
 
@@ -34,9 +34,9 @@ Seismic zone II (IS 13920 off), mild exposure, 20 mm aggregate. Advisory: the en
 
 ## Why the other candidates failed
 
-- Geometry, bars that run into each other: rejected 26
-- IS 456:2000 cl. 26.3.2, clear gap between parallel bars: rejected 13
-- IS 456:2000 cl. 26.3.2, rows of bars vertically in line: rejected 5
+- Geometry, bars that run into each other: rejected 27
+- IS 456:2000 cl. 26.3.2, clear gap between parallel bars: rejected 14
+- IS 456:2000 cl. 26.3.2, rows of bars vertically in line: rejected 6
 
 ## Rules
 

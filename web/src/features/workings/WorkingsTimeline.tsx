@@ -13,6 +13,13 @@ import { ToleranceGauge } from "../findings/ToleranceGauge";
 
 const SPEEDS: ReplaySpeed[] = [0.5, 1, 2];
 
+function formatSourceLabel(source: string): string {
+  const lower = source.toLowerCase();
+  if (lower === "gemini") return "Gemini";
+  if (lower === "enumerator") return "Enumerator";
+  return source ? `${source[0].toUpperCase()}${source.slice(1)}` : "Proposer";
+}
+
 function failureToGaugeFinding(f: AttemptFailure): Finding {
   return {
     rule: f.rule,
@@ -153,7 +160,7 @@ export function WorkingsTimeline({ bundle }: { bundle: Bundle }) {
   const copyStepLink = () => {
     const url = new URL(window.location.href);
     url.searchParams.set("a", String(safeIndex + 1));
-    void navigator.clipboard?.writeText(url.toString()).catch(() => {});
+    void navigator.clipboard?.writeText(url.toString()).catch(() => { });
     toast.success(`Copied link for attempt ${safeIndex + 1}`);
   };
 
@@ -248,8 +255,20 @@ export function WorkingsTimeline({ bundle }: { bundle: Bundle }) {
           }}
         />
 
-        {/* Hairline ticks grouped by round: filled for passed, hollow for failed */}
+        {/* Hairline ticks grouped by round: diamond for Gemini, circle for Enumerator */}
         <div className="space-y-1.5 pt-0.5">
+          {attempts.some((a) => a.candidate.source.toLowerCase() === "gemini") && (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rotate-45 border border-check bg-check/30" aria-hidden="true" />
+                <span>Gemini</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-2.5 w-2.5 rounded-full border border-muted-foreground" aria-hidden="true" />
+                <span>Enumerator</span>
+              </span>
+            </div>
+          )}
           {rounds.map(([roundNum, indices]) => (
             <div key={roundNum} className="space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -261,22 +280,28 @@ export function WorkingsTimeline({ bundle }: { bundle: Bundle }) {
                   const att = attempts[idx];
                   const isCurrent = idx === safeIndex;
                   const dimmed = replayFailedOnly && att.passed;
+                  const isGeminiTick = att.candidate.source.toLowerCase() === "gemini";
                   return (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => setReplay({ replayPlaying: false, replayIndex: idx })}
-                      aria-label={`Attempt ${idx + 1} (Round ${att.round}): ${att.passed ? "passes" : `fails ${att.failures.length} checks`}`}
+                      aria-label={`Attempt ${idx + 1} (Round ${att.round}, ${formatSourceLabel(att.candidate.source)}): ${att.passed ? "passes" : `fails ${att.failures.length} checks`}`}
                       aria-current={isCurrent ? "step" : undefined}
+                      data-source={att.candidate.source}
                       className={`inline-flex h-4 w-4 items-center justify-center rounded-[var(--radius-xs)] transition-transform duration-[var(--dur-1)] cursor-pointer ${
                         isCurrent ? "ring-2 ring-ring scale-110" : "hover:scale-110"
                       } ${dimmed ? "opacity-25" : ""}`}
                     >
                       <span
-                        className={`block h-2.5 w-2.5 rounded-full ${
+                        className={`block ${isGeminiTick ? "h-2 w-2 rotate-45 rounded-[1px]" : "h-2.5 w-2.5 rounded-full"} ${
                           att.passed
-                            ? "bg-pass"
-                            : "border-2 border-fail bg-transparent"
+                            ? isGeminiTick
+                              ? "bg-pass ring-1 ring-check"
+                              : "bg-pass"
+                            : isGeminiTick
+                              ? "border-2 border-fail bg-check/30"
+                              : "border-2 border-fail bg-transparent"
                         }`}
                       />
                     </button>
@@ -294,12 +319,26 @@ export function WorkingsTimeline({ bundle }: { bundle: Bundle }) {
           <span className="font-num text-xs font-semibold text-foreground">
             Attempt {safeIndex + 1} of {attempts.length} · Round {current.round}
           </span>
-          <StatusPill status={current.passed ? "pass" : "fail"} size="sm" />
+          <div className="flex items-center gap-1.5">
+            <Badge
+              variant={current.candidate.source.toLowerCase() === "gemini" ? "check" : "muted"}
+            >
+              {formatSourceLabel(current.candidate.source)}
+            </Badge>
+            <StatusPill status={current.passed ? "pass" : "fail"} size="sm" />
+          </div>
         </div>
 
         <div>
           <p className="font-num text-xs font-medium text-foreground">{current.candidate.title}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{current.candidate.rationale}</p>
+          {current.candidate.rationale && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {current.candidate.source.toLowerCase() === "gemini" && (
+                <span className="font-medium text-foreground">Gemini rationale: </span>
+              )}
+              {current.candidate.rationale}
+            </p>
+          )}
         </div>
 
         {attemptScenesCount > 0 && safeIndex >= attemptScenesCount && (
@@ -345,5 +384,5 @@ export function WorkingsTimeline({ bundle }: { bundle: Bundle }) {
         Attempt {safeIndex + 1} of {attempts.length}, Round {current.round}: {clauseSummary}
       </div>
     </div>
-  );
+        );
 }

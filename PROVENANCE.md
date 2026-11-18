@@ -116,6 +116,10 @@ Built `web/` W8 on `feature/w8-upload`: typed API client (`lib/api.ts`), Manus-s
 
 Built `web/` W9 on `feature/w9-review`: client callout grammar validator and project-level-first queue sorter (`lib/calloutGrammar.ts`), `ToCheckCard` (`features/review/ToCheckCard.tsx`) on `surface-paper` with live `/pages/{n}.png?crop=` images, Gemini/Parser radio group, quick zone/exposure chips, keys `1`, `2`, `E`, `S`, `J`, `K`, grammar-validated inline editing, and `ReviewRoute.tsx` unlocking and linking directly to checked `@`-encoded joints (`C4xB12@FIRST`). Verified with ESLint, TypeScript, Vitest (24 passed), Vite production build, and Playwright + axe across dark/light themes, reduced motion, and 320 px width (13 passed).
 
+## 18 November 2026: Gemini fix proposer (A2, `feature/a2-gemini-proposer`)
+
+Built `src/rebartwin/gemini_proposer.py` (`GeminiProposer`) and `src/rebartwin/reader/prompts/propose_v1.md` on `feature/a2-gemini-proposer` implementing the `Proposer` protocol from `fixes.py` without changing the fix loop or engine rules. Calls `reader/gemini.py`'s `call()` with `REBARTWIN_MODEL_LINK` and fallback, shares `CachingTransport` retries/caching, caps and validates up to 6 `SetFace` / `ResizeColumn` candidates per round against `settings.stock_dias`, `settings.max_layers`, and known member ids before handing them to `resolve()`, where the engine re-checks and deterministically ranks every candidate. Wired into `cli.py` (`--gemini`, `--replay`, `--replies`) and `api.py` (`_safe_run_check`), updated `WorkingsTimeline.tsx` to show `Gemini` / `Enumerator` source ticks, source badges, and `Gemini rationale`, updated `DemoTour.tsx` Step 4 to read attempt count from the bundle, and regenerated offline `/demo/` bundles (`C4xB12` at 36 attempts, `C4xB12-zone3` at 80 attempts; best fix unchanged for both zones). Verified with offline pytest tests (`tests/test_gemini_proposer.py` using recorded replies, 240 tests total), ESLint, TypeScript, Vitest, Vite production build, and Playwright + axe.
+
 ## 18 November 2026: joints from geometry, item 4 (`feature/R-ocr`)
 
 Claude Code. Master (A1, W8, W9) merged into `feature/R-ocr`. Gemini's Cyrillic Ф and Greek Ά read as Ø in its
@@ -127,7 +131,7 @@ top_extra 0 to 29, frames_into 58). 268 tests, no key needed.
 
 ## Next: built in Google Antigravity
 
-The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.
+The API on Cloud Run, from `prompts/antigravity-build-prompt.md`.
 Record each piece here when it lands.
 
 ## Data

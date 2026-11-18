@@ -11,6 +11,7 @@ import { DemoTour } from "../features/demo/DemoTour";
 import { JointInspector } from "../features/workspace/JointInspector";
 import { ReplayUrlSync } from "../features/workspace/ReplayUrlSync";
 import { demoAssetUrl, fetchDemoBundle, type DemoVariant } from "../lib/demoData";
+import { projectReportPath } from "../lib/routes";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { useWorkspaceStore } from "../stores/workspace";
 
@@ -137,7 +138,7 @@ export function DemoRoute() {
           </Button>
 
           <Button variant="outline" size="sm" asChild>
-            <Link to="/projects/c4-b12/report">Report</Link>
+            <Link to={projectReportPath("c4-b12")}>Report</Link>
           </Button>
         </div>
       </div>
@@ -171,7 +172,7 @@ export function DemoRoute() {
             </ResizablePanel>
             <ResizableHandle />
             <ResizablePanel defaultSize={32} minSize={24} className="flex min-h-0 flex-col">
-              <JointInspector bundle={bundle} />
+              <JointInspector bundle={bundle} bundleUrl={demoAssetUrl(variant, "bundle.json")} />
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
@@ -182,7 +183,7 @@ export function DemoRoute() {
               <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
             </Suspense>
           </div>
-          <JointInspector bundle={bundle} />
+          <JointInspector bundle={bundle} bundleUrl={demoAssetUrl(variant, "bundle.json")} />
         </div>
       )}
     </main>

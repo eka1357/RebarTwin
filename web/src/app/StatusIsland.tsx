@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { StatusPill } from "../components/StatusPill";
 import { getTransition, SPRING_PANEL } from "../lib/motion";
+import { projectReviewPath } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
 
 export function StatusIsland() {
@@ -11,12 +12,12 @@ export function StatusIsland() {
   const status = useWorkspaceStore((s) => s.status);
   const reduced = useReducedMotion();
 
-  const summary = `${status.failCount} fail · ${status.toCheckCount} to check · zone ${status.zone} · IS 13920 ${
-    status.is13920 ? "on" : "off"
-  }`;
-  const inlineSummary = `${status.toCheckCount} to check · zone ${status.zone} · IS 13920 ${
-    status.is13920 ? "on" : "off"
-  }`;
+  const failPhrase = `${status.failCount} ${status.failCount === 1 ? "fail" : "fails"}`;
+  const accessibleSummary = `${failPhrase}, ${status.toCheckCount} to check, zone ${status.zone}, IS 13920 ${status.is13920 ? "on" : "off"
+    }`;
+  const inlineSummary = `${status.toCheckCount} to check · zone ${status.zone} · IS 13920 ${status.is13920 ? "on" : "off"
+    }`;
+  const fullSummary = `${failPhrase} · ${inlineSummary}`;
 
   return (
     <div className="relative">
@@ -26,25 +27,37 @@ export function StatusIsland() {
         transition={getTransition(reduced, SPRING_PANEL)}
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
+        aria-label={status.activity ?? accessibleSummary}
         className="inline-flex h-8 items-center gap-2 rounded-[var(--radius-md)] border border-control-border bg-surface-raised px-2.5 text-xs text-foreground hover:bg-surface cursor-pointer"
       >
-        <span className="sr-only">Joint status: </span>
         {status.activity ? (
           <Activity className="h-3.5 w-3.5 text-check" aria-hidden="true" />
         ) : (
-          <StatusPill
-            status={status.failCount > 0 ? "fail" : "pass"}
-            size="sm"
-            count={status.failCount > 0 ? status.failCount : undefined}
-          />
+          <span aria-hidden="true" className="inline-flex items-center">
+            <StatusPill
+              status={status.failCount > 0 ? "fail" : "pass"}
+              size="sm"
+              count={status.failCount > 0 ? status.failCount : undefined}
+            />
+          </span>
         )}
-        <span className="font-num hidden xl:inline text-muted-foreground">
-          {status.activity ?? inlineSummary}
+        {" "}
+        <span aria-hidden="true" className="font-num hidden xl:inline-flex items-center gap-1.5 text-muted-foreground">
+          {status.activity ? (
+            status.activity
+          ) : (
+            <>
+              <span>{status.toCheckCount} to check</span>{" "}
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/60" />{" "}
+              <span>zone {status.zone}</span>{" "}
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/60" />{" "}
+              <span>IS 13920 {status.is13920 ? "on" : "off"}</span>
+            </>
+          )}
         </span>
         <ChevronDown
-          className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-[var(--dur-1)] ${
-            expanded ? "rotate-180" : ""
-          }`}
+          className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-[var(--dur-1)] ${expanded ? "rotate-180" : ""
+            }`}
           aria-hidden="true"
         />
       </motion.button>
@@ -66,7 +79,7 @@ export function StatusIsland() {
                 count={status.failCount > 0 ? status.failCount : undefined}
               />
             </div>
-            <p className="mt-1.5 font-num text-xs text-muted-foreground">{summary}</p>
+            <p className="mt-1.5 font-num text-xs text-muted-foreground">{fullSummary}</p>
             <div className="mt-3 flex items-center gap-2">
               <Link
                 to="/demo"
@@ -76,7 +89,7 @@ export function StatusIsland() {
                 Open demo
               </Link>
               <Link
-                to="/projects/c4-b12/review"
+                to={projectReviewPath("c4-b12")}
                 onClick={() => setExpanded(false)}
                 className="inline-flex h-7 items-center rounded-[var(--radius-sm)] border border-control-border px-2.5 text-xs font-medium text-foreground hover:bg-surface"
               >

@@ -1,6 +1,5 @@
 import { Expand, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
-import { useMemo, useState } from "react";
-import { StatusPill } from "../../components/StatusPill";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
@@ -10,295 +9,383 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { resolveBundlePageImageUrl } from "../../lib/routes";
 import type { Bundle, ProvenanceEntry } from "../../types/bundle";
 
 interface SourceCropProps {
   bundle: Bundle;
   focusMember: string | null;
+  bundleUrl?: string;
 }
 
-interface SheetEvidenceItem {
+interface NormalizedEntry {
   id: string;
-  member: string;
-  label: string;
-  page: number;
-  box_2d: [number, number, number, number];
+  path: string;
+  member: string | null;
+  field: string;
+  layer: number | string | null;
+  level: string | null;
+  page: number | null;
+  box_2d: [number, number, number, number] | null;
+  text: string | null;
   geminiText: string;
   parserText: string;
-  agreed: boolean;
-  pageImage?: string;
+  status: string;
+  ocrRaw: string | null;
+  pageImageUrl: string | null;
+  isColumn: boolean;
+}
+
+function normalizeEntries(bundle: Bundle, bundleUrl?: string): NormalizedEntry[] {
+  const rawProv = bundle.provenance;
+  const rawList: ProvenanceEntry[] = Array.isArray(rawProv)
+    ? rawProv
+    : rawProv
+      ? Object.values(rawProv)
+      : [];
+
+  return rawList.map((e, i) => {
+    const path = e.path ?? e.field ?? `entry-${i}`;
+    const member = e.member ?? null;
+    const isColumn = member === bundle.joint.column.id || path.startsWith("column.");
+    const fieldLabel = e.field ?? path;
+    const fallbackPage = e.page ? bundle.pages?.[String(e.page)] : undefined;
+    const pageImageUrl = resolveBundlePageImageUrl(e.page_image ?? fallbackPage ?? null, bundleUrl);
+
+    return {
+      id: `${path}-${i}`,
+      path,
+      member,
+      field: fieldLabel,
+      layer: e.layer ?? null,
+      level: e.level ?? null,
+      page: e.page ?? null,
+      box_2d: e.box_2d ?? null,
+      text: e.text ?? null,
+      geminiText: e.gemini ?? e.text ?? "",
+      parserText: e.parser ?? e.text ?? "",
+      status: e.status ?? "agreed",
+      ocrRaw: e.ocr_raw ?? null,
+      pageImageUrl,
+      isColumn,
+    };
+  });
+}
+
+function StatusAgreementBadge({ status }: { status: string }) {
+  if (status === "agreed") {
+    return <Badge variant="pass">Agreed</Badge>;
+  }
+  if (status === "resolved") {
+    return <Badge variant="check">Resolved</Badge>;
+  }
+  if (status === "default") {
+    return <Badge variant="muted">Default</Badge>;
+  }
+  return <Badge variant="muted">{status}</Badge>;
 }
 
 /**
  * Evidence viewer on warm paper tokens (`surface-paper`).
- * Uses `bundle.provenance` when populated by R5, or a structural schedule excerpt placeholder.
+ * Uses real `bundle.provenance` page crops when populated, or a concise
+ * explanation when inspecting the pitch-deck worked example without provenance.
  */
-export function SourceCrop({ bundle, focusMember }: SourceCropProps) {
-  const [zoom, setZoom] = useState(1);
+export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) {
+  const entries = useMemo(() => normalizeEntries(bundle, bundleUrl), [bundle, bundleUrl]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(2);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [sheetOpen, setSheetOpen] = useState(false);
+  const scrollWrapRef = useRef<HTMLDivElement | null>(null);
 
-  const items = useMemo<SheetEvidenceItem[]>(() => {
-    const rawProv = bundle.provenance;
-    const entries: ProvenanceEntry[] = Array.isArray(rawProv)
-      ? rawProv
-      : rawProv
-        ? Object.values(rawProv)
-        : [];
+  const drawnEntries = useMemo(() => entries.filter((e) => e.status !== "default"), [entries]);
+  const defaultEntries = useMemo(() => entries.filter((e) => e.status === "default"), [entries]);
 
-    if (entries.length > 0) {
-      return entries.map((e, i) => ({
-        id: `${e.field}-${i}`,
-        member: e.field.split(".")[0] ?? bundle.joint.id,
-        label: e.field,
-        page: e.page,
-        box_2d: e.box_2d,
-        geminiText: e.gemini ?? e.text,
-        parserText: e.parser ?? e.text,
-        agreed: e.status !== "to_check",
-        pageImage: e.page_image,
-      }));
+  const active = useMemo(() => {
+    if (drawnEntries.length === 0) return entries[0] ?? null;
+    if (selectedId) {
+      const explicit = drawnEntries.find((e) => e.id === selectedId);
+      if (explicit) return explicit;
     }
+    if (focusMember) {
+      const match = drawnEntries.find(
+        (e) => e.member && e.member.toLowerCase() === focusMember.toLowerCase(),
+      );
+      if (match) return match;
+    }
+    return drawnEntries[0] ?? entries[0] ?? null;
+  }, [drawnEntries, entries, focusMember, selectedId]);
 
-    const col = bundle.joint.column;
-    const beam = bundle.joint.beams[0];
-    const colBox: [number, number, number, number] = [210, 140, 410, 480];
-    const beamBox: [number, number, number, number] = [440, 140, 740, 560];
-    return [
-      {
-        id: `${beam?.id ?? "B12"}-top`,
-        member: beam?.id ?? "B12",
-        label: `${beam?.id ?? "B12"} Schedule callout (top steel)`,
-        page: 1,
-        box_2d: beamBox,
-        geminiText: beam?.top.map((l) => l.bars).join(" / ") || "5-20",
-        parserText: beam?.top.map((l) => l.bars).join(" / ") || "5-20",
-        agreed: true,
-      },
-      {
-        id: `${col.id}-size`,
-        member: col.id,
-        label: `${col.id} Column schedule`,
-        page: 1,
-        box_2d: colBox,
-        geminiText: `${col.b}×${col.h}, ${col.n_bars}-${col.bar_dia}, cover ${col.cover} mm`,
-        parserText: `${col.b}×${col.h}, ${col.n_bars}-${col.bar_dia}, cover ${col.cover} mm`,
-        agreed: true,
-      },
-    ];
-  }, [bundle]);
+  useEffect(() => {
+    const el = scrollWrapRef.current;
+    if (!el || !active?.box_2d) return;
+    const [ymin, xmin, ymax, xmax] = active.box_2d;
+    const cx = (xmin + xmax) / 2000;
+    const cy = (ymin + ymax) / 2000;
+    const scrollToBox = () => {
+      el.scrollLeft = Math.max(0, el.scrollWidth * cx - el.clientWidth / 2 - pan.x);
+      el.scrollTop = Math.max(0, el.scrollHeight * cy - el.clientHeight / 2 - pan.y);
+    };
+    const id = requestAnimationFrame(scrollToBox);
+    return () => cancelAnimationFrame(id);
+  }, [active, zoom, pan]);
 
-  const active =
-    items.find((it) => focusMember && it.member.toLowerCase() === focusMember.toLowerCase()) ??
-    items[0];
-  const isPlaceholder = !bundle.provenance;
+  if (entries.length === 0) {
+    return (
+      <div
+        data-theme="light"
+        className="surface-paper rounded-[var(--radius-lg)] border p-4 shadow-xs"
+      >
+        <p className="text-xs leading-relaxed text-foreground">
+          This worked example was typed in from the pitch deck. Read a drawing to trace each value
+          to its sheet.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      <div
-        data-theme="light"
-        className="surface-paper rounded-[var(--radius-lg)] border p-3.5 shadow-xs"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="font-num text-xs font-semibold text-foreground">{active.label}</p>
-            <p className="text-xs text-muted-foreground">
-              Page {active.page} · box [{active.box_2d.join(", ")}]
-              {isPlaceholder ? " · Placeholder crop (before R5 PDF reader)" : ""}
-            </p>
-          </div>
-          <StatusPill status={active.agreed ? "pass" : "to_check"} size="sm" />
+      {drawnEntries.length > 1 && (
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Provenance values">
+          {drawnEntries.map((item) => {
+            const isCurrent = active?.id === item.id;
+            const title = `${item.member ?? item.path} ${item.field}${item.layer !== null ? ` L${item.layer}` : ""}`;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setSelectedId(item.id);
+                  setPan({ x: 0, y: 0 });
+                }}
+                aria-pressed={isCurrent}
+                className={`rounded-[var(--radius-xs)] border px-2 py-0.5 font-num text-xs cursor-pointer transition-colors duration-[var(--dur-1)] ${
+                  isCurrent
+                    ? "border-ring bg-primary text-primary-foreground"
+                    : "border-border bg-surface-raised text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {title}
+              </button>
+            );
+          })}
         </div>
-
-        <div className="relative mt-3 h-48 overflow-hidden rounded-[var(--radius-md)] border border-paper-border bg-paper">
-          <div
-            className="h-full w-full transition-transform duration-[var(--dur-2)] ease-[var(--ease-standard)]"
-            style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: "center center",
-            }}
-          >
-            {active.pageImage ? (
-              <img
-                src={active.pageImage}
-                alt={`Drawing crop for ${active.label}: ${active.geminiText}`}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <ScheduleMockSvg bundle={bundle} box={active.box_2d} altValue={active.geminiText} />
-            )}
-          </div>
-        </div>
-
-        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2"
-              aria-label="Zoom out crop"
-              onClick={() => setZoom((z) => Math.max(1, Number((z - 0.5).toFixed(1))))}
-            >
-              <ZoomOut className="h-3.5 w-3.5" aria-hidden="true" />
-            </Button>
-            <span className="font-num w-9 text-center text-xs text-foreground">{zoom}×</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2"
-              aria-label="Zoom in crop"
-              onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.5).toFixed(1))))}
-            >
-              <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2"
-              aria-label="Pan left"
-              onClick={() => setPan((p) => ({ ...p, x: p.x + 18 }))}
-            >
-              ←
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2"
-              aria-label="Pan right"
-              onClick={() => setPan((p) => ({ ...p, x: p.x - 18 }))}
-            >
-              →
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              aria-label="Reset crop view"
-              onClick={() => {
-                setZoom(1);
-                setPan({ x: 0, y: 0 });
-              }}
-            >
-              <RotateCcw className="h-3 w-3" aria-hidden="true" />
-            </Button>
-          </div>
-
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSheetOpen(true)}>
-            <Expand className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Open full sheet</span>
-          </Button>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-paper-border pt-2.5 text-xs">
-          <div className="rounded-[var(--radius-sm)] border border-paper-border bg-surface-raised p-2">
-            <Badge variant="muted">Gemini</Badge>
-            <p className="mt-1 font-num font-medium text-foreground">{active.geminiText}</p>
-          </div>
-          <div className="rounded-[var(--radius-sm)] border border-paper-border bg-surface-raised p-2">
-            <Badge variant="muted">Parser</Badge>
-            <p className="mt-1 font-num font-medium text-foreground">{active.parserText}</p>
-          </div>
-        </div>
-      </div>
-
-      <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="w-[min(94vw,44rem)]">
-          <DialogHeader>
-            <DialogTitle>{active.label}</DialogTitle>
-            <DialogDescription>
-              Page {active.page} excerpt showing normalized bounding box [{active.box_2d.join(", ")}]
-              and paired Gemini / Parser readings.
-            </DialogDescription>
-          </DialogHeader>
-          <div
-            data-theme="light"
-            className="surface-paper mt-2 h-80 overflow-hidden rounded-[var(--radius-md)] border p-2"
-          >
-            {active.pageImage ? (
-              <img
-                src={active.pageImage}
-                alt={`Full sheet excerpt for ${active.label}: ${active.geminiText}`}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <ScheduleMockSvg bundle={bundle} box={active.box_2d} altValue={active.geminiText} />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function ScheduleMockSvg({
-  bundle,
-  box,
-  altValue,
-}: {
-  bundle: Bundle;
-  box: [number, number, number, number];
-  altValue: string;
-}) {
-  const [yMin, xMin, yMax, xMax] = box;
-  const rx = (xMin / 1000) * 440;
-  const ry = (yMin / 1000) * 240;
-  const rw = Math.max(56, ((xMax - xMin) / 1000) * 440);
-  const rh = Math.max(36, ((yMax - yMin) / 1000) * 240);
-  const tick = 8;
-  const beam = bundle.joint.beams[0];
-  const col = bundle.joint.column;
-
-  return (
-    <svg
-      role="img"
-      aria-label={`Structural drawing schedule sheet excerpt reading ${altValue}`}
-      viewBox="0 0 440 240"
-      className="h-full w-full select-none"
-    >
-      {/* Engineering title block & grid hairlines */}
-      <rect x="10" y="10" width="420" height="220" fill="none" stroke="currentColor" strokeOpacity="0.25" className="text-border-strong" />
-      <text x="22" y="34" className="fill-foreground font-num text-xs font-semibold">
-        STRUCTURAL SCHEDULE · {bundle.joint.id} (ZONE {bundle.report.seismic_zone})
-      </text>
-      <line x1="22" y1="44" x2="418" y2="44" stroke="currentColor" strokeOpacity="0.3" className="text-border-strong" />
-
-      <text x="26" y="72" className="fill-muted-foreground font-num text-xs">
-        COL {col.id}: {col.b}×{col.h} mm · {col.n_bars}-⌀{col.bar_dia} · TIES ⌀{col.tie_dia}
-      </text>
-      <text x="26" y="96" className="fill-muted-foreground font-num text-xs">
-        COVER: {col.cover} mm ({col.cover_to})
-      </text>
-
-      {beam && (
-        <>
-          <text x="26" y="132" className="fill-muted-foreground font-num text-xs">
-            BEAM {beam.id}: {beam.b}×{beam.D} mm · TOP {beam.top.map((l) => l.bars).join(" / ")}
-          </text>
-          <text x="26" y="156" className="fill-muted-foreground font-num text-xs">
-            BOT {beam.bottom.map((l) => l.bars).join(" / ")} · STIRRUP ⌀{beam.stirrup_dia}
-          </text>
-        </>
       )}
 
-      {/* Orange crop box with CAD corner ticks */}
-      <rect
-        x={rx}
-        y={ry}
-        width={rw}
-        height={rh}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeDasharray="4 3"
-        className="text-fail"
-      />
-      <path
-        d={`M${rx},${ry + tick} V${ry} H${rx + tick} M${rx + rw - tick},${ry} H${rx + rw} V${ry + tick} M${rx},${ry + rh - tick} V${ry + rh} H${rx + tick} M${rx + rw - tick},${ry + rh} H${rx + rw} V${ry + rh - tick}`}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        className="text-fail"
-      />
-    </svg>
+      {active && active.status !== "default" && (
+        <div
+          data-theme="light"
+          className="surface-paper rounded-[var(--radius-lg)] border p-3.5 shadow-xs"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="font-num text-xs font-semibold text-foreground">
+                  {active.member ?? active.path} · {active.field}
+                  {active.layer !== null ? ` · Layer ${active.layer}` : ""}
+                </p>
+                {active.isColumn && active.level && (
+                  <Badge variant="muted" className="font-num">
+                    Storey: {active.level}
+                  </Badge>
+                )}
+              </div>
+              <p className="font-num text-xs text-muted-foreground">
+                {active.page !== null ? `Page ${active.page}` : "Drawing"}
+                {active.box_2d ? ` · box [${active.box_2d.join(", ")}]` : ""}
+              </p>
+            </div>
+            <StatusAgreementBadge status={active.status} />
+          </div>
+
+          {active.pageImageUrl && (
+            <div
+              ref={scrollWrapRef}
+              role="region"
+              aria-label={`Drawing sheet excerpt for ${active.member ?? active.path}`}
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+              tabIndex={0}
+              className="relative mt-3 h-52 overflow-auto rounded-[var(--radius-md)] border border-paper-border bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="relative" style={{ width: `${zoom * 100}%` }}>
+                <img
+                  src={active.pageImageUrl}
+                  alt={`Drawing sheet page ${active.page ?? ""} for ${active.member ?? active.path}: ${active.text ?? active.geminiText}`}
+                  onLoad={() => {
+                    const el = scrollWrapRef.current;
+                    if (!el || !active.box_2d) return;
+                    const [ymin, xmin, ymax, xmax] = active.box_2d;
+                    el.scrollLeft = Math.max(0, el.scrollWidth * ((xmin + xmax) / 2000) - el.clientWidth / 2);
+                    el.scrollTop = Math.max(0, el.scrollHeight * ((ymin + ymax) / 2000) - el.clientHeight / 2);
+                  }}
+                  className="block h-auto w-full select-none"
+                />
+                {active.box_2d && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute border-2 border-fail bg-fail/10"
+                    style={{
+                      top: `${active.box_2d[0] / 10}%`,
+                      left: `${active.box_2d[1] / 10}%`,
+                      height: `${Math.max(1.5, (active.box_2d[2] - active.box_2d[0]) / 10)}%`,
+                      width: `${Math.max(1.5, (active.box_2d[3] - active.box_2d[1]) / 10)}%`,
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {active.pageImageUrl && (
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  aria-label="Zoom out crop"
+                  onClick={() => setZoom((z) => Math.max(1, Number((z - 0.5).toFixed(1))))}
+                >
+                  <ZoomOut className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+                <span className="font-num w-9 text-center text-xs text-foreground">{zoom}×</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  aria-label="Zoom in crop"
+                  onClick={() => setZoom((z) => Math.min(4, Number((z + 0.5).toFixed(1))))}
+                >
+                  <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  aria-label="Pan left"
+                  onClick={() => setPan((p) => ({ ...p, x: p.x + 24 }))}
+                >
+                  ←
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  aria-label="Pan right"
+                  onClick={() => setPan((p) => ({ ...p, x: p.x - 24 }))}
+                >
+                  →
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  aria-label="Reset crop view"
+                  onClick={() => {
+                    setZoom(2);
+                    setPan({ x: 0, y: 0 });
+                  }}
+                >
+                  <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                </Button>
+              </div>
+
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSheetOpen(true)}>
+                <Expand className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Open full sheet</span>
+              </Button>
+            </div>
+          )}
+
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-paper-border pt-2.5 text-xs">
+            <div className="rounded-[var(--radius-sm)] border border-paper-border bg-surface-raised p-2">
+              <Badge variant="muted">Gemini</Badge>
+              <p className="mt-1 font-num font-medium text-foreground">
+                {active.geminiText || active.text || "—"}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius-sm)] border border-paper-border bg-surface-raised p-2">
+              <Badge variant="muted">Parser</Badge>
+              <p className="mt-1 font-num font-medium text-foreground">
+                {active.parserText || active.text || "—"}
+              </p>
+              {active.ocrRaw && (
+                <p className="mt-1 font-num text-xs text-muted-foreground">
+                  OCR read &apos;{active.ocrRaw}&apos;
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {defaultEntries.length > 0 && (
+        <div
+          data-theme="light"
+          className="surface-paper rounded-[var(--radius-lg)] border p-3.5 shadow-xs space-y-2"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-foreground">Assumed, not on the drawing</p>
+            <Badge variant="muted">{defaultEntries.length} default</Badge>
+          </div>
+          <ul className="space-y-1.5 text-xs">
+            {defaultEntries.map((d) => (
+              <li
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-paper-border bg-surface-raised px-2.5 py-1.5"
+              >
+                <span className="font-num text-muted-foreground">{d.path}</span>
+                <span className="font-num font-medium text-foreground">{d.parserText}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {active?.pageImageUrl && (
+        <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+          <DialogContent className="w-[min(94vw,56rem)]">
+            <DialogHeader>
+              <DialogTitle>
+                {active.member ?? active.path} · {active.field}
+              </DialogTitle>
+              <DialogDescription>
+                Page {active.page} full sheet
+                {active.box_2d ? ` with bounding box [${active.box_2d.join(", ")}]` : ""}.
+              </DialogDescription>
+            </DialogHeader>
+            <div
+              data-theme="light"
+              role="region"
+              aria-label={`Full sheet page ${active.page ?? ""}`}
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+              tabIndex={0}
+              className="surface-paper mt-2 max-h-[70vh] overflow-auto rounded-[var(--radius-md)] border p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="relative w-full">
+                <img
+                  src={active.pageImageUrl}
+                  alt={`Full sheet page ${active.page ?? ""} for ${active.member ?? active.path}`}
+                  className="block h-auto w-full"
+                />
+                {active.box_2d && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute border-2 border-fail bg-fail/10"
+                    style={{
+                      top: `${active.box_2d[0] / 10}%`,
+                      left: `${active.box_2d[1] / 10}%`,
+                      height: `${Math.max(1.5, (active.box_2d[2] - active.box_2d[0]) / 10)}%`,
+                      width: `${Math.max(1.5, (active.box_2d[3] - active.box_2d[1]) / 10)}%`,
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 }

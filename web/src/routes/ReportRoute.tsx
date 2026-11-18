@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router";
 import { Button } from "../components/ui/button";
+import { projectPath } from "../lib/routes";
 
 export function ReportRoute() {
   const { id = "c4-b12" } = useParams();
@@ -14,7 +15,7 @@ export function ReportRoute() {
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/projects/${id}`}>Back to project</Link>
+          <Link to={projectPath(id)}>Back to project</Link>
         </Button>
       </div>
 

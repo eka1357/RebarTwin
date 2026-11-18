@@ -57,9 +57,11 @@ export interface Finding {
   limit: number;
   compare: ">=" | "<=";
   unit: string;
+  margin: number;
   members: string[];
   bars: string[];
   at: Vec3 | null;
+  span: [Vec3, Vec3] | null;
   message: string;
 }
 
@@ -99,10 +101,13 @@ export interface AttemptFailure {
   clause: string;
   measured: number;
   limit: number;
+  compare: ">=" | "<=";
+  margin: number;
   unit: string;
   message: string;
   bars?: string[];
   at?: Vec3 | null;
+  span?: [Vec3, Vec3] | null;
 }
 
 export interface AttemptSpec {
@@ -117,11 +122,14 @@ export interface FaceChange {
   face: "top" | "bottom";
   before: string;
   after: string;
+  area_before: number;
   area_required: number;
   area_provided: number;
   overshoot_pct: number;
   depth_before: number;
   depth_after: number;
+  n_bars_before: number;
+  n_layers_before: number;
   n_bars: number;
   n_layers: number;
 }
@@ -190,15 +198,20 @@ export interface AttemptScene {
 }
 
 export interface ProvenanceEntry {
-  field: string;
-  page: number;
-  page_image?: string;
-  box_2d: [number, number, number, number];
-  text: string;
+  path?: string;
+  member?: string | null;
+  field: string | null;
+  layer?: number | string | null;
+  level?: string | null;
+  page: number | null;
+  page_image?: string | null;
+  box_2d: [number, number, number, number] | null;
+  text: string | null;
   channel?: string;
-  gemini?: string;
-  parser?: string;
+  gemini?: string | null;
+  parser?: string | null;
   status?: string;
+  ocr_raw?: string | null;
 }
 
 export interface Bundle {

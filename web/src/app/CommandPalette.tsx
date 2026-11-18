@@ -8,16 +8,23 @@ import {
   CommandItem,
   CommandList,
 } from "../components/ui/command";
+import {
+  jointPath,
+  projectPath,
+  projectReportPath,
+  projectReviewPath,
+  projectUploadPath,
+} from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
 
 const ROUTE_ITEMS = [
   { label: "Landing", path: "/", shortcut: "" },
   { label: "Worked Example Demo (C4 × B12)", path: "/demo", shortcut: "" },
-  { label: "Project Overview", path: "/projects/c4-b12", shortcut: "" },
-  { label: "Upload Drawings", path: "/projects/c4-b12/upload", shortcut: "" },
-  { label: "To Check Queue", path: "/projects/c4-b12/review", shortcut: "" },
-  { label: "Joint Workspace (C4xB12)", path: "/projects/c4-b12/joints/C4xB12", shortcut: "" },
-  { label: "Printable Report", path: "/projects/c4-b12/report", shortcut: "" },
+  { label: "Project Overview", path: projectPath("c4-b12"), shortcut: "" },
+  { label: "Upload Drawings", path: projectUploadPath("c4-b12"), shortcut: "" },
+  { label: "To Check Queue", path: projectReviewPath("c4-b12"), shortcut: "" },
+  { label: "Joint Workspace (C4xB12)", path: jointPath("c4-b12", "C4xB12"), shortcut: "" },
+  { label: "Printable Report", path: projectReportPath("c4-b12"), shortcut: "" },
   ...(import.meta.env.DEV
     ? [{ label: "Design System Styleguide", path: "/styleguide", shortcut: "" }]
     : []),

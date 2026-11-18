@@ -10,17 +10,24 @@ import {
   SheetTrigger,
 } from "../components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
+import {
+  jointPath,
+  projectPath,
+  projectReportPath,
+  projectReviewPath,
+  projectUploadPath,
+} from "../lib/routes";
 import { cn } from "../lib/utils";
 import { useWorkspaceStore } from "../stores/workspace";
 import { StatusIsland } from "./StatusIsland";
 
 const NAV_LINKS = [
   { label: "Demo", to: "/demo" },
-  { label: "Project", to: "/projects/c4-b12" },
-  { label: "Upload", to: "/projects/c4-b12/upload" },
-  { label: "To check", to: "/projects/c4-b12/review" },
-  { label: "Joint", to: "/projects/c4-b12/joints/C4xB12" },
-  { label: "Report", to: "/projects/c4-b12/report" },
+  { label: "Project", to: projectPath("c4-b12") },
+  { label: "Upload", to: projectUploadPath("c4-b12") },
+  { label: "To check", to: projectReviewPath("c4-b12") },
+  { label: "Joint", to: jointPath("c4-b12", "C4xB12") },
+  { label: "Report", to: projectReportPath("c4-b12") },
   ...(import.meta.env.DEV ? [{ label: "Styleguide", to: "/styleguide" }] : []),
 ];
 

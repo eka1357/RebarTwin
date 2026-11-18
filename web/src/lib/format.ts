@@ -74,7 +74,7 @@ export function formatOverlap(measuredMm: number): string {
 }
 
 export function formatArea(mm2: number): string {
-  return `${formatNumber(Math.round(mm2))}${NBSP}mm²`;
+  return `${formatNumber(mm2)}${NBSP}mm²`;
 }
 
 export function formatPercentDelta(pct: number): string {
@@ -166,9 +166,20 @@ function numSpeech(value: number, limit?: number, compare?: ">=" | "<=", status?
   }).format(value);
 }
 
+function formatMarginValue(margin: number, unit: string, status: "fail" | "pass"): string {
+  const absMargin = Math.abs(margin);
+  const numStr =
+    absMargin > 0 && absMargin < 1
+      ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(absMargin)
+      : status === "fail" && absMargin > 0
+        ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 }).format(absMargin)
+        : numSpeech(absMargin);
+  return unit ? `${numStr} ${unit}` : numStr;
+}
+
 /**
  * Accessibility sentence describing a ToleranceGauge, e.g.:
- * "16 millimetres; needs at least 25; short by 9"
+ * "16 millimetres; needs at least 25; short by 9 mm"
  * "18 millimetres overlap; zero clearance allowed"
  */
 export function describeToleranceGauge(f: {
@@ -176,6 +187,7 @@ export function describeToleranceGauge(f: {
   measured: number;
   limit: number;
   compare: ">=" | "<=";
+  margin: number;
   unit: string;
   status: "fail" | "pass";
 }): string {
@@ -186,46 +198,29 @@ export function describeToleranceGauge(f: {
   }
   const mStr = numSpeech(f.measured, f.limit, f.compare, f.status);
   const lStr = numSpeech(f.limit);
-  const diff = Math.abs(f.measured - f.limit);
-  const diffStr =
-    diff > 0 && diff < 1
-      ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(diff)
-      : numSpeech(Math.round(diff));
+  const marginWithUnit = formatMarginValue(f.margin, f.unit, f.status);
   if (f.compare === "<=") {
     if (f.status === "fail") {
-      return `${mStr} ${unitName}; limit at most ${lStr}; over by ${diffStr}`;
+      return `${mStr} ${unitName}; limit at most ${lStr}; over by ${marginWithUnit}`;
     }
-    return `${mStr} ${unitName}; limit at most ${lStr}; passes with ${diffStr} margin`;
+    return `${mStr} ${unitName}; limit at most ${lStr}; passes with ${marginWithUnit} margin`;
   }
   if (f.status === "fail") {
-    return `${mStr} ${unitName}; needs at least ${lStr}; short by ${diffStr}`;
+    return `${mStr} ${unitName}; needs at least ${lStr}; short by ${marginWithUnit}`;
   }
-  return `${mStr} ${unitName}; needs at least ${lStr}; passes with ${diffStr} margin`;
+  return `${mStr} ${unitName}; needs at least ${lStr}; passes with ${marginWithUnit} margin`;
 }
 
-/** Parse layer specs like "5-20" or "2-25 / 2-20" into total bar count and total steel area in mm². */
-export function summarizeLayerSpec(spec: string): { count: number; areaMm2: number } {
-  let count = 0;
-  let areaMm2 = 0;
-  for (const part of spec.split("/")) {
-    const match = part.trim().match(/^(\d+)\s*-\s*(\d+(?:\.\d+)?)$/);
-    if (!match) continue;
-    const n = Number(match[1]);
-    const dia = Number(match[2]);
-    count += n;
-    areaMm2 += n * Math.PI * (dia / 2) ** 2;
-  }
-  return { count, areaMm2 };
-}
-
-/** Format Before -> After morph summary for Sonner toast ("+39 mm², 4 bars instead of 5"). */
-export function formatFixToastSummary(faces: { before: string; after: string; area_provided: number }[]): string {
+/** Format Before -> After morph summary for Sonner toast ("1,571 → 1,610 mm² · 5 bars → 4"). */
+export function formatFixToastSummary(
+  faces: {
+    area_before: number;
+    area_provided: number;
+    n_bars_before: number;
+    n_bars: number;
+  }[],
+): string {
   const f0 = faces[0];
   if (!f0) return "Previewing repaired joint in 3D";
-  const prev = summarizeLayerSpec(f0.before);
-  const next = summarizeLayerSpec(f0.after);
-  const deltaArea = Math.round(f0.area_provided - prev.areaMm2);
-  const sign = deltaArea > 0 ? "+" : deltaArea < 0 ? "-" : "";
-  const absStr = formatNumber(Math.abs(deltaArea));
-  return `${sign}${absStr}${NBSP}mm², ${next.count} bars instead of ${prev.count}`;
+  return `${formatNumber(f0.area_before)} → ${formatArea(f0.area_provided)} · ${f0.n_bars_before} ${f0.n_bars_before === 1 ? "bar" : "bars"} → ${f0.n_bars}`;
 }

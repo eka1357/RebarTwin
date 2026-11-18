@@ -199,17 +199,17 @@ Group, Slider, Progress, ScrollArea, Separator, Badge, Skeleton, Sonner, Resizab
 | Component | Purpose and anatomy | States and behaviour | Accessibility |
 |---|---|---|---|
 | StatusPill | Icon + word: Fails, Passes, To check, Recheck, Redesign | sm 20 px, md 24 px | Word always present; colour never alone |
-| ToleranceGauge | Hairline track, limit tick labelled with the limit, a diamond marker at the measured value, the wrong side of the limit hatched | Overlap extends left with its own hatch; marker settles in 160 ms, numbers never animate | `role="img"`, label as a sentence: "16 millimetres; needs at least 25; short by 9" |
-| FindingCard | StatusPill and title, gauge, ClauseChip, BarChips, actions Show in 3D and Source | Hover highlights its bars in 3D; selected has a 2 px `--fail` edge and raised surface | A list of buttons; arrow keys move; Enter selects |
+| ToleranceGauge | Hairline track, limit tick labelled `needs <limit>` or `max <limit>`, diamond marker at measured value with measured label directly beneath (auto-staggered vertically if close), hatched wrong side | Overlap extends left with its own hatch; marker settles in 160 ms, numbers never animate | `role="img"`, label from `Finding.margin`: "16 millimetres; needs at least 25; short by 9 mm" |
+| FindingCard | Overlay trigger with StatusPill, title, badge, gauge, ClauseChip, BarChips, actions Show in 3D and Source | Hover highlights bars in 3D; selected has 2 px `--fail` edge and raised surface | Concise `aria-label` ("Fails: ... , IS 456 clause 26.3.2") with details linked via `aria-describedby`; arrow keys move |
 | ClauseChip | Clause in mono | Popover: rule title, basis, verification status | Popover is focusable and closes on Escape |
 | BarChip | `T1-3 ⌀20` with a status dot | Hover and focus highlight the bar | Name read in full: "Top bar 3, layer 1, 20 millimetres" |
 | SectionGlyph | SVG cross-section of a beam face, bars drawn to scale from `scene` | Used in fix cards and the joint list | `aria-label` lists the layers in words |
 | FixOptionCard | Rank, plain title "2-25 over 2-20", SectionGlyph before and after, steel and effective depth, Recheck flags | Preview runs the morph; Use in report marks it chosen | Metrics in a description list |
 | WorkingsTimeline | One tick per attempt, grouped by round: filled for passed, hollow for failed; current attempt's rejecting clauses with mini gauges | Space plays, arrows step, speed 0.5×, 1×, 2×, filter Failed only; drives `attempt_scenes` | Slider semantics; each step announced politely |
-| SourceCrop | Paper card with the crop, an orange box with corner ticks, badges Gemini and Parser, Agreed or To check | Zoom and pan; Open full sheet | Alt text carries the value read |
+| SourceCrop | Paper card showing `entry.member`, bundle-relative sheet PNG with `box_2d` crop overlay, Gemini & Parser readings, `Agreed`/`Resolved` badges, `Assumed, not on the drawing` defaults, column `Storey` (`level`), `OCR read '...'`, or pitch-deck note when no provenance | Zoom and pan; Open full sheet | Alt text carries the sheet page and value read |
 | ReadingBoard | Page tiles on paper; queued, reading (scan line), done (agreed, to check), error | Counts update live | Progress in a polite live region |
 | ReadingLog | Step list in the style of an agent replay: page, what was read, what agreed | Newest at the bottom, auto-follows unless scrolled | Log role |
-| ToCheckCard | The crop, the two readings side by side as large choices, a field to type the value | Keys 1 and 2 choose, E edits, S skips, J and K move | Choices are a radio group; typed values are validated against the callout grammar |
+| ToCheckCard | Warm-paper resolution card with project-level `Blocks all joints` warning, `/pages/{n}.png?crop=` image, Gemini & Parser radio group, quick chips for missing zone/exposure, grammar-validated edit form | Keys 1 and 2 choose, E edits, S skips, J and K move | Radio group semantics, field errors linked via `aria-describedby` |
 | SummaryStrip | "6 fail · 0 to check · zone II · IS 13920 off" | Click a count to filter | Counts are text |
 | StatusIsland | Top-bar dynamic island showing fail count, zone and IS 13920 status; expands for quick actions | Expands on click; honours reduced motion | `aria-expanded` and descriptive status label |
 | CommandPalette | Ctrl or Cmd + K: joints, findings, bars, clauses, actions | Fuzzy search, recent items | cmdk with full keyboard support |
@@ -234,7 +234,7 @@ landing story uses GSAP. Numbers never animate.
 | Open a joint | Camera flies to the Iso frame (900 ms, in-out); failing bars pulse once (600 ms); callouts rise 6 px and fade in, staggered 40 ms |
 | Select a finding | Camera frames its bars (600 ms); the rest dims (200 ms); the card expands with a layout animation (200 ms) |
 | Hover a chip or bar | Highlight in 120 ms, both ways |
-| Before and After | 700 ms morph matched by bar id: moved bars tween, removed bars shrink along their length (300 ms), new bars grow from their centre (400 ms, after 200 ms); then a toast "+39 mm², 4 bars instead of 5" |
+| Before and After | 700 ms morph matched by bar id: moved bars tween, removed bars shrink along their length (300 ms), new bars grow from their centre (400 ms, after 200 ms); then a toast "1,571 → 1,610 mm² · 5 bars → 4" |
 | Workings replay | Each step: 400 ms morph, then the rejecting findings flash on their bars for 300 ms; 900 ms a step at 1× |
 | Panels and sheets | Spring, stiffness 420, damping 36; sheets 320 ms |
 | Tooltips | 400 ms delay for the first, then instant for the next within 1.5 s |

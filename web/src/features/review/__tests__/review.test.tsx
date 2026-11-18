@@ -1,0 +1,210 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { describe, expect, it, vi } from "vitest";
+import type { ToCheckItem } from "../../../lib/api";
+import { sortToCheckQueue, validateCalloutGrammar } from "../../../lib/calloutGrammar";
+import { ReviewRoute } from "../../../routes/ReviewRoute";
+
+describe("W9 To Check & Callout Grammar", () => {
+  it("validates Indian bar, section, link, cover, zone, and exposure callouts", () => {
+    expect(validateCalloutGrammar("top", "5-20")).toMatchObject({ valid: true, normalized: "5-20" });
+    expect(validateCalloutGrammar("top", "2-25 + 1-20")).toMatchObject({
+      valid: true,
+      normalized: "2-25 + 1-20",
+    });
+    expect(validateCalloutGrammar("main", "8-16")).toMatchObject({ valid: true, normalized: "8-16" });
+    expect(validateCalloutGrammar("main", "5-16").valid).toBe(false);
+    expect(validateCalloutGrammar("section", "230x450")).toMatchObject({
+      valid: true,
+      normalized: "230x450",
+    });
+    expect(validateCalloutGrammar("links", "2L-8@100")).toMatchObject({
+      valid: true,
+      normalized: "2L-8@100",
+    });
+    expect(validateCalloutGrammar("seismic_zone", "zone III")).toMatchObject({
+      valid: true,
+      normalized: "III",
+    });
+    expect(validateCalloutGrammar("seismic_zone", "zone X").valid).toBe(false);
+    expect(validateCalloutGrammar("exposure", "Moderate")).toMatchObject({
+      valid: true,
+      normalized: "moderate",
+    });
+  });
+
+  it("places unresolved project-level items first before joint items", () => {
+    const sample: ToCheckItem[] = [
+      {
+        id: "tc_1",
+        joint: "C4xB12@FIRST",
+        member: "B12",
+        field: "top",
+        layer: 1,
+        level: "FIRST FLOOR",
+        page: 2,
+        box_2d: [100, 100, 200, 200],
+        gemini: { value: "5-25" },
+        parser: { value: "5-20" },
+        reason: "disagree",
+        detail: "Gemini read 5-25, parser read 5-20",
+        resolution: null,
+      },
+      {
+        id: "tc_zone",
+        joint: null,
+        member: "ALL",
+        field: "seismic_zone",
+        layer: 1,
+        level: null,
+        page: 0,
+        box_2d: null,
+        gemini: null,
+        parser: null,
+        reason: "missing",
+        detail: "Zone missing",
+        resolution: null,
+      },
+    ];
+
+    const sorted = sortToCheckQueue(sample);
+    expect(sorted[0].id).toBe("tc_zone");
+    expect(sorted[0].project_level).toBe(true);
+    expect(sorted[1].id).toBe("tc_1");
+    expect(sorted[1].project_level).toBe(false);
+  });
+
+  it("supports keys 1, 2, E (validated), S, J/K and unlocks joint via API", async () => {
+    const queue: ToCheckItem[] = [
+      {
+        id: "tc_zone",
+        joint: null,
+        member: "ALL",
+        field: "seismic_zone",
+        layer: 1,
+        level: null,
+        page: 0,
+        box_2d: null,
+        gemini: null,
+        parser: null,
+        reason: "missing",
+        detail: "Drawing does not state seismic zone.",
+        resolution: null,
+      },
+      {
+        id: "tc_top",
+        joint: "C4xB12@FIRST",
+        member: "B12",
+        field: "top",
+        layer: 1,
+        level: "FIRST FLOOR",
+        page: 1,
+        box_2d: [150, 200, 190, 280],
+        gemini: { value: "5-25" },
+        parser: { value: "5-20" },
+        reason: "disagree",
+        detail: "Gemini read 5-25, text layer says 5-20.",
+        resolution: null,
+      },
+    ];
+
+    const resolveCalls: Array<{ id: string; value: string }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/to-check")) {
+        return new Response(JSON.stringify(queue.map((x) => ({ ...x }))), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.includes("/to-check/") && url.endsWith("/resolve")) {
+        const parts = url.split("/");
+        const itemId = decodeURIComponent(parts[parts.length - 2]);
+        const body = JSON.parse(String(init?.body)) as { value: string };
+        resolveCalls.push({ id: itemId, value: body.value });
+        const found = queue.find((x) => x.id === itemId);
+        if (found) {
+          found.resolution = { value: body.value, by: "person", at: "2026-11-17T22:00:00Z" };
+        }
+        return new Response(
+          JSON.stringify({
+            item: found,
+            resolved_value: body.value,
+            unlocked_joints: itemId === "tc_top" ? ["C4xB12@FIRST"] : [],
+            checked_joints: itemId === "tc_top" ? ["C4xB12@FIRST"] : [],
+            remaining_to_check: queue.filter((x) => !x.resolution).length,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/projects/live-1")) {
+        return new Response(
+          JSON.stringify({
+            id: "live-1",
+            name: "Live 1",
+            status: "done",
+            sheets: [{ page: 1 }],
+            joints: [
+              {
+                id: "C4xB12@FIRST",
+                column: { id: "C4", b: 300, h: 300 },
+                beams: [{ id: "B12", b: 230, D: 450 }],
+                status: queue.every((x) => x.resolution) ? "fail" : "to_check",
+                fail_count: 6,
+                blocked_count: queue.filter((x) => !x.resolution).length,
+                bundle_ready: queue.every((x) => x.resolution),
+              },
+            ],
+            to_check_counts: {
+              total: 2,
+              unresolved: queue.filter((x) => !x.resolution).length,
+              project_level_unresolved: 0,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/projects/live-1/review"]}>
+          <Routes>
+            <Route path="/projects/:id/review" element={<ReviewRoute />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Blocks all joints")).toBeInTheDocument();
+
+    // Key J skips to item 2 (tc_top), key 2 accepts Parser ("5-20")
+    fireEvent.keyDown(window, { key: "j" });
+    fireEvent.keyDown(window, { key: "2" });
+
+    await screen.findByText(/Confirmed: 5-20/i);
+    expect(resolveCalls[0]).toEqual({ id: "tc_top", value: "5-20" });
+
+    // On tc_zone, press E to edit, reject invalid Zone X, accept III -> unlocks joint!
+    fireEvent.keyDown(window, { key: "k" });
+    fireEvent.keyDown(window, { key: "e" });
+    const input = await screen.findByLabelText(/Confirmed value \(seismic_zone\)/i);
+    fireEvent.change(input, { target: { value: "Zone X" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(await screen.findByText(/Enter seismic zone II, III, IV, or V/i)).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "III" } });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(
+      await screen.findByRole("link", { name: /Inspect C4xB12@FIRST/i }),
+    ).toHaveAttribute("href", "/projects/live-1/joints/C4xB12%40FIRST");
+
+    vi.unstubAllGlobals();
+  });
+});

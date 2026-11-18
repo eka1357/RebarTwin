@@ -5,12 +5,18 @@ import { EASE } from "../../lib/motion";
 import type { Finding } from "../../types/bundle";
 
 interface ToleranceGaugeProps {
-  finding: Pick<Finding, "rule" | "measured" | "limit" | "compare" | "unit" | "status">;
+  finding: Pick<Finding, "rule" | "measured" | "limit" | "compare" | "margin" | "unit" | "status">;
+}
+
+function clampLabelX(cx: number, halfW: number): number {
+  return Math.min(Math.max(cx, 6 + halfW), 314 - halfW);
 }
 
 /**
  * Architectural tolerance scale showing measured diamond relative to code limit tick,
- * with a hatched wrong-side zone and a plain sentence aria-label.
+ * with measured value placed under its diamond, "needs <limit>" / "max <limit>" under
+ * the limit tick (automatically staggered vertically when labels would collide), and a
+ * plain sentence aria-label.
  */
 export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
   const uid = useId().replace(/:/g, "");
@@ -34,7 +40,7 @@ export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
     markerX = limitX - frac * (limitX - (leftX + 6));
     hatchStartX = leftX;
     hatchWidth = limitX - leftX;
-    limitLabel = "0";
+    limitLabel = "needs 0";
   } else {
     const domainMin = 0;
     const domainMax = Math.max(finding.limit * 1.65, finding.measured * 1.15, finding.limit + 10, 1);
@@ -50,22 +56,38 @@ export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
       hatchStartX = leftX;
       hatchWidth = limitX - leftX;
     }
-    limitLabel = formatNumber(finding.limit, {
+    const limitNum = formatNumber(finding.limit, {
       maximumFractionDigits: Number.isInteger(finding.limit) ? 0 : 1,
     });
+    limitLabel = `${finding.compare === "<=" ? "max" : "needs"} ${limitNum}`;
   }
 
   const toneClass = finding.status === "fail" ? "text-fail" : "text-pass";
   const labelText = describeToleranceGauge(finding);
   const measuredShort = formatFindingValue(finding);
 
+  const measHalfW = Math.max(22, measuredShort.length * 3.8 + 4);
+  const limHalfW = Math.max(24, limitLabel.length * 3.8 + 4);
+  const measTextX = clampLabelX(markerX, measHalfW);
+  const limTextX = clampLabelX(limitX, limHalfW);
+
+  const collides = !(
+    measTextX + measHalfW + 10 <= limTextX - limHalfW ||
+    limTextX + limHalfW + 10 <= measTextX - measHalfW
+  );
+
+  const measuredY = 34;
+  const limitY = collides ? 50 : 34;
+  const viewHeight = collides ? 58 : 42;
+  const stemClearOfMeasured = Math.abs(limitX - measTextX) > measHalfW + 6;
+
   return (
     <div className="mt-2">
       <svg
         role="img"
         aria-label={labelText}
-        viewBox="0 0 320 42"
-        className="h-10 w-full overflow-visible select-none"
+        viewBox={`0 0 320 ${viewHeight}`}
+        className={`${collides ? "h-14" : "h-10"} w-full overflow-visible select-none`}
       >
         <defs>
           <pattern
@@ -96,6 +118,7 @@ export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
           height={10}
           rx={1}
           fill={`url(#${hatchId})`}
+          aria-hidden="true"
         />
 
         {/* Hairline full track */}
@@ -107,9 +130,10 @@ export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
           stroke="currentColor"
           strokeWidth="1.5"
           className="text-border-strong"
+          aria-hidden="true"
         />
 
-        {/* Limit tick */}
+        {/* Limit tick + optional staggered guide */}
         <line
           x1={limitX}
           y1={5}
@@ -118,15 +142,22 @@ export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
           stroke="currentColor"
           strokeWidth="1.5"
           className="text-foreground"
+          aria-hidden="true"
         />
-        <text
-          x={limitX}
-          y={36}
-          textAnchor="middle"
-          className="fill-muted-foreground font-num text-xs"
-        >
-          {limitLabel}
-        </text>
+        {collides && stemClearOfMeasured && (
+          <line
+            x1={limitX}
+            y1={21}
+            x2={limTextX}
+            y2={39}
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeDasharray="2 2"
+            strokeOpacity="0.45"
+            className="text-muted-foreground"
+            aria-hidden="true"
+          />
+        )}
 
         {/* Measured diamond marker settling in 160 ms */}
         <motion.g
@@ -134,18 +165,35 @@ export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
           animate={{ x: markerX, y: 13 }}
           transition={{ duration: 0.16, ease: EASE.standard }}
           className={toneClass}
+          aria-hidden="true"
         >
           <polygon points="0,-6 6,0 0,6 -6,0" fill="currentColor" />
         </motion.g>
 
-        {/* Right-aligned measured readout on baseline */}
+        {/* Measured label anchored under the diamond */}
         <text
-          x={rightX}
-          y={36}
-          textAnchor="end"
+          x={measTextX}
+          y={measuredY}
+          textAnchor="middle"
+          data-gauge-role="measured"
+          data-marker-x={Math.round(markerX)}
+          aria-hidden="true"
           className={`font-num text-xs font-medium ${finding.status === "fail" ? "fill-fail" : "fill-pass"}`}
         >
           {measuredShort}
+        </text>
+
+        {/* Limit label anchored under the limit tick */}
+        <text
+          x={limTextX}
+          y={limitY}
+          textAnchor="middle"
+          data-gauge-role="limit"
+          data-limit-x={Math.round(limitX)}
+          aria-hidden="true"
+          className="fill-muted-foreground font-num text-xs"
+        >
+          {limitLabel}
         </text>
       </svg>
     </div>

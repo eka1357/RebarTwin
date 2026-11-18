@@ -12,9 +12,21 @@ from pathlib import Path
 
 from .check import check
 from .export_bcf import export_bcf
-from .fixes import apply, resolve
+from .fixes import Enumerator, Proposer, apply, resolve
 from .model import Joint
 from .report import bundle, markdown
+
+
+def _build_proposers(use_gemini: bool, replay: bool, replies_dir: Path | None) -> list[Proposer] | None:
+    if not use_gemini:
+        return None
+    from .gemini_proposer import GeminiProposer
+    from .reader.gemini import CachingTransport, GenAITransport, load_env
+
+    load_env()
+    cache_dir = replies_dir or (Path("out") / "_replies")
+    transport = None if replay else GenAITransport()
+    return [GeminiProposer(CachingTransport(transport, cache_dir)), Enumerator()]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -29,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--zone", choices=["II", "III", "IV", "V"], help="override the joint's seismic zone")
     c.add_argument("--out", type=Path, help="output folder (default out/<joint id>)")
     c.add_argument("--no-ifc", action="store_true", help="skip the IFC files (no IfcOpenShell needed)")
+    c.add_argument("--gemini", action="store_true", help="run Gemini fix proposer alongside the enumerator")
+    c.add_argument("--replay", action="store_true", help="with --gemini, use cached replies only; never call the API")
+    c.add_argument("--replies", type=Path, help="cache folder for Gemini replies (default out/_replies)")
     r = sub.add_parser("read", help="read a drawing PDF into joints, provenance and a To check list, then check "
                                     "every joint with nothing left to check")
     r.add_argument("pdf", type=Path)
@@ -48,14 +63,15 @@ def main(argv: list[str] | None = None) -> int:
     joint = Joint.model_validate_json(args.joint.read_text(encoding="utf-8"))
     if args.zone:
         joint.settings.seismic_zone = args.zone
-    return run_check(joint, args.out or Path("out") / joint.id, args.no_ifc)
+    proposers = _build_proposers(args.gemini, args.replay, args.replies)
+    return run_check(joint, args.out or Path("out") / joint.id, args.no_ifc, proposers=proposers)
 
 
-def run_check(joint: Joint, out: Path, no_ifc: bool = False) -> int:
+def run_check(joint: Joint, out: Path, no_ifc: bool = False, *, proposers: list[Proposer] | None = None) -> int:
     """Check one joint, find verified fixes, and write report.md, bundle.json, issues.bcf and the IFC files."""
     out.mkdir(parents=True, exist_ok=True)
     report, cage = check(joint)
-    fix = resolve(joint)
+    fix = resolve(joint, proposers=proposers)
     (out / "report.md").write_text(markdown(joint, report, fix), encoding="utf-8")
     (out / "bundle.json").write_text(json.dumps(bundle(joint, report, fix, cage), indent=1), encoding="utf-8")
     note = None

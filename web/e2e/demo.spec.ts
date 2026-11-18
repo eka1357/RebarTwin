@@ -1,5 +1,13 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+
+const ZONE2_BUNDLE = JSON.parse(
+  fs.readFileSync(path.resolve("public/demo/C4xB12/bundle.json"), "utf8"),
+) as { fix: { attempts: Array<{ passed: boolean; candidate: { source: string } }> } };
+const ZONE2_TOTAL_ATTEMPTS = ZONE2_BUNDLE.fix.attempts.length;
+const ZONE2_FIRST_PASS_STEP = ZONE2_BUNDLE.fix.attempts.findIndex((a) => a.passed) + 1;
 
 interface ProjectedBounds {
   minX: number;
@@ -59,6 +67,7 @@ test.describe("Demo 3D Scene W3", () => {
   test("fits joint inside window without page scroll across viewports, presets, and resize/fullscreen", async ({
     page,
   }) => {
+    test.slow();
     const consoleErrors: string[] = [];
     page.on("pageerror", (err) => consoleErrors.push(err.message));
 
@@ -103,7 +112,10 @@ test.describe("Demo 3D Scene W3", () => {
           const b = boxes[j];
           const sepX = a.x + a.w <= b.x + 0.5 || b.x + b.w <= a.x + 0.5;
           const sepY = a.y + a.h <= b.y + 0.5 || b.y + b.h <= a.y + 0.5;
-          expect(sepX || sepY, `${contextLabel} overlap between ${i} and ${j}`).toBe(true);
+          expect(
+            sepX || sepY,
+            `${contextLabel} overlap between ${i} (${JSON.stringify(a)}) and ${j} (${JSON.stringify(b)})`,
+          ).toBe(true);
         }
       }
     };
@@ -196,11 +208,14 @@ test.describe("Demo 3D Scene W3", () => {
     await page.getByRole("button", { name: /Show Before/i }).first().click();
     await expect(wrapForFrame).toHaveAttribute("data-scene-mode", "before");
 
-    // W7: Workings tab drives attempt_scenes with Play, speed, Failed only, and ?a= URL sync
+    // W7: Workings tab drives attempt_scenes with Gemini + Enumerator sources, rationales, Play, speed, Failed only, and ?a= URL sync
     await page.getByRole("tab", { name: "Workings" }).click();
     await expect(wrapForFrame).toHaveAttribute("data-scene-mode", "workings");
     await expect(wrapForFrame).toHaveAttribute("data-replay-attempt", "1");
-    await expect(page.getByText(/Attempt 1 of 34 · Round 1/i)).toBeVisible();
+    await expect(
+      page.getByText(new RegExp(`Attempt 1 of ${ZONE2_TOTAL_ATTEMPTS} · Round 1`, "i")),
+    ).toBeVisible();
+    await expect(page.getByText(/Gemini rationale:/i)).toBeVisible();
     await expect(page.getByText(/18\s+mm overlap · Geometry/i).first()).toBeVisible();
 
     await page.getByRole("button", { name: /2×/i }).click();
@@ -343,15 +358,21 @@ test.describe("Demo 3D Scene W3", () => {
     await page.getByRole("button", { name: /Fit \(F\)|Frame \(F\)/i }).click();
   });
 
-  test("deep-links Workings replay via ?a=7 query parameter", async ({ page }) => {
+  test("deep-links Workings replay via ?a= query parameter to passing Gemini attempt", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/demo?a=7");
-    await expect(page.getByText(/Attempt 7 of 34 · Round 1/i)).toBeVisible();
+    await page.goto(`/demo?a=${ZONE2_FIRST_PASS_STEP}`);
+    await expect(
+      page.getByText(
+        new RegExp(`Attempt ${ZONE2_FIRST_PASS_STEP} of ${ZONE2_TOTAL_ATTEMPTS} · Round 1`, "i"),
+      ),
+    ).toBeVisible();
     await expect(
       page.getByText(/Passes every IS 456, IS 13920, and geometry check/i),
     ).toBeVisible();
     const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });
-    await expect(wrap).toHaveAttribute("data-replay-attempt", "7");
+    await expect(wrap).toHaveAttribute("data-replay-attempt", String(ZONE2_FIRST_PASS_STEP));
   });
 
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
@@ -413,12 +434,17 @@ test.describe("Demo 3D Scene W3", () => {
       const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });
       await expect(wrap).toHaveAttribute("data-scene-mode", "after");
 
-      // Step 4: Replay (Workings)
+      // Step 4: Replay (Workings) reads attempt count dynamically from bundle
       await page.keyboard.press(" ");
       await expect(
         page.getByRole("heading", { name: /^Every attempt, shown$/i }),
       ).toBeVisible();
-      await expect(page.getByText(/Attempt 1 of 34 · Round 1/i)).toBeVisible();
+      await expect(
+        page.getByText(new RegExp(`${ZONE2_TOTAL_ATTEMPTS} arrangements tried;`, "i")).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText(new RegExp(`Attempt 1 of ${ZONE2_TOTAL_ATTEMPTS} · Round 1`, "i")),
+      ).toBeVisible();
 
       // Step 5: Zone III (works offline via prefetched cache)
       await page.keyboard.press(" ");

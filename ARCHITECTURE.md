@@ -25,10 +25,10 @@ Only the engine produces numbers. Gemini reads and proposes; the engine measures
 ## Repository
 
 ```
-src/rebartwin/          engine (done): model, layout, geometry, rules, check, fixes, exports, report, cli
+src/rebartwin/          engine (done): model, layout, geometry, rules, check, fixes, exports, report, cli, gemini_proposer
 src/rebartwin/reader/   PDF reading, two channels, agreement, linking (R1 to R5)
 src/rebartwin/api.py    API (built): FastAPI service (check, projects, upload, SSE events, to-check, bundles, exports, crops)
-tests/                  engine tests (hand-checked); reader and API tests to add
+tests/                  engine, reader, API, and Gemini proposer tests (pytest)
 examples/               joint JSON fixtures (c4_b12.json is the deck's worked example)
 web/                    React app; web/src holds the v0 viewer built in Antigravity (to migrate, below)
 docs/                   rules.md, orca-teardown.md, UI_RESEARCH.md
@@ -44,7 +44,8 @@ docs/                   rules.md, orca-teardown.md, UI_RESEARCH.md
 | `geometry.py` | Exact segment-to-segment distances; gap = distance minus radii |
 | `rules.py` | IS 456 spacing and cover, bar clashes, IS 13920 cl. 7.1.1 and 6.2.3; each rule records its clause and the source it was checked against |
 | `check.py` | Runs the rules that apply; the only source of numbers |
-| `fixes.py` | Propose, re-check every rule, retry with reasons, rank. `Proposer` protocol; `Enumerator` built in; Gemini proposer to build |
+| `fixes.py` | Propose, re-check every rule, retry with reasons, rank. `Proposer` protocol; `Enumerator` built in |
+| `gemini_proposer.py` | `GeminiProposer(Proposer)` calling `reader/gemini.py` (`REBARTWIN_MODEL_LINK`, `propose_v1` prompt) for up to 6 stock-bar/max-layer candidates per round; engine re-checks and ranks everything |
 | `export_ifc.py`, `export_bcf.py` | IFC4 (bars as `IfcReinforcingBar`, `Tag` = bar id, stable GlobalIds) and BCF 2.1 |
 | `report.py` | Markdown report and `bundle()`, the web contract |
 

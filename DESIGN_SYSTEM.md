@@ -205,7 +205,7 @@ Group, Slider, Progress, ScrollArea, Separator, Badge, Skeleton, Sonner, Resizab
 | BarChip | `T1-3 ⌀20` with a status dot | Hover and focus highlight the bar | Name read in full: "Top bar 3, layer 1, 20 millimetres" |
 | SectionGlyph | SVG cross-section of a beam face, bars drawn to scale from `scene` | Used in fix cards and the joint list | `aria-label` lists the layers in words |
 | FixOptionCard | Rank, plain title "2-25 over 2-20", SectionGlyph before and after, steel and effective depth, Recheck flags | Preview runs the morph; Use in report marks it chosen | Metrics in a description list |
-| WorkingsTimeline | One tick per attempt, grouped by round: filled for passed, hollow for failed; current attempt's rejecting clauses with mini gauges | Space plays, arrows step, speed 0.5×, 1×, 2×, filter Failed only; drives `attempt_scenes` | Slider semantics; each step announced politely |
+| WorkingsTimeline | One tick per attempt, grouped by round (diamonds for Gemini, circles for Enumerator; filled for passed, hollow for failed); current attempt's `Gemini` / `Enumerator` source badge, `Gemini rationale`, and rejecting clauses with mini gauges | Space plays, arrows step, speed 0.5×, 1×, 2×, filter Failed only; drives `attempt_scenes` | Slider semantics; each step announced politely |
 | SourceCrop | Paper card showing `entry.member`, bundle-relative sheet PNG with `box_2d` crop overlay, Gemini & Parser readings, `Agreed`/`Resolved` badges, `Assumed, not on the drawing` defaults, column `Storey` (`level`), `OCR read '...'`, or pitch-deck note when no provenance | Zoom and pan; Open full sheet | Alt text carries the sheet page and value read |
 | ReadingBoard | Page tiles on paper; queued, reading (scan line), done (agreed, to check), error | Counts update live | Progress in a polite live region |
 | ReadingLog | Step list in the style of an agent replay: page, what was read, what agreed | Newest at the bottom, auto-follows unless scrolled | Log role |
@@ -216,7 +216,7 @@ Group, Slider, Progress, ScrollArea, Separator, Badge, Skeleton, Sonner, Resizab
 | ShortcutDialog | `?` modal listing viewport and navigation shortcuts | Opens on `?` outside text inputs | Radix Dialog with Escape close |
 | ViewportToolbar | View, Concrete, Labels, Reset, Full screen | Tooltips show shortcuts | Toggle groups with labels |
 | ViewportCallouts | Stacked HTML callouts with SVG leaders, anchor dots, `+n more` chip, plus 3D gap dimension lines and clash rings | Caps at 8 visible pills without overlap; clicking selects finding and bars | Mirrored `sr-only` findings list; each callout is a keyboard-reachable button |
-| DemoTour | Docked 5-step guided tour bar (Finding, Source, Fix, Replay, Zone III) over pre-cached `/demo/` bundles | `Space` advances step by step; `Escape` exits; adapts transitions under reduced motion | Polite step announcements and `aria-current="step"` indicators |
+| DemoTour | Docked 5-step guided tour bar (Finding, Source, Fix, Replay, Zone III) over pre-cached `/demo/` bundles; Step 4 derives attempt count from the bundle | `Space` advances step by step; `Escape` exits; adapts transitions under reduced motion | Polite step announcements and `aria-current="step"` indicators |
 | EmptyState | A joint plan drawn in hairlines, one sentence, one action | | Illustration is decorative |
 
 Use outside components only after a review: copy the source in, check keyboard and screen-reader behaviour, replace

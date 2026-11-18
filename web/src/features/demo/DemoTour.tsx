@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import type { DemoVariant } from "../../lib/demoData";
-import { formatFixToastSummary } from "../../lib/format";
+import { formatFixToastSummary, formatNumber } from "../../lib/format";
 import { EASE, getTransition } from "../../lib/motion";
 import { useWorkspaceStore } from "../../stores/workspace";
 import type { Bundle } from "../../types/bundle";
@@ -223,12 +223,19 @@ export function DemoTour({ open, onClose, variant, onVariantChange, bundle }: De
   const hasProvenance = Array.isArray(bundle?.provenance)
     ? bundle.provenance.length > 0
     : Boolean(bundle?.provenance && Object.keys(bundle.provenance).length > 0);
+  const attemptCount = bundle?.fix.attempts.length ?? 0;
+  const workingsSummary =
+    attemptCount > 0
+      ? `${formatNumber(attemptCount)} arrangements tried; each failed one names the clause that rejected it.`
+      : "Arrangements checked; each failed one names the clause that rejected it.";
   const currentSummary =
     current.id === "source"
       ? hasProvenance
         ? PROVENANCE_SOURCE_SUMMARY
         : PITCH_DECK_SOURCE_SUMMARY
-      : current.summary;
+      : current.id === "workings"
+        ? workingsSummary
+        : current.summary;
   const isLast = stepIndex === DEMO_TOUR_STEPS.length - 1;
 
   return (

@@ -241,8 +241,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
     ctrl.setCalloutIndicators(activeFindings, labelMode, selectedFindingIndex);
-    const id = requestAnimationFrame(() => ctrl.renderImmediate());
-    return () => cancelAnimationFrame(id);
+    ctrl.renderImmediate();
   }, [activeFindings, labelMode, selectedFindingIndex]);
 
   useEffect(() => {

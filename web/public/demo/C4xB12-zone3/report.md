@@ -16,7 +16,7 @@ Seismic zone III (IS 13920 on), mild exposure, 20 mm aggregate. Advisory: the en
 
 ## Fix
 
-No bar change alone passes; 11 redesigns do. Smallest: B12 top: 4-16 in layer 1, 4-16 in layer 2; C4 325 × 300. The engineer of record decides.
+No bar change alone passes; 15 redesigns do. Smallest: B12 top: 4-16 in layer 1, 4-16 in layer 2; C4 325 × 300. The engineer of record decides.
 
 **Option 1: B12 top: 4-16 in layer 1, 4-16 in layer 2; C4 325 × 300**
 
@@ -25,7 +25,14 @@ No bar change alone passes; 11 redesigns do. Smallest: B12 top: 4-16 in layer 1,
 - Recheck: B12 top steel's effective depth drops from 407 to 389 mm: recheck the section's strength
 - Recheck: C4 grows from 300 × 300 to 325 × 300 mm: a redesign for the engineer of record (frame analysis, column design, the drawings around it)
 
-**Option 2: B12 top: 4-20 in layer 1, 2-16 in layer 2; B12 bottom: 2-20 in layer 1, 2-12 in layer 2; C4 400 × 300**
+**Option 2: B12 top: 4-16 in layer 1, 4-16 in layer 2; C4 325 × 325**
+
+- B12 top (layers outermost first): 5-20 becomes 4-16 / 4-16; 1609 mm² against 1571 mm² needed (+2.4%); effective depth 407 to 389 mm
+- Column: 300 × 300 -> 325 × 325 mm
+- Recheck: B12 top steel's effective depth drops from 407 to 389 mm: recheck the section's strength
+- Recheck: C4 grows from 300 × 300 to 325 × 325 mm: a redesign for the engineer of record (frame analysis, column design, the drawings around it)
+
+**Option 3: B12 top: 4-20 in layer 1, 2-16 in layer 2; B12 bottom: 2-20 in layer 1, 2-12 in layer 2; C4 400 × 300**
 
 - B12 top (layers outermost first): 5-20 becomes 4-20 / 2-16; 1659 mm² against 1571 mm² needed (+5.6%); effective depth 407 to 397 mm
 - B12 bottom (layers outermost first): 4-16 becomes 2-20 / 2-12; 855 mm² against 829 mm² needed (+3%); effective depth 409 to 396 mm
@@ -34,21 +41,12 @@ No bar change alone passes; 11 redesigns do. Smallest: B12 top: 4-16 in layer 1,
 - Recheck: B12 bottom steel's effective depth drops from 409 to 396 mm: recheck the section's strength
 - Recheck: C4 grows from 300 × 300 to 400 × 300 mm: a redesign for the engineer of record (frame analysis, column design, the drawings around it)
 
-**Option 3: B12 top: 4-20 in layer 1, 4-12 in layer 2; B12 bottom: 2-20 in layer 1, 2-12 in layer 2; C4 400 × 300**
-
-- B12 top (layers outermost first): 5-20 becomes 4-20 / 4-12; 1709 mm² against 1571 mm² needed (+8.8%); effective depth 407 to 396 mm
-- B12 bottom (layers outermost first): 4-16 becomes 2-20 / 2-12; 855 mm² against 855 mm² needed (+0%); effective depth 409 to 396 mm
-- Column: 300 × 300 -> 400 × 300 mm
-- Recheck: B12 top steel's effective depth drops from 407 to 396 mm: recheck the section's strength
-- Recheck: B12 bottom steel's effective depth drops from 409 to 396 mm: recheck the section's strength
-- Recheck: C4 grows from 300 × 300 to 400 × 300 mm: a redesign for the engineer of record (frame analysis, column design, the drawings around it)
-
 ## Why the other candidates failed
 
-- Geometry, bars that run into each other: rejected 49
-- IS 13920:2016 cl. 7.1.1, column size against beam bar size: rejected 34
+- Geometry, bars that run into each other: rejected 53
+- IS 13920:2016 cl. 7.1.1, column size against beam bar size: rejected 38
 - IS 13920:2016 cl. 6.2.3, bottom steel at the joint face: rejected 25
-- IS 456:2000 cl. 26.3.2, clear gap between parallel bars: rejected 19
+- IS 456:2000 cl. 26.3.2, clear gap between parallel bars: rejected 21
 - IS 456:2000 cl. 26.3.2, rows of bars vertically in line: rejected 14
 
 ## Rules

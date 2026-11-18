@@ -22,7 +22,8 @@ from pydantic import BaseModel
 
 from .check import check
 from .cli import run_check
-from .fixes import apply, resolve as resolve_fixes
+from .fixes import Enumerator, Proposer, apply, resolve as resolve_fixes
+from .gemini_proposer import GeminiProposer
 from .model import Exposure, Joint, Zone, format_bars, parse_bars
 from .reader.agree import Accepted, ToCheck, agree
 from .reader.gemini import GenAITransport, CachingTransport, ReadError, load_env, read_pages
@@ -436,6 +437,36 @@ def _apply_resolved_provenance(
     _write_json(bundle_path, bundle_data)
 
 
+def _safe_run_check(
+    app: FastAPI,
+    project_dir: Path,
+    joint: Joint,
+    out_dir: Path,
+    *,
+    no_ifc: bool,
+    cache: CachingTransport | None = None,
+) -> int:
+    """Run check/resolve with GeminiProposer + Enumerator when a Gemini transport or key is available,
+    falling back deterministically to Enumerator alone if no model access or replay miss occurs."""
+    proposers: list[Proposer] | None = None
+    transport_factory: Callable[[], Any] | None = getattr(app.state, "transport_factory", None)
+    if cache is not None:
+        proposers = [GeminiProposer(cache), Enumerator()]
+    elif transport_factory is not None or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true", "yes"):
+        try:
+            tr = transport_factory() if transport_factory else GenAITransport()
+            proposers = [GeminiProposer(CachingTransport(tr, project_dir / "replies")), Enumerator()]
+        except ReadError:
+            proposers = None
+
+    if proposers is not None:
+        try:
+            return run_check(joint, out_dir, no_ifc=no_ifc, proposers=proposers)
+        except ReadError:
+            pass
+    return run_check(joint, out_dir, no_ifc=no_ifc)
+
+
 class _EventHub:
     """Thread-safe SSE pub/sub backed by `<project>/events.jsonl` for reconnect replay."""
 
@@ -680,7 +711,7 @@ def _execute_read_job(
             jid = v.joint.id
             if blocked_counts.get(jid):
                 continue
-            run_check(v.joint, joints_dir / jid, no_ifc=no_ifc)
+            _safe_run_check(app, project_dir, v.joint, joints_dir / jid, no_ifc=no_ifc, cache=cache)
             attach_sources(joints_dir / jid / "bundle.json", v, fields_by_id, project_dir)
             b_json = _read_json(joints_dir / jid / "bundle.json", {})
             fails = sum(1 for f in b_json.get("report", {}).get("findings", []) if f.get("status") == "fail")
@@ -973,7 +1004,7 @@ def create_app(
                     unlocked_joints.append(jid)
                     bundle_exists = (joints_dir / jid / "bundle.json").is_file()
                     if _dict_is_assigned_to_joint(target, jid, members) or not bundle_exists:
-                        run_check(j_model, joints_dir / jid, no_ifc=no_ifc)
+                        _safe_run_check(app, p_dir, j_model, joints_dir / jid, no_ifc=no_ifc)
                         _apply_resolved_provenance(
                             p_dir,
                             j_model,

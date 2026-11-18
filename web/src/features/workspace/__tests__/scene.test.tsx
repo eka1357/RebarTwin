@@ -89,26 +89,47 @@ describe("W3 Scene & Demo Bundle", () => {
     expect(screen.getAllByRole("button", { name: /Use in report/i })).toHaveLength(3);
   });
 
-  it("replays all 34 attempts with rejecting clauses, Failed-only filter, and passing step", () => {
+  it("replays all attempts with Gemini and Enumerator sources, rationales, rejecting clauses, Failed-only filter, and passing step", () => {
     const bundle = demoBundleRaw as unknown as Bundle;
+    const total = bundle.fix.attempts.length;
+    const passIdx = bundle.fix.attempts.findIndex((a) => a.passed);
+    const enumIdx = bundle.fix.attempts.findIndex((a) => a.candidate.source === "enumerator");
+    expect(total).toBeGreaterThanOrEqual(34);
+    expect(passIdx).toBeGreaterThanOrEqual(0);
+    expect(enumIdx).toBeGreaterThanOrEqual(0);
+
     render(<WorkingsTimeline bundle={bundle} />);
 
-    expect(screen.getByText(/Attempt 1 of 34 · Round 1/i)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Attempt 1 of ${total} · Round 1`, "i"))).toBeInTheDocument();
+    expect(screen.getAllByText("Gemini").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Gemini rationale:/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Geometry/i).length).toBeGreaterThanOrEqual(1);
 
-    // Jump to attempt 7 (first passing option in Zone II)
-    fireEvent.click(screen.getByRole("button", { name: /Attempt 7 \(Round 1\): passes/i }));
-    expect(screen.getByText(/Attempt 7 of 34 · Round 1/i)).toBeInTheDocument();
+    // Jump to passing attempt (Gemini)
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(`Attempt ${passIdx + 1} \\(Round 1, Gemini\\): passes`, "i") }),
+    );
+    expect(screen.getByText(new RegExp(`Attempt ${passIdx + 1} of ${total} · Round 1`, "i"))).toBeInTheDocument();
     expect(screen.getByText(/Passes every IS 456, IS 13920, and geometry check/i)).toBeInTheDocument();
 
-    // Turn on Failed only and step Next -> skips passing steps to next failing step
+    // Jump to an Enumerator attempt and check source badge
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(`Attempt ${enumIdx + 1} \\(Round 1, Enumerator\\):`, "i") }),
+    );
+    expect(screen.getAllByText("Enumerator").length).toBeGreaterThanOrEqual(1);
+
+    // Jump back to passing step, turn on Failed only and step Next -> skips passing steps
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(`Attempt ${passIdx + 1} \\(Round 1, Gemini\\): passes`, "i") }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Failed only/i }));
     fireEvent.click(screen.getByRole("button", { name: /Next attempt/i }));
     expect(screen.queryByText(/Passes every/i)).not.toBeInTheDocument();
   });
 
-  it("advances DemoTour cleanly through all 5 beats including Zone III switch", () => {
+  it("advances DemoTour cleanly through all 5 beats including dynamic attempt count and Zone III switch", () => {
     const bundle = demoBundleRaw as unknown as Bundle;
+    const total = bundle.fix.attempts.length;
     const onVariantChange = vi.fn();
     const onClose = vi.fn();
 
@@ -132,6 +153,9 @@ describe("W3 Scene & Demo Bundle", () => {
     expect(screen.getByRole("heading", { name: /A fix that passes every rule/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Next \(Space\)/i }));
     expect(screen.getByRole("heading", { name: /Every attempt, shown/i })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(new RegExp(`${total} arrangements tried; each failed one`, "i")).length,
+    ).toBeGreaterThanOrEqual(1);
     fireEvent.click(screen.getByRole("button", { name: /Next \(Space\)/i }));
     expect(screen.getByRole("heading", { name: /Zone III changes the answer/i })).toBeInTheDocument();
     expect(onVariantChange).toHaveBeenCalledWith("zone3");

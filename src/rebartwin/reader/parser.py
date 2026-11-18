@@ -149,11 +149,18 @@ def scan(text: str) -> list[tuple[str, str, int, int]]:
     return sorted(found, key=lambda f: f[2])
 
 
+_GEMINI_PHI = str.maketrans({"Ф": "Ø", "Ά": "Ø"})
+
+
 def normalise(kind: str, text: str) -> str | None:
     """The canonical value of `text` read as `kind`, or None when it has none or more than one distinct reading.
 
     Used on Gemini's "value as written", so both channels go through one grammar. A reading of another kind does
-    not stop it ("B12 5-20" normalises as bars to "5-20")."""
+    not stop it ("B12 5-20" normalises as bars to "5-20").
+
+    Gemini sometimes writes the drawing's Ø as Cyrillic "Ф" or Greek "Ά"; those read as Ø here only, never in page
+    scanning, so a letter on the sheet itself is not taken for a diameter mark."""
+    text = text.translate(_GEMINI_PHI)
     values = {v for k, v, _, _ in scan(text) if k == kind}
     if not values and kind in _BARE:                  # Gemini writes "III" or "25 mm" where the sheet has a label
         pattern, value_of = _BARE[kind]

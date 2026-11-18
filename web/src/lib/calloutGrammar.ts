@@ -88,7 +88,7 @@ export function describeFieldMeta(
     };
   }
   if (leaf === "section") return { placeholder: "e.g. 230x450 or 300x300" };
-  if (leaf === "main") return { placeholder: "e.g. 8-16 or 12-20" };
+  if (leaf === "main") return { placeholder: "e.g. 8-16 or 4-16 + 4-12" };
   if (leaf === "top" || leaf === "top_extra" || leaf === "bottom" || leaf === "bottom_extra") {
     return { placeholder: "e.g. 5-20 or 2-25 + 1-20" };
   }
@@ -161,10 +161,17 @@ export function validateCalloutGrammar(field: string, raw: string): GrammarValid
     if (leaf === "main") {
       const total = groups.reduce((acc, g) => acc + g.count, 0);
       const dias = new Set(groups.map((g) => g.dia));
-      if (dias.size !== 1 || total < 4 || total % 2 !== 0) {
+      const mixedCornersFaces =
+        groups.length === 2 &&
+        groups[0]?.count === 4 &&
+        total > 4 &&
+        total % 2 === 0;
+      const singleDia = dias.size === 1 && total >= 4 && total % 2 === 0;
+      if (!singleDia && !mixedCornersFaces) {
         return {
           valid: false,
-          error: "Column main steel needs an even total >= 4 of one diameter (e.g. 8-16).",
+          error:
+            "Column main steel needs an even total >= 4 of one diameter (e.g. 8-16) or 4 corner + even face bars (e.g. 4-16 + 4-12).",
           ...meta,
         };
       }

@@ -201,11 +201,15 @@ def test_invalid_joint_becomes_a_to_check_item(agreement):
     assert any(t.field == "joints[0]" and t.reason == "ambiguous" for t in result.to_check)
 
 
-def test_unresolved_from_the_model_blocks(agreement):
+def test_unresolved_from_the_model_blocks_only_where_code_has_no_value(agreement):
+    """Code decides (Eka, 18 November): the model's "unresolved" on beams[1].top, which code proves from B13's top
+    field (2-25 + 1-20), is dropped; on beams[1].spacer, which code neither proves nor defaults for a one-layer face,
+    it blocks the joint."""
     def change(item):
-        item["unresolved"] = [{"path": "beams[1].top", "reason": "two top callouts on different sheets"}]
+        item["unresolved"] = [{"path": "beams[1].top", "reason": "two top callouts on different sheets"},
+                              {"path": "beams[1].spacer", "reason": "no spacer on the drawing"}]
     items = blocking(run(agreement, body_with(change)))
-    assert [(t.field, t.reason) for t in items] == [("beams[1].top", "ambiguous")]
+    assert [(t.field, t.reason) for t in items] == [("beams[1].spacer", "ambiguous")]
 
 
 def test_a_disagreement_on_a_joint_member_blocks_that_joint(agreement):
@@ -371,3 +375,27 @@ def test_a_bottom_extra_counts_at_a_joint_only_if_its_bar_reaches_the_support(ag
     unclear = replace(bottom, id="f0203", field="bottom_extra", value="2-12", at=None)
     items = blocking(run(placed(agreement, places, [unclear]), body(bottom_ids, "4-16")), jid)
     assert [(t.field, t.reason) for t in items] == [("beams[0].bottom", "ambiguous")]
+
+
+def test_mixed_column_main_is_corner_and_face_bars_and_code_settles_what_it_proves(agreement):
+    """C4's main on the drawing becomes "4-16 + 4-12": a joint with 8 bars, 16 mm corners and face_dia 12 is proved
+    (4 x 201.1 + 4 x 113.1 = 1,256.6 mm2 of steel) and noted; the same with face_dia missing disagrees. "2-16 + 6-12"
+    (a first group that is not the four corners) needs a person. The model's "unresolved" on beams[0].stirrups, a
+    path code fills with the noted 8 mm default, is dropped; on column.main, which code cannot prove here, it stays."""
+    main = next(a for a in agreement.accepted if (a.member, a.field) == ("C4", "main"))
+    def with_main(value):
+        acc = [replace(a, value=value) if a is main else a for a in agreement.accepted]
+        return Agreement(acc, list(agreement.to_check), [])
+
+    def col(face, unresolved=()):
+        def change(i):
+            i["joint"]["column"].update(n_bars=8, bar_dia=16, face_dia=face, bars_x=None, bars_y=None)
+            i["unresolved"] = [{"path": p, "reason": "not in the values"} for p in unresolved]
+        return body_with(change)
+
+    ok = run(with_main("4-16 + 4-12"), col(12, unresolved=["beams[0].stirrups"]))
+    assert blocking(ok) == [] and ok.joints[0].joint.column.area == pytest.approx(1256.6, abs=0.1)
+    assert any(n.startswith("C4 4-16 at the corners and 4-12 on the faces") for n in ok.joints[0].joint.notes)
+    assert [t.field for t in blocking(run(with_main("4-16 + 4-12"), col(None)))] == ["column.main"]
+    odd = blocking(run(with_main("2-16 + 6-12"), col(12, unresolved=["column.main"])))
+    assert sorted((t.field, t.reason) for t in odd) == [("column.main", "ambiguous"), ("column.main", "disagree")]

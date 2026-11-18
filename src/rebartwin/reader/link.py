@@ -26,7 +26,7 @@ from .agree import Accepted, Agreement, ToCheck
 from .gemini import GLOBAL_MEMBERS, PROMPTS, ModelNotFound, Transport, call
 from .levels import ends_at, floor, storey
 
-LINK_PROMPT = "link_v4"
+LINK_PROMPT = "link_v5"
 DEFAULT_LINK_MODEL = "gemini-4-argon"
 DEFAULT_FALLBACK = "gemini-3.8-flash"
 
@@ -187,12 +187,26 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     use("column.section", of(col.id, "section"), ("section",), sec_col)
 
     def main_col(got):
-        c = _bars(got[0].value)
-        if len(c) != 1:
-            return f"{col.id} has mixed bar sizes ({got[0].value}); the engine takes one size per column"
-        (dia, n), = c.items()
-        if (col.n_bars, col.bar_dia) != (n, dia):
-            return f"{col.id} has {col.n_bars}-{col.bar_dia:g} in the joint, {got[0].value} on the drawing"
+        groups = parse_bars(got[0].value)
+        total = sum(g.count for g in groups)
+        drawn = f"{got[0].value} on the drawing"
+        if len({g.dia for g in groups}) == 1:
+            dia = groups[0].dia
+            if (col.n_bars, col.bar_dia, col.face_dia or dia) != (total, dia, dia):
+                return f"{col.id} has {col.n_bars}-{col.bar_dia:g} in the joint, {drawn}"
+            return None
+        # Two sizes: the first group of four is the corner bars, the second the face bars (a schedule's
+        # "• 4Ø16 + ○ 4Ø12"). Any other arrangement needs a person.
+        if len(groups) != 2 or groups[0].count != 4:
+            return (f"{col.id} main bars {got[0].value}: the first group is not the four corner bars, so how the "
+                    "bars sit needs a person")
+        corner, face = groups
+        if (col.n_bars, col.bar_dia, col.face_dia) != (total, corner.dia, face.dia):
+            return (f"{col.id} has {col.n_bars} bars of {col.bar_dia:g} mm at the corners and "
+                    f"{col.face_dia or col.bar_dia:g} mm on the faces in the joint, {drawn}")
+        notes.append(f"{col.id} {corner.count}-{corner.dia:g} at the corners and {face.count}-{face.dia:g} on the "
+                     f"faces, spread {col.bars_x} and {col.bars_y} per face (corners included) as the engine splits "
+                     "them: the schedule's section sketch is not read.")
     use("column.main", of(col.id, "main"), ("main",), main_col)
     storeys = sorted({a.level for k in ("column.section", "column.main", "column.ties") for a in cited.get(k, [])
                       if a.level and storey(a.level)})
@@ -314,6 +328,10 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                             "accepted field"))
 
     for u in linked.unresolved:
+        # Code decides: a path code has proved from the drawing, or filled with a noted default, is settled whatever
+        # the linking model says; its "unresolved" counts only where code has no value.
+        if u.path in provenance or u.path in defaults:
+            continue
         issues.append(Issue(u.path, "ambiguous", f"Linking model: {u.reason}"))
     j.floor, j.place = at_floor, place              # explicit, so nothing downstream parses the id
     if at_floor:

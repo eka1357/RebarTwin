@@ -122,7 +122,7 @@ def nominal_cover(cage: Cage, joint: Joint) -> list[Finding]:
     s, out = joint.settings, []
     need = NOMINAL_COVER[s.exposure]
     c = joint.column
-    members = [(c.id, c.link_cover, [c.bar_dia], "ties")] + [
+    members = [(c.id, c.link_cover, c.main_dias, "ties")] + [
         (b.id, b.link_cover, [d for layer in [*b.top, *b.bottom] for d in layer.diameters()], "stirrups")
         for b in joint.beams]
     for member, cover, dias, links in members:
@@ -135,8 +135,9 @@ def nominal_cover(cage: Cage, joint: Joint) -> list[Finding]:
 
 def column_main_cover(cage: Cage, joint: Joint) -> list[Finding]:
     c = joint.column
-    small = min(c.b, c.h) <= 200 and c.bar_dia <= 12
-    limit = 25.0 if small else max(40.0, c.bar_dia)
+    big = max(c.main_dias)                 # every main bar has the same cover; the largest sets the limit
+    small = min(c.b, c.h) <= 200 and big <= 12
+    limit = 25.0 if small else max(40.0, big)
     return [_finding(COLUMN_COVER, c.main_cover, limit, [c.id],
                      f"{c.id} has {c.main_cover:g} mm of concrete outside its main bars; the code needs {limit:g} mm")]
 

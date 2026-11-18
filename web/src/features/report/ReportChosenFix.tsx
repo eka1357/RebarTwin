@@ -1,7 +1,14 @@
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { StatusPill } from "../../components/StatusPill";
 import { Badge } from "../../components/ui/badge";
-import { formatArea, formatMeasure, formatNumber, formatPercentDelta } from "../../lib/format";
+import {
+  formatAfterColumnSize,
+  formatArea,
+  formatColumnMainSummary,
+  formatMeasure,
+  formatNumber,
+  formatPercentDelta,
+} from "../../lib/format";
 import type { Bundle } from "../../types/bundle";
 import { SectionGlyph } from "../fixes/SectionGlyph";
 
@@ -26,6 +33,10 @@ export function ReportChosenFix({
     options.length > 0 ? Math.min(Math.max(0, chosenOptionIndex), options.length - 1) : 0;
   const option = options[clampedIdx];
 
+  const col = bundle.joint.column;
+  const colSummary = formatColumnMainSummary(col);
+  const hasMixedColumn = col.face_dia != null && col.face_dia !== col.bar_dia;
+
   if (!option) {
     const isClean = bundle.fix.status === "clean";
     return (
@@ -36,11 +47,21 @@ export function ReportChosenFix({
           </h2>
           <StatusPill status={isClean ? "pass" : "redesign"} size="sm" />
         </div>
-        <p className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3 text-sm text-foreground">
-          {isClean
-            ? "No bar change required; joint passes as drawn."
-            : `${bundle.fix.summary} The engineer of record decides.`}
-        </p>
+        <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3 text-sm text-foreground flex flex-wrap items-center gap-3">
+          {hasMixedColumn && (
+            <SectionGlyph
+              scene={bundle.scene}
+              columnId={col.id}
+              caption={`Column ${col.id}`}
+              faceSummary={colSummary}
+            />
+          )}
+          <p className="min-w-0 flex-1">
+            {isClean
+              ? "No bar change required; joint passes as drawn."
+              : `${bundle.fix.summary} The engineer of record decides.`}
+          </p>
+        </div>
       </section>
     );
   }
@@ -131,10 +152,40 @@ export function ReportChosenFix({
           </div>
         ))}
 
-        {option.column && (
-          <p className="font-num text-xs text-foreground">
-            Column size: <span className="font-semibold">{option.column} mm</span>
-          </p>
+        {option.column ? (
+          <div className="flex flex-wrap items-center gap-3 print:gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
+              <SectionGlyph
+                scene={bundle.scene}
+                columnId={col.id}
+                caption="Before column"
+                faceSummary={`${col.b} × ${col.h} · ${colSummary}`}
+              />
+              <SectionGlyph
+                scene={bundle.option_scenes[clampedIdx] ?? bundle.scene}
+                columnId={col.id}
+                caption="After column"
+                faceSummary={`${formatAfterColumnSize(option.column)} · ${colSummary}`}
+              />
+            </div>
+            <p className="font-num text-xs text-foreground">
+              Column size: <span className="font-semibold">{option.column} mm</span>
+            </p>
+          </div>
+        ) : (
+          hasMixedColumn && (
+            <div className="flex flex-wrap items-center gap-3 print:gap-2">
+              <SectionGlyph
+                scene={bundle.scene}
+                columnId={col.id}
+                caption={`Column ${col.id}`}
+                faceSummary={colSummary}
+              />
+              <p className="font-num text-xs text-muted-foreground">
+                Column bars held at {colSummary}.
+              </p>
+            </div>
+          )
         )}
 
         {option.flags.length > 0 ? (

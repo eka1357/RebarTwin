@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, Download } from "lucide-react";
 import { StatusPill } from "../../components/StatusPill";
 import { Button } from "../../components/ui/button";
-import { formatMeasure, formatReportDate } from "../../lib/format";
+import { formatColumnMainSummary, formatMeasure, formatReportDate } from "../../lib/format";
 import { getProvenanceSheetPages, normalizeProvenanceEntries } from "../../lib/provenance";
 import type { Bundle } from "../../types/bundle";
 import { ReportAssumptionsAndSource } from "./ReportAssumptionsAndSource";
@@ -41,7 +41,7 @@ export function PrePourReport({
 }: PrePourReportProps) {
   const entries = normalizeProvenanceEntries(bundle, bundleUrl);
   const sheetPages = getProvenanceSheetPages(entries);
-  const columnLevel = entries.find((e) => e.isColumn && e.level)?.level ?? null;
+  const columnLevel = bundle.joint.floor ?? entries.find((e) => e.isColumn && e.level)?.level ?? null;
 
   const failCount = bundle.report.findings.filter((f) => f.status === "fail").length;
   const col = bundle.joint.column;
@@ -95,7 +95,8 @@ export function PrePourReport({
           <div>
             <dt className="text-muted-foreground">Joint</dt>
             <dd className="mt-0.5 font-num font-semibold text-foreground">
-              {bundle.joint.id} · {col.id} {col.b} × {col.h} mm{beamsSummary ? `; ${beamsSummary}` : ""}
+              {bundle.joint.id} · {col.id} {col.b} × {col.h} mm ({formatColumnMainSummary(col)})
+              {beamsSummary ? `; ${beamsSummary}` : ""}
               {columnLevel ? ` · ${columnLevel}` : ""}
             </dd>
           </div>

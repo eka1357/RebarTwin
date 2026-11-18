@@ -14,6 +14,11 @@ describe("W9 To Check & Callout Grammar", () => {
       normalized: "2-25 + 1-20",
     });
     expect(validateCalloutGrammar("main", "8-16")).toMatchObject({ valid: true, normalized: "8-16" });
+    expect(validateCalloutGrammar("main", "4-16 + 4-12")).toMatchObject({
+      valid: true,
+      normalized: "4-16 + 4-12",
+    });
+    expect(validateCalloutGrammar("main", "3-16 + 5-12").valid).toBe(false);
     expect(validateCalloutGrammar("main", "5-16").valid).toBe(false);
     expect(validateCalloutGrammar("section", "230x450")).toMatchObject({
       valid: true,

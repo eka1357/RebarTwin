@@ -2,13 +2,20 @@ import { AlertTriangle, Check, Eye, FileText, RotateCcw } from "lucide-react";
 import { StatusPill } from "../../components/StatusPill";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { formatArea, formatMeasure, formatPercentDelta } from "../../lib/format";
-import type { FixOption, Scene } from "../../types/bundle";
+import {
+  formatAfterColumnSize,
+  formatArea,
+  formatColumnMainSummary,
+  formatMeasure,
+  formatPercentDelta,
+} from "../../lib/format";
+import type { ColumnSpec, FixOption, Scene } from "../../types/bundle";
 import { SectionGlyph } from "./SectionGlyph";
 
 interface FixOptionCardProps {
   rank: number;
   option: FixOption;
+  column?: ColumnSpec;
   beforeScene: Scene;
   afterScene?: Scene;
   isPreviewing: boolean;
@@ -29,6 +36,7 @@ function formatPlainFixTitle(option: FixOption): string {
 export function FixOptionCard({
   rank,
   option,
+  column,
   beforeScene,
   afterScene,
   isPreviewing,
@@ -65,6 +73,23 @@ export function FixOptionCard({
         </div>
         <StatusPill status={pillStatus} size="sm" />
       </div>
+
+      {option.column && column && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <SectionGlyph
+            scene={beforeScene}
+            columnId={column.id}
+            caption="Before column"
+            faceSummary={`${column.b} × ${column.h} · ${formatColumnMainSummary(column)}`}
+          />
+          <SectionGlyph
+            scene={afterScene ?? beforeScene}
+            columnId={column.id}
+            caption="After column"
+            faceSummary={`${formatAfterColumnSize(option.column)} · ${formatColumnMainSummary(column)}`}
+          />
+        </div>
+      )}
 
       {primaryFace && (
         <div className="mt-3 grid grid-cols-2 gap-2">

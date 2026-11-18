@@ -5,12 +5,18 @@ import { ScrollArea } from "../../components/ui/scroll-area";
 import { Separator } from "../../components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { describeBarFull } from "../../lib/a11y";
-import { formatBarMark, formatClause, formatFindingValue } from "../../lib/format";
+import {
+  formatBarMark,
+  formatClause,
+  formatColumnMainSummary,
+  formatFindingValue,
+} from "../../lib/format";
 import { useWorkspaceStore, type InspectorTab } from "../../stores/workspace";
 import type { Bundle, Finding } from "../../types/bundle";
 import { BarChip } from "../findings/BarChip";
 import { FindingCard } from "../findings/FindingCard";
 import { FixPanel } from "../fixes/FixPanel";
+import { SectionGlyph } from "../fixes/SectionGlyph";
 import { SourceCrop } from "../source/SourceCrop";
 import { WorkingsTimeline } from "../workings/WorkingsTimeline";
 
@@ -109,7 +115,9 @@ export function JointInspector({
             {bundle.joint.column.id} × {bundle.joint.beams.map((b) => b.id).join(" / ")}
           </h2>
           <p className="font-num text-xs text-muted-foreground">
-            {bars.length} bars · {failingBars.length} failing · Zone {bundle.report.seismic_zone}
+            {bundle.joint.column.id} {bundle.joint.column.b} × {bundle.joint.column.h} mm ·{" "}
+            {formatColumnMainSummary(bundle.joint.column)} · {bars.length} bars ·{" "}
+            {failingBars.length} failing · Zone {bundle.report.seismic_zone}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -241,21 +249,31 @@ export function JointInspector({
               <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
                 Scene Bars ({bars.length} total, {failingBars.length} failing)
               </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {sortedBars.map((b) => (
-                  <BarChip
-                    key={b.id}
-                    bar={b}
-                    active={selectedBarId === b.id}
-                    onSelect={() => {
-                      const idx = b.findings[0] ?? null;
-                      selectBar(b.id);
-                      selectFinding(idx);
-                      triggerFrame();
-                    }}
-                    onHover={(hovering) => setHoveredBar(hovering ? b.id : null)}
+              <div className="flex flex-col items-start gap-3 sm:flex-row">
+                <div className="shrink-0">
+                  <SectionGlyph
+                    scene={bundle.scene}
+                    columnId={bundle.joint.column.id}
+                    caption={`Column ${bundle.joint.column.id}`}
+                    faceSummary={formatColumnMainSummary(bundle.joint.column)}
                   />
-                ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {sortedBars.map((b) => (
+                    <BarChip
+                      key={b.id}
+                      bar={b}
+                      active={selectedBarId === b.id}
+                      onSelect={() => {
+                        const idx = b.findings[0] ?? null;
+                        selectBar(b.id);
+                        selectFinding(idx);
+                        triggerFrame();
+                      }}
+                      onHover={(hovering) => setHoveredBar(hovering ? b.id : null)}
+                    />
+                  ))}
+                </div>
               </div>
             </section>
           </TabsContent>

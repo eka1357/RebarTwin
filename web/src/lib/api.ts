@@ -109,6 +109,7 @@ export interface ProjectJointSummary {
     h?: number;
     n_bars?: number;
     bar_dia?: number;
+    face_dia?: number | null;
     section?: DraftAcceptedValue[] | null;
     main?: DraftAcceptedValue[] | null;
     ties?: DraftAcceptedValue[] | null;

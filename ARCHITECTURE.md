@@ -57,7 +57,14 @@ along X or Y. Bar ids: `C4/V3` (column bar 3), `B12/T1-3` (top layer 1, bar 3), 
 ### bundle.json (one per joint)
 
 ```
-joint            Joint as read (model.py)
+joint            Joint as read (model.py): { id, column, beams[], settings, required_area{}, notes[],
+                   place?, floor? }
+  column         { id, b, h, n_bars, bar_dia, face_dia?, tie_dia, cover, cover_to, bars_x, bars_y }
+                   bar_dia is every bar's size, or with face_dia the four corner bars' size; face_dia is the size of
+                   the n_bars - 4 bars between the corners ("4-16 + 4-12": n_bars 8, bar_dia 16, face_dia 12). Each
+                   column bar in `scene` carries its own `dia`; draw from those, never from bar_dia alone.
+  place, floor   the column's grid place on the plans ("F-14", "C/C1-25") and the beams' floor ("FIRST"), when the
+                   reader found them; null otherwise. Read these, never parse `id`.
 report           { findings[], rules_run[], rules_skipped{}, passed{}, is13920, seismic_zone, notes[] }
   finding        { rule, clause, title, status: fail|pass, measured, limit, compare: >=|<=, unit,
                    margin, members[], bars[], at: [x,y,z] mm, span: [[x,y,z], [x,y,z]] mm | null, message }
@@ -236,7 +243,9 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    the bar; within half a title height of a support counts), or "-" for none; at a joint it counts only if it
    reaches that support, a bar that stops short is left out with a note in `Joint.notes`, and one whose end the
    drawing does not show is `ambiguous` on `beams[i].bottom`. Every Joint and draft carries `place` and `floor`
-   fields, so nothing downstream parses the id. Prompt `link_v4`. A joint's floor is the floor of the plans its beams were read on; its column values must be
+   fields, so nothing downstream parses the id. A column main of two sizes whose first group is 4 bars is corner
+   and face bars (`face_dia`), noted with how the face bars are spread; any other mix is To check. The linking
+   model's "unresolved" counts only on paths code has neither proved nor defaulted with a note. Prompt `link_v5`. A joint's floor is the floor of the plans its beams were read on; its column values must be
    from the storey that ends there and its beam values from that floor, and that choice is a note. Without a floor,
    a column with values for several storeys goes to To check. Prompt `link_v3` (adds `at`: one joint per place, top
    extras by support).

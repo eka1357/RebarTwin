@@ -100,6 +100,32 @@ export function formatBarMark(barId: string, diaMm: number): string {
   return `${shortId} ⌀${diaStr}`;
 }
 
+function formatDiaToken(diaMm: number): string {
+  return Number.isInteger(diaMm) ? String(diaMm) : diaMm.toFixed(1);
+}
+
+/**
+ * Column main steel summary: uniform "8-16", or mixed "4-16 corners + 4-12 faces".
+ */
+export function formatColumnMainSummary(col: {
+  n_bars: number;
+  bar_dia: number;
+  face_dia?: number | null;
+}): string {
+  const cornerDia = formatDiaToken(col.bar_dia);
+  if (col.face_dia == null || col.face_dia === col.bar_dia || col.n_bars <= 4) {
+    return `${col.n_bars}-${cornerDia}`;
+  }
+  const faceCount = col.n_bars - 4;
+  return `4-${cornerDia} corners + ${faceCount}-${formatDiaToken(col.face_dia)} faces`;
+}
+
+/** Extract destination size from Option.column ("200 × 450 -> 200 × 550" -> "200 × 550"). */
+export function formatAfterColumnSize(columnChange: string): string {
+  const parts = columnChange.split("->");
+  return parts[parts.length - 1]?.trim() || columnChange;
+}
+
 export function formatFindingValue(f: {
   rule: string;
   measured: number;

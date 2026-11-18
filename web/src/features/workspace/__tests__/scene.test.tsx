@@ -238,4 +238,46 @@ describe("W3 Scene & Demo Bundle", () => {
       "/live/proj/joints/C4xB12%40FIRST/pages/page-2.png",
     );
   });
+
+  it("renders mixed corner and face column bars in SectionGlyph and JointInspector from bar.dia", () => {
+    const base = demoBundleRaw as unknown as Bundle;
+    const mixedColBars = base.scene.bars.map((bar, idx) =>
+      bar.member === base.joint.column.id ? { ...bar, dia: idx % 2 === 0 ? 16 : 12 } : bar,
+    );
+    const mixedBundle: Bundle = {
+      ...base,
+      joint: {
+        ...base.joint,
+        column: {
+          ...base.joint.column,
+          id: "C1",
+          n_bars: 8,
+          bar_dia: 16,
+          face_dia: 12,
+        },
+      },
+      scene: {
+        ...base.scene,
+        concrete: base.scene.concrete.map((c) =>
+          c.kind === "column" ? { ...c, id: "C1" } : c,
+        ),
+        bars: mixedColBars.map((b) =>
+          b.member === base.joint.column.id ? { ...b, member: "C1" } : b,
+        ),
+      },
+    };
+
+    render(<JointInspector bundle={mixedBundle} />);
+    expect(screen.getAllByText(/4-16 corners \+ 4-12 faces/i).length).toBeGreaterThanOrEqual(2);
+    const colSvg = screen.getByRole("img", {
+      name: /Column C1 cross-section: 4 bars of 16 millimetres, 4 bars of 12 millimetres/i,
+    });
+    const circles16 = colSvg.querySelectorAll('circle[data-bar-dia="16"]');
+    const circles12 = colSvg.querySelectorAll('circle[data-bar-dia="12"]');
+    expect(circles16).toHaveLength(4);
+    expect(circles12).toHaveLength(4);
+    expect(Number(circles16[0].getAttribute("r"))).toBeGreaterThan(
+      Number(circles12[0].getAttribute("r")),
+    );
+  });
 });

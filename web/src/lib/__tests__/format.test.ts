@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { describeFindingCardLabel } from "../a11y";
 import {
   describeToleranceGauge,
+  formatAfterColumnSize,
   formatArea,
   formatBarMark,
   formatCalloutValue,
   formatClause,
+  formatColumnMainSummary,
   formatFindingReportSentence,
   formatFindingValue,
   formatFixToastSummary,
@@ -197,5 +199,14 @@ describe("format.ts", () => {
     });
     expect(clashSentence).not.toContain("overlap allowed");
     expect(clashSentence).not.toContain("Geometry)");
+  });
+
+  it("formats uniform and mixed corner/face column main steel", () => {
+    expect(formatColumnMainSummary({ n_bars: 8, bar_dia: 16, face_dia: null })).toBe("8-16");
+    expect(formatColumnMainSummary({ n_bars: 8, bar_dia: 16, face_dia: 16 })).toBe("8-16");
+    expect(formatColumnMainSummary({ n_bars: 8, bar_dia: 16, face_dia: 12 })).toBe(
+      "4-16 corners + 4-12 faces",
+    );
+    expect(formatAfterColumnSize("200 × 450 -> 200 × 550")).toBe("200 × 550");
   });
 });

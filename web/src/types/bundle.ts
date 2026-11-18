@@ -10,6 +10,7 @@ export interface ColumnSpec {
   h: number;
   n_bars: number;
   bar_dia: number;
+  face_dia?: number | null;
   tie_dia: number;
   cover: number;
   cover_to: "links" | "main";
@@ -41,6 +42,8 @@ export interface SettingsSpec {
 
 export interface JointSpec {
   id: string;
+  place?: string | null;
+  floor?: string | null;
   column: ColumnSpec;
   beams: BeamSpec[];
   settings: SettingsSpec;

@@ -69,6 +69,7 @@ export function FixPanel({ bundle, reportKey, onOpenReport }: FixPanelProps) {
           key={opt.candidate.title}
           rank={idx + 1}
           option={opt}
+          column={bundle.joint.column}
           beforeScene={bundle.scene}
           afterScene={bundle.option_scenes[idx]}
           isPreviewing={mode === "after" && optionIndex === idx}

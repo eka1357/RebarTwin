@@ -4,7 +4,7 @@ import { StatusPill } from "../../components/StatusPill";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import type { ProjectJointSummary } from "../../lib/api";
-import { formatClause, formatNumber } from "../../lib/format";
+import { formatClause, formatColumnMainSummary, formatNumber } from "../../lib/format";
 import { jointPath, projectReportPath, projectReviewPath } from "../../lib/routes";
 import { DraftJointDetails } from "./DraftJointDetails";
 
@@ -33,7 +33,15 @@ export function ProjectJointRow({
   const floorLabel = j.floor ?? j.level;
   const col = j.column ?? {};
   const beams = j.beams ?? [];
-  const colSummary = `${col.id ?? "Col"}${col.b && col.h ? ` ${col.b} × ${col.h}` : ""}`;
+  const colBarsText =
+    col.n_bars != null && col.bar_dia != null
+      ? formatColumnMainSummary({
+          n_bars: col.n_bars,
+          bar_dia: col.bar_dia,
+          face_dia: col.face_dia,
+        })
+      : null;
+  const colSummary = `${col.id ?? "Col"}${col.b && col.h ? ` ${col.b} × ${col.h}` : ""}${colBarsText ? ` (${colBarsText})` : ""}`;
   const beamSummary = beams
     .map((b) => `${b.id}${b.b && b.D ? ` ${b.b} × ${b.D}` : ""}`)
     .join(" · ");

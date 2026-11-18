@@ -396,3 +396,16 @@ def test_draft_joints_and_shared_rebartwin_replies_dir(tmp_path: Path, monkeypat
     bundle_c1 = client.get("/projects/cascade-proj/joints/C1xXB17%40FIRST%40L1/bundle").json()
     resolved_col_entries = [e for e in bundle_c1["provenance"] if e["field"] == "main" and e["status"] == "resolved"]
     assert len(resolved_col_entries) == 1
+
+    # Mixed corner + face column main bars ("4-16 + 4-12") write bar_dia=16 and face_dia=12
+    bad_mix = client.post("/projects/cascade-proj/to-check/tc_col/resolve?no_ifc=true", json={"value": "3-16 + 5-12"})
+    assert bad_mix.status_code == 422
+
+    rmix = client.post("/projects/cascade-proj/to-check/tc_col/resolve?no_ifc=true", json={"value": "4-16 + 4-12"})
+    assert rmix.status_code == 200
+    mixed_bundle = client.get("/projects/cascade-proj/joints/C1xXB17%40FIRST%40L1/bundle").json()
+    assert mixed_bundle["joint"]["column"]["n_bars"] == 8
+    assert mixed_bundle["joint"]["column"]["bar_dia"] == 16
+    assert mixed_bundle["joint"]["column"]["face_dia"] == 12
+    col_dias = sorted({round(b["dia"]) for b in mixed_bundle["scene"]["bars"] if b["member"] == "C1"})
+    assert col_dias == [12, 16]

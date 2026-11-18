@@ -310,11 +310,14 @@ def _validate_resolution(item: dict[str, Any], raw_value: str) -> str:
         if leaf == "main":
             total_n = sum(g.count for g in groups)
             dias = {g.dia for g in groups}
-            if len(dias) != 1 or total_n < 4 or total_n % 2 != 0:
+            uniform = len(dias) == 1
+            corner_and_face = len(groups) == 2 and groups[0].count == 4 and total_n > 4
+            if total_n < 4 or total_n % 2 != 0 or not (uniform or corner_and_face):
                 raise ProblemError(
                     422,
                     "Invalid column main bars",
-                    "Column main steel needs an even total >= 4 of one diameter (for example 8-16).",
+                    "Column main steel needs an even total >= 4 of one size (for example 8-16) "
+                    "or four corner bars plus face bars (for example 4-16 + 4-12).",
                 )
         return format_bars(groups)
     if leaf == "section":
@@ -377,6 +380,9 @@ def _apply_resolution_to_joint(joint: Joint, item: dict[str, Any], value: str) -
         if member == joint.column.id or field == "column.main" or member is None:
             joint.column.n_bars = sum(g.count for g in groups)
             joint.column.bar_dia = groups[0].dia
+            joint.column.face_dia = (
+                groups[1].dia if len(groups) == 2 and groups[1].dia != groups[0].dia else None
+            )
             joint.column.bars_x = None
             joint.column.bars_y = None
             joint.column = type(joint.column).model_validate(joint.column.model_dump())

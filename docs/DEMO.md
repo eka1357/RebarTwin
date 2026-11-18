@@ -53,15 +53,14 @@ Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/) in Chrome.
 3. Click **Upload a drawing set** (or drag and drop `uploads/iith-director-residence-structural.pdf`).
 4. Watch **ReadingBoard** stream pages `7`, `8`, `9`, `15` through `21` and **ReadingLog** log dual-channel progress using the saved replies in `REBARTWIN_REPLIES_DIR` (zero live Gemini tokens when cached; takes about 3 to 4 minutes on CPU for first-time A1 PNG rasterization and geometry alignment). When reading finishes, the app navigates to the project overview `/projects/<id>`.
 5. On **Joints Overview** (`/projects/<id>`):
-   - Review the summary counts (`53` joints found across the 10 sheets, initially blocked by `To check`), **Failures by rule**, sorted **Joints** rows (failing first, then blocked and `Draft` joints showing accepted values beside `not on the drawing yet` for nulls, then passing), and **Beam-on-beam junctions (`35`)** shown as **Information**.
+   - Review the summary counts (`45` joints found across the 10 sheets, initially blocked by `To check`), **Failures by rule**, sorted **Joints** rows (including `Draft` joints showing accepted values beside `not on the drawing yet` for nulls), and **Beam-on-beam junctions (`35`)** shown as **Information**.
 6. Click **Resolve project items** (or **To check** in the top navigation bar) to open `/projects/<id>/review`.
    - Confirm **ALL · seismic_zone** using quick chip **Zone II (IS 13920 off)**.
    - Confirm **ALL · exposure** using quick chip **Mild**.
 7. Return to **Project** overview and open **C1xXB17@FIRST@L1+M+M1-28**:
-   - Note that resolving the project-level zone and exposure reduces its blockers cleanly (`6` to `3`), while joint-specific items from the drawing remain visible (`C1 · column.main` mixed `4-16 + 4-12` bars and `beams[0].stirrups` missing links).
-   - If the joint is still blocked when clicked, follow **Go to To check** to open `?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, confirm `column.main` (for example `8-16`) and `beams[0].stirrups` (`8@150`), and the API checks `C1xXB17@FIRST@L1+M+M1-28` immediately (`9` failures across `Geometry` and `IS 456 cl. 26.3.2`).
-8. Inspect the unlocked **3D Joint Workspace**: toggle concrete visibility, pick a failing bar or finding, and open the **Source** tab to see the red bounding box over real CAD schedule/plan sheets (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
-9. Click **Report** to open `/projects/<id>/report?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, verify the light-theme A4 layout, failing-check grouping, assumptions, provenance ledger, sign-off block, and `joint.ifc` / `issues.bcf` export links, and click **Print or save as PDF** (`window.print()`).
+   - Answering `seismic_zone = II` and `exposure = mild` unlocks `C1xXB17@FIRST@L1+M+M1-28` immediately (`9 Fails`: `8` clashes between `XB17`'s outer bars and `C1`'s 12 mm face bars, plus `1` bar gap at `IS 456 cl. 26.3.2`). Its row displays `C1 200 × 450 (4-16 corners + 4-12 faces) · XB17 200 × 450`.
+8. Click **Joint** on `C1xXB17@FIRST@L1+M+M1-28` to inspect the **3D Joint Workspace**: verify `4-16 corners + 4-12 faces` in the Inspector header and Column `C1` `SectionGlyph`, pick any failing bar or finding, and open the **Source** tab to see the red bounding box over real CAD schedule/plan sheets (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
+9. Click **Report** to open `/projects/<id>/report?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, verify the light-theme A4 layout, mixed corner/face column glyphs, failing-check grouping, assumptions, provenance ledger, sign-off block, and `joint.ifc` / `issues.bcf` export links, and click **Print or save as PDF** (`window.print()`).
 
 ## 4. Offline Fallback (`/demo`) If Network Fails
 

@@ -1,0 +1,50 @@
+You are linking values read from an Indian structural drawing set into beam-column joints for a detailing checker.
+Each value below was read twice (by a vision model and by a text parser) and both agreed. You decide structure only:
+which beams meet which column, which direction each beam runs, and how bars stack into layers.
+
+Rules:
+
+1. Every number in a joint comes from the accepted values below. Never compute, convert or invent a number. If a
+   joint needs a value that is not below, leave the schema default and add the path to `unresolved` with a reason.
+2. Make one joint per column where at least one beam meets it (`frames_into`). A joint has the column and at most
+   one beam per direction: `x` for one beam, and `y` for a beam at right angles to it. A beam that runs through the
+   column is one beam.
+   Some `frames_into` values carry `at`, the grid place where the beam meets the column ("F-14", "C/C1-25"). One
+   column type (C5) can stand at several places: make one joint per place, and in it cite only the `frames_into`
+   values with that `at`.
+3. Floors. Values may carry a `level`. A beam's floor is the `level` of its `frames_into` value (the plan's floor).
+   Make one joint per column per floor where beams meet it, using only beam values for that floor (or with no
+   level), and the column's values for the storey that ends at that floor ("FOUNDATION TO FIRST FLOOR" for beams at
+   FIRST FLOOR), or with no level. Never mix storeys in one joint.
+4. Copy bar values in drawing notation: a layer's `bars` is a value like "5-20" or "2-25 + 1-20". Put `top` and
+   `bottom` values of layer 1 in layer 1 and layer 2 in layer 2. Extra bars (`top_extra`, `bottom_extra`) go in the
+   layer the drawing implies; if it does not say, put them in layer 1 alongside the continuous bars.
+   A `top_extra` belongs to one support. In a joint with a place, use only the beam's `top_extra` values whose `at`
+   is the grid line of that place on the beam's support: the number for a beam along x ("14" in "F-14"), the letter
+   for a beam along y ("F"). If the beam has a `top_extra` without `at`, leave it out and add `beams[i].top` to
+   `unresolved`.
+   A `bottom_extra` carries `at`: the grid lines of the supports its bar reaches, or "-" when it reaches none. In a
+   joint with a place, use it only if its `at` includes the support line of that place; otherwise leave it out. If
+   a beam's `bottom_extra` has no `at`, leave it out and add `beams[i].bottom` to `unresolved`.
+5. Column: `b` and `h` from its `section`; `n_bars` and `bar_dia` from its `main` value; `tie_dia` from its `links`.
+   A `main` of two sizes whose first group is 4 bars ("4-16 + 4-12") is 4 corner bars and the rest on the faces:
+   `n_bars` the total (8), `bar_dia` the first group's size (16), `face_dia` the second's (12). One size: no
+   `face_dia`. Any other mix: leave `face_dia` out and add `column.main` to `unresolved`.
+   Beam: `b` and `D` from its `section`; `stirrup_dia` from its `links`. Cover from the member's own `cover`, else the
+   general note for its kind (ALL_BEAMS, ALL_COLUMNS, ALL). `cover_to` is "links" for clear cover to stirrups or
+   ties, "main" for cover to the main bars.
+6. `sources` lists, for each of these paths you filled, the ids of the values it came from:
+   `column.section`, `column.main`, `column.ties`, `column.cover`, `beams[i].section`, `beams[i].top`,
+   `beams[i].bottom`, `beams[i].stirrups`, `beams[i].cover`, `beams[i].frames_into`, `settings.seismic_zone`,
+   `settings.exposure`. Cite every value you used, including all extra bars.
+7. Do not use the values still under review (listed last); their members and fields are listed only so you know
+   they exist. Add the affected path to `unresolved`.
+8. Leave `notes` empty and `required_area` empty.
+
+Accepted values (id, member, field, layer, level, value, page, and `at` where given):
+
+{accepted}
+
+Still under review, do not use:
+
+{pending}

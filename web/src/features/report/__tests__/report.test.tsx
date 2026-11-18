@@ -169,4 +169,49 @@ describe("W11 PrePourReport", () => {
     expect(screen.getByText("Assumed, not on the drawing")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "fixed.ifc" })).not.toBeInTheDocument();
   });
+
+  it("renders mixed corner and face column bars in PrePourReport and SectionGlyph from scene bars", () => {
+    const base = demoBundleRaw as unknown as Bundle;
+    const mixedColBars = base.scene.bars.map((bar, idx) =>
+      bar.member === base.joint.column.id ? { ...bar, dia: idx % 2 === 0 ? 16 : 12 } : bar,
+    );
+    const mixedBundle: Bundle = {
+      ...base,
+      joint: {
+        ...base.joint,
+        column: {
+          ...base.joint.column,
+          id: "C1",
+          n_bars: 8,
+          bar_dia: 16,
+          face_dia: 12,
+        },
+      },
+      scene: {
+        ...base.scene,
+        concrete: base.scene.concrete.map((c) =>
+          c.kind === "column" ? { ...c, id: "C1" } : c,
+        ),
+        bars: mixedColBars.map((b) =>
+          b.member === base.joint.column.id ? { ...b, member: "C1" } : b,
+        ),
+      },
+    };
+
+    render(
+      <PrePourReport
+        projectName="Mixed Column Check"
+        bundle={mixedBundle}
+        chosenOptionIndex={0}
+        selectedExplicitly={false}
+        exports={EXPORTS}
+      />,
+    );
+
+    expect(screen.getAllByText(/4-16 corners \+ 4-12 faces/i).length).toBeGreaterThanOrEqual(2);
+    const colSvg = screen.getByRole("img", {
+      name: /Column C1 cross-section: 4 bars of 16 millimetres, 4 bars of 12 millimetres/i,
+    });
+    expect(colSvg).toBeInTheDocument();
+  });
 });

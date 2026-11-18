@@ -95,20 +95,31 @@ def _in_line(first: list[float], n: int, half: float, dias: list[float]) -> list
 
 
 def _column_bars(c: Column, z0: float, z1: float) -> tuple[list[Bar], dict[str, list[Bar]]]:
+    """Corner bars sit in the corners of the ties; bars between them are spread evenly along each face, and every bar
+    sits tight against the ties at its own size, so a smaller face bar (`face_dia`) is a little further in."""
+    fd = c.face_dia if c.face_dia is not None else c.bar_dia
     ix = c.b / 2 - c.main_cover - c.bar_dia / 2
     iy = c.h / 2 - c.main_cover - c.bar_dia / 2
+    fx = c.b / 2 - c.main_cover - fd / 2
+    fy = c.h / 2 - c.main_cover - fd / 2
     xs, ys = spread(-ix, ix, c.bars_x), spread(-iy, iy, c.bars_y)
-    ring = ([(x, -iy) for x in xs] + [(ix, y) for y in ys[1:]] + [(x, iy) for x in reversed(xs[:-1])]
-            + [(-ix, y) for y in reversed(ys[1:-1])])
-    bars = [Bar(f"{c.id}/V{k}", c.id, "column", 0, k, c.bar_dia, (x, y, z0), (x, y, z1))
-            for k, (x, y) in enumerate(ring, 1)]
+
+    def along_x(x: float, side: int) -> tuple[float, float, float]:      # on a face that runs along X
+        corner = x in (xs[0], xs[-1])
+        return x, side * (iy if corner else fy), c.bar_dia if corner else fd
+
+    def along_y(y: float, side: int) -> tuple[float, float, float]:      # on a face that runs along Y
+        corner = y in (ys[0], ys[-1])
+        return side * (ix if corner else fx), y, c.bar_dia if corner else fd
+
+    faces_at = {"y-": [along_x(x, -1) for x in xs], "x+": [along_y(y, 1) for y in ys],
+                "y+": [along_x(x, 1) for x in xs], "x-": [along_y(y, -1) for y in ys]}
+    ring = (faces_at["y-"] + faces_at["x+"][1:] + list(reversed(faces_at["y+"][:-1]))
+            + list(reversed(faces_at["x-"][1:-1])))
+    bars = [Bar(f"{c.id}/V{k}", c.id, "column", 0, k, d, (x, y, z0), (x, y, z1))
+            for k, (x, y, d) in enumerate(ring, 1)]
     at = {(round(b.p0[0], 6), round(b.p0[1], 6)): b for b in bars}
-    faces = {
-        "y-": [at[(round(x, 6), round(-iy, 6))] for x in xs],
-        "x+": [at[(round(ix, 6), round(y, 6))] for y in ys],
-        "y+": [at[(round(x, 6), round(iy, 6))] for x in xs],
-        "x-": [at[(round(-ix, 6), round(y, 6))] for y in ys],
-    }
+    faces = {f: [at[(round(x, 6), round(y, 6))] for x, y, _ in pts] for f, pts in faces_at.items()}
     return bars, faces
 
 

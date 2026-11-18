@@ -82,12 +82,12 @@ export function ToleranceGauge({ finding }: ToleranceGaugeProps) {
   const stemClearOfMeasured = Math.abs(limitX - measTextX) > measHalfW + 6;
 
   return (
-    <div className="mt-2">
+    <div className="mt-2 print:mt-0.5">
       <svg
         role="img"
         aria-label={labelText}
         viewBox={`0 0 320 ${viewHeight}`}
-        className={`${collides ? "h-14" : "h-10"} w-full overflow-visible select-none`}
+        className={`${collides ? "h-14 print:h-11" : "h-10 print:h-8"} w-full overflow-visible select-none`}
       >
         <defs>
           <pattern

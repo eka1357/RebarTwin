@@ -120,6 +120,10 @@ Built `web/` W9 on `feature/w9-review`: client callout grammar validator and pro
 
 Built `src/rebartwin/gemini_proposer.py` (`GeminiProposer`) and `src/rebartwin/reader/prompts/propose_v1.md` on `feature/a2-gemini-proposer` implementing the `Proposer` protocol from `fixes.py` without changing the fix loop or engine rules. Calls `reader/gemini.py`'s `call()` with `REBARTWIN_MODEL_LINK` and fallback, shares `CachingTransport` retries/caching, caps and validates up to 6 `SetFace` / `ResizeColumn` candidates per round against `settings.stock_dias`, `settings.max_layers`, and known member ids before handing them to `resolve()`, where the engine re-checks and deterministically ranks every candidate. Wired into `cli.py` (`--gemini`, `--replay`, `--replies`) and `api.py` (`_safe_run_check`), updated `WorkingsTimeline.tsx` to show `Gemini` / `Enumerator` source ticks, source badges, and `Gemini rationale`, updated `DemoTour.tsx` Step 4 to read attempt count from the bundle, and regenerated offline `/demo/` bundles (`C4xB12` at 36 attempts, `C4xB12-zone3` at 80 attempts; best fix unchanged for both zones). Verified with offline pytest tests (`tests/test_gemini_proposer.py` using recorded replies, 240 tests total), ESLint, TypeScript, Vitest, Vite production build, and Playwright + axe.
 
+## 18 November 2026: Pre-pour report and Workings 61+ fix (W11, `feature/w11-report`)
+
+Fixed Workings playback past the 60-scene `attempt_scenes` cap (`Viewport.tsx`, `WorkingsTimeline.tsx`) to preserve the last stored 3D scene and display `No 3D for this attempt` (verified through Zone III Attempt 61 in Vitest and Playwright). Built W11 printable pre-pour report (`features/report/PrePourReport.tsx`, `ReportFindings.tsx`, `ReportChosenFix.tsx`, `ReportAssumptionsAndSource.tsx`, `routes/ReportRoute.tsx`, shared `lib/provenance.ts`) reachable from `Report` links (`DemoRoute`, `JointRoute`, `ProjectRoute`) and from `Use in report` (`Open report` in `FixOptionCard` / toast, persisted per joint and `?joint=&variant=&option=` URL params): `Pre-pour check · C4 × B12` A4 layout (warm `--paper` on screen, `--white` in `@media print`), hiding `.app-topbar` / `.no-print` chrome under `@media print`, `Print or save as PDF` button (`window.print()`), header metadata (status pill only; `Recheck`/`Redesign` pill on Chosen fix), verdict (`Fails N checks` / `Passes every check`), identical `(rule, members, measured, limit)` failing checks grouped cleanly on one line with one `ToleranceGauge` (1 A4 page on Zone II), honest `Passes every check that applies` + `IS 13920 is off in zone II` applicability text, chosen fix before/after `SectionGlyph`s, `area_before → area_provided`, effective-depth and redesign advisories (`The engineer of record decides`), `Joint.notes` + provenance defaults (`Assumed, not on the drawing`), provenance ledger (`Agreed` / `Resolved` / `OCR read '...'` or pitch-deck note), `Checked by` / `Engineer of record` / `Date` sign-off block, and `joint.ifc` / `fixed.ifc` / `issues.bcf` download links. Verified with ESLint, TypeScript, Vitest (29 passed), Vite production build, and Playwright + PyMuPDF 1-page A4 PDF text inspection + axe across 320 px width and reduced motion (16 passed).
+
 ## 18 November 2026: joints from geometry, item 4 (`feature/R-ocr`)
 
 Claude Code. Master (A1, W8, W9) merged into `feature/R-ocr`. Gemini's Cyrillic Ф and Greek Ά read as Ø in its
@@ -128,6 +132,13 @@ meets as code-made `frames_into` (status `geometry`), beam-on-beam junctions; si
 elevation callouts by the title below. Sheets 15 and 21: 35 x and 28 y grid lines on both, aligned to 0.28 units,
 45 joints from 82 meets, 10 To check items. Replay of the saved t3000 replies: 104 to 238 accepted (top 0 to 30,
 top_extra 0 to 29, frames_into 58). 268 tests, no key needed.
+
+Then, on Eka's check of the joints list: joint ids carry the grid place and are safe as file names
+(`C5xXB8@FIRST@F-14`, `@C+C1-25`); extra top bars count only at the support whose grid bubble is under them on the
+detail sheet, else To check (sheets 17, 18 and 20 have no such bubbles); slab marks are never bubbles; prompt
+`link_v3`; the API runs the geometry step. IS 13920 skip note rewritten for engineers. Live linking run on sheets
+7 to 9 and 15 to 21 (7 live calls): 286 agreed, 5 joints linked, 48 of the model's joints rejected (column bar size
+0 where the column's bars are still To check), 18 project-level items (cover table, zone, exposure). 276 tests.
 
 ## Next: built in Google Antigravity
 

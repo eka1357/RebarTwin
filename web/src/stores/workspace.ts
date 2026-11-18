@@ -56,6 +56,7 @@ interface WorkspaceState {
   mode: ViewMode;
   optionIndex: number;
   chosenOptionIndex: number | null;
+  chosenOptionByKey: Record<string, number>;
   concreteMode: ConcreteMode;
   labelMode: LabelMode;
   cameraPreset: CameraPreset;
@@ -76,7 +77,7 @@ interface WorkspaceState {
   triggerFrame: () => void;
   setMode: (mode: ViewMode) => void;
   setOptionIndex: (index: number) => void;
-  setChosenOptionIndex: (index: number | null) => void;
+  setChosenOptionIndex: (index: number | null, key?: string) => void;
   setConcreteMode: (mode: ConcreteMode) => void;
   setLabelMode: (mode: LabelMode) => void;
   setCameraPreset: (preset: CameraPreset) => void;
@@ -112,6 +113,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   mode: "before",
   optionIndex: 0,
   chosenOptionIndex: null,
+  chosenOptionByKey: {},
   concreteMode: "translucent",
   labelMode: "failures",
   cameraPreset: "iso",
@@ -140,7 +142,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   triggerFrame: () => set((s) => ({ frameVersion: s.frameVersion + 1 })),
   setMode: (mode) => set({ mode }),
   setOptionIndex: (optionIndex) => set({ optionIndex }),
-  setChosenOptionIndex: (chosenOptionIndex) => set({ chosenOptionIndex }),
+  setChosenOptionIndex: (chosenOptionIndex, key) =>
+    set((s) => {
+      if (!key) return { chosenOptionIndex };
+      const nextMap = { ...s.chosenOptionByKey };
+      if (chosenOptionIndex === null) {
+        delete nextMap[key];
+      } else {
+        nextMap[key] = chosenOptionIndex;
+      }
+      return { chosenOptionIndex, chosenOptionByKey: nextMap };
+    }),
   setConcreteMode: (concreteMode) => set({ concreteMode }),
   setLabelMode: (labelMode) => set({ labelMode }),
   setCameraPreset: (cameraPreset) => set({ cameraPreset }),

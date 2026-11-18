@@ -375,6 +375,37 @@ test.describe("Demo 3D Scene W3", () => {
     await expect(wrap).toHaveAttribute("data-replay-attempt", String(ZONE2_FIRST_PASS_STEP));
   });
 
+  test("steps past attempt 60 in Zone III Workings without breaking and shows No 3D for this attempt", async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    page.on("pageerror", (err) => consoleErrors.push(err.message));
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/demo");
+    await expect(page.getByText(/17 bars · 7 failing/i)).toBeVisible();
+
+    await page.getByRole("radio", { name: "Zone III" }).click();
+    await expect(page.getByText(/7 Fails/i).first()).toBeVisible();
+    await page.getByRole("tab", { name: "Workings" }).click();
+
+    await page.getByRole("button", { name: /^Attempt 60 \(/i }).click();
+    const wrap = page.getByRole("img", { name: /Joint C4xB12:/i });
+    await expect(wrap).toHaveAttribute("data-replay-attempt", "60");
+    const barsAt60 = (await wrap.getAttribute("data-scene-bar-ids")) ?? "";
+    expect(barsAt60.length).toBeGreaterThan(0);
+
+    await page.getByRole("button", { name: /Next attempt/i }).click();
+    await expect(wrap).toHaveAttribute("data-replay-attempt", "61");
+    await expect(wrap).toHaveAttribute("data-scene-bar-ids", barsAt60);
+    await expect(page.getByText(/Attempt 61 of 80 · Round 2/i)).toBeVisible();
+    await expect(page.getByText(/No 3D for this attempt/i)).toHaveCount(2);
+
+    const shot = await wrap.locator("canvas").screenshot();
+    expect(shot.byteLength).toBeGreaterThan(8000);
+    expect(consoleErrors).toEqual([]);
+  });
+
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
     test(`runs W13 guided demo tour offline via Space (${reducedMotion})`, async ({
       page,

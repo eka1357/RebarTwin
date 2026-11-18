@@ -13,6 +13,7 @@
   --graphite-300: #a9b2bf;
   --graphite-200: #c9ced6;
   --graphite-100: #e6e9ed;
+  --white: #ffffff;
   --paper-50: #fffdf9;
   --paper-100: #f4f2ee;
   --paper-200: #eae6df;
@@ -63,7 +64,7 @@
 [data-theme="light"] {
   --background: var(--paper-100);
   --surface: var(--paper-50);
-  --surface-raised: #ffffff;
+  --surface-raised: var(--white);
   --surface-sunken: var(--paper-200);
   --border: var(--paper-300);
   --border-strong: var(--paper-400);

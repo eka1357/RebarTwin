@@ -259,7 +259,7 @@ web-ifc stays, lazy-loaded, behind "Open IFC".
 | `/projects/:id/upload` | Upload and reading progress |
 | `/projects/:id/review` | To check queue |
 | `/projects/:id/joints/:jointId` | Joint workspace (`?f=` selected finding, `?o=` option, `?a=` attempt) |
-| `/projects/:id/report` | Printable report |
+| `/projects/:id/report` | Printable A4 pre-pour report (`?joint=`, `?variant=`, `?option=`) |
 | `/styleguide` | Tokens and components in both themes (dev only) |
 
 **Folders.**
@@ -269,9 +269,9 @@ web/src/
   app/          router, providers, shells
   routes/       one file per route
   features/     workspace/ (Viewport, SceneController.ts, callouts, toolbar, inspector),
-                findings/, fixes/, workings/, source/, reading/, review/, project/, landing/
+                findings/, fixes/, workings/, source/, reading/, review/, report/, project/, landing/
   components/   ui/ (shadcn, generated) and shared custom components
-  lib/          api.ts, coords.ts, format.ts (numbers and units), motion.ts (presets), a11y.ts
+  lib/          api.ts, calloutGrammar.ts, calloutLayout.ts, coords.ts, demoData.ts, format.ts, motion.ts, provenance.ts, routes.ts, a11y.ts
   stores/       workspace.ts (Zustand)
   styles/       tokens.css, globals.css
   types/        bundle.ts (mirrors the contract above)

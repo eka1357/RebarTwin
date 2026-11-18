@@ -1,3 +1,5 @@
+import type { Finding } from "../types/bundle";
+
 export const NBSP = "\u00a0";
 
 /** Format a plain integer or decimal using Indian locale grouping (e.g. 1,610 or 1,00,000). */
@@ -223,4 +225,197 @@ export function formatFixToastSummary(
   const f0 = faces[0];
   if (!f0) return "Previewing repaired joint in 3D";
   return `${formatNumber(f0.area_before)} → ${formatArea(f0.area_provided)} · ${f0.n_bars_before} ${f0.n_bars_before === 1 ? "bar" : "bars"} → ${f0.n_bars}`;
+}
+
+/** Format a report date in Indian English ("18 Nov 2026"). */
+export function formatReportDate(iso?: string | null): string {
+  const parsed = iso ? new Date(iso) : new Date();
+  const safe = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(safe);
+}
+
+/**
+ * Return one plain sentence for a finding with measured value, limit, and clause,
+ * derived strictly from the engine's message and clause fields.
+ */
+export function formatFindingReportSentence(f: {
+  rule: string;
+  clause: string;
+  measured: number;
+  limit: number;
+  compare: ">=" | "<=";
+  unit: string;
+  status: "fail" | "pass";
+  message: string;
+}): string {
+  const base = f.message.trim().replace(/\.+$/, "");
+  if (f.rule === "GEOM-CLASH") {
+    return `${base}.`;
+  }
+  const clauseShort = formatClause(f.clause);
+  if (base.toLowerCase().includes(clauseShort.toLowerCase())) {
+    return `${base}.`;
+  }
+  return `${base} (${clauseShort}).`;
+}
+
+export interface ReportFindingGroup {
+  representative: Finding;
+  count: number;
+  sentence: string;
+}
+
+interface ParsedBarId {
+  member: string;
+  role: "top" | "bottom" | "column";
+  layer: number;
+  index: string;
+}
+
+function parseReportBarId(barId: string): ParsedBarId | null {
+  const beamMatch = /^([^/]+)\/([TB])(\d+)-(\d+)$/.exec(barId);
+  if (beamMatch) {
+    return {
+      member: beamMatch[1],
+      role: beamMatch[2] === "T" ? "top" : "bottom",
+      layer: Number.parseInt(beamMatch[3], 10),
+      index: beamMatch[4],
+    };
+  }
+  const colMatch = /^([^/]+)\/V(\d+)$/.exec(barId);
+  if (colMatch) {
+    return {
+      member: colMatch[1],
+      role: "column",
+      layer: 1,
+      index: colMatch[2],
+    };
+  }
+  return null;
+}
+
+function joinWithAnd(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function describeSingleBarId(barId: string): string {
+  const p = parseReportBarId(barId);
+  if (!p) return barId;
+  if (p.role === "column") return `${p.member} column bar ${p.index}`;
+  const layerText = p.layer > 1 ? ` layer ${p.layer}` : "";
+  return `${p.member} ${p.role}${layerText} bar ${p.index}`;
+}
+
+function describeSameRoleBarGroup(barIds: string[]): string | null {
+  const parsed = barIds.map(parseReportBarId);
+  if (parsed.some((p) => p === null)) return null;
+  const list = parsed as ParsedBarId[];
+  const first = list[0];
+  if (
+    list.every(
+      (p) => p.member === first.member && p.role === first.role && p.layer === first.layer,
+    )
+  ) {
+    const indices = list.map((p) => p.index);
+    const layerText = first.role !== "column" && first.layer > 1 ? ` layer ${first.layer}` : "";
+    const noun = list.length === 1 ? "bar" : "bars";
+    return `${first.member} ${first.role}${layerText} ${noun} ${joinWithAnd(indices)}`;
+  }
+  return null;
+}
+
+function formatGroupedSpacingSentence(group: Finding[]): string | null {
+  const f0 = group[0];
+  if (!f0.rule.startsWith("IS456-26.3.2") || !group.every((f) => f.bars.length === 2)) {
+    return null;
+  }
+  const parsedPairs = group.map((f) => [
+    parseReportBarId(f.bars[0]),
+    parseReportBarId(f.bars[1]),
+  ] as const);
+  if (parsedPairs.some(([a, b]) => !a || !b)) return null;
+
+  const firstA = parsedPairs[0][0]!;
+  const sameFaceAndLayer = parsedPairs.every(
+    ([a, b]) =>
+      a!.member === firstA.member &&
+      b!.member === firstA.member &&
+      a!.role === firstA.role &&
+      b!.role === firstA.role &&
+      a!.layer === firstA.layer &&
+      b!.layer === firstA.layer,
+  );
+  if (!sameFaceAndLayer) return null;
+
+  const pairLabels = parsedPairs.map(([a, b]) => `${a!.index}-${b!.index}`);
+  const layerText = firstA.role !== "column" && firstA.layer > 1 ? ` layer ${firstA.layer}` : "";
+  const measuredStr = formatMeasure(f0.measured, f0.unit, {
+    limit: f0.limit,
+    compare: f0.compare,
+    status: f0.status,
+  });
+  const limitStr = formatMeasure(f0.limit, f0.unit);
+  return `${firstA.member} ${firstA.role}${layerText} bars ${joinWithAnd(pairLabels)} are ${measuredStr} apart; ${formatClause(f0.clause)} needs ${limitStr}.`;
+}
+
+function formatGroupedClashSentence(group: Finding[]): string | null {
+  const f0 = group[0];
+  if (f0.rule !== "GEOM-CLASH" || !group.every((f) => f.bars.length === 2)) {
+    return null;
+  }
+  const firstBars = group[0].bars;
+  const sharedBar = firstBars.find((bar) => group.every((f) => f.bars.includes(bar)));
+  const overlapStr = formatMeasure(Math.abs(f0.measured), f0.unit || "mm");
+
+  if (sharedBar) {
+    const varying = group.map((f) => (f.bars[0] === sharedBar ? f.bars[1] : f.bars[0]));
+    const varyingLabel = describeSameRoleBarGroup(varying) ?? joinWithAnd(varying.map(describeSingleBarId));
+    const sharedLabel = describeSingleBarId(sharedBar);
+    return `${varyingLabel} run into ${sharedLabel}: they overlap by ${overlapStr}, so one of them cannot be placed as drawn.`;
+  }
+
+  const pairs = group.map((f) => `${describeSingleBarId(f.bars[0])} with ${describeSingleBarId(f.bars[1])}`);
+  return `${joinWithAnd(pairs)} overlap by ${overlapStr}, so bars cannot be placed as drawn.`;
+}
+
+/**
+ * Group findings that share the exact same rule, sorted members, measured value,
+ * limit, comparison direction, and unit. Findings whose numbers differ are never merged.
+ */
+export function groupReportFindings(findings: Finding[]): ReportFindingGroup[] {
+  const buckets = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const membersKey = [...f.members].sort().join(",");
+    const key = `${f.rule}|${membersKey}|${f.measured}|${f.limit}|${f.compare}|${f.unit}`;
+    const existing = buckets.get(key);
+    if (existing) existing.push(f);
+    else buckets.set(key, [f]);
+  }
+
+  return [...buckets.values()].map((group) => {
+    const rep = group[0];
+    if (group.length === 1) {
+      return {
+        representative: rep,
+        count: 1,
+        sentence: formatFindingReportSentence(rep),
+      };
+    }
+    const groupedSentence =
+      formatGroupedSpacingSentence(group) ??
+      formatGroupedClashSentence(group) ??
+      `${formatFindingReportSentence(rep).replace(/\.$/, "")} (${group.length} matching checks).`;
+    return {
+      representative: rep,
+      count: group.length,
+      sentence: groupedSentence,
+    };
+  });
 }

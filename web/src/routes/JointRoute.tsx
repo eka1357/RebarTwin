@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { StatusPill } from "../components/StatusPill";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -8,14 +8,16 @@ import { JointInspector } from "../features/workspace/JointInspector";
 import { ReplayUrlSync } from "../features/workspace/ReplayUrlSync";
 import { ApiError, getJointBundle, jointBundleUrl, jointIfcUrl } from "../lib/api";
 import { demoAssetUrl, fetchDemoBundle } from "../lib/demoData";
-import { projectPath, projectReviewPath } from "../lib/routes";
+import { projectPath, projectReportPath, projectReviewPath } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
 
 const LazyViewport = lazy(() => import("../features/workspace/Viewport"));
 
 export function JointRoute() {
   const { id = "c4-b12", jointId = "C4xB12" } = useParams();
+  const navigate = useNavigate();
   const setStatus = useWorkspaceStore((s) => s.setStatus);
+  const chosenOptionByKey = useWorkspaceStore((s) => s.chosenOptionByKey);
 
   const isOfflineDemo = id === "c4-b12";
   const resolvedBundleUrl = isOfflineDemo
@@ -53,6 +55,13 @@ export function JointRoute() {
   }, [bundle, setStatus]);
 
   const isBlocked = error instanceof ApiError && error.status === 409;
+  const resolvedJointId = bundle?.joint.id ?? jointId;
+  const reportKey = `${id}:${resolvedJointId}`;
+  const chosenOption = chosenOptionByKey[reportKey] ?? null;
+  const reportHref = projectReportPath(id, {
+    joint: resolvedJointId,
+    option: chosenOption,
+  });
 
   return (
     <main className="flex flex-1 min-h-0 flex-col gap-3 p-3 sm:p-4 lg:overflow-hidden">
@@ -78,6 +87,9 @@ export function JointRoute() {
             </Button>
           )}
           <Button variant="outline" size="sm" asChild>
+            <Link to={reportHref}>Report</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link to={projectPath(id)}>Project</Link>
           </Button>
         </div>
@@ -102,7 +114,19 @@ export function JointRoute() {
               <LazyViewport bundle={bundle} ifcUrl={resolvedIfcUrl} />
             </Suspense>
           </div>
-          <JointInspector bundle={bundle} bundleUrl={resolvedBundleUrl} />
+          <JointInspector
+            bundle={bundle}
+            bundleUrl={resolvedBundleUrl}
+            reportKey={reportKey}
+            onOpenReport={(optIdx) =>
+              navigate(
+                projectReportPath(id, {
+                  joint: bundle.joint.id,
+                  option: optIdx,
+                }),
+              )
+            }
+          />
         </div>
       )}
     </main>

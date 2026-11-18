@@ -9,67 +9,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { resolveBundlePageImageUrl } from "../../lib/routes";
-import type { Bundle, ProvenanceEntry } from "../../types/bundle";
+import {
+  normalizeProvenanceEntries,
+  type NormalizedProvenanceEntry,
+} from "../../lib/provenance";
+import type { Bundle } from "../../types/bundle";
 
 interface SourceCropProps {
   bundle: Bundle;
   focusMember: string | null;
   bundleUrl?: string;
-}
-
-interface NormalizedEntry {
-  id: string;
-  path: string;
-  member: string | null;
-  field: string;
-  layer: number | string | null;
-  level: string | null;
-  page: number | null;
-  box_2d: [number, number, number, number] | null;
-  text: string | null;
-  geminiText: string;
-  parserText: string;
-  status: string;
-  ocrRaw: string | null;
-  pageImageUrl: string | null;
-  isColumn: boolean;
-}
-
-function normalizeEntries(bundle: Bundle, bundleUrl?: string): NormalizedEntry[] {
-  const rawProv = bundle.provenance;
-  const rawList: ProvenanceEntry[] = Array.isArray(rawProv)
-    ? rawProv
-    : rawProv
-      ? Object.values(rawProv)
-      : [];
-
-  return rawList.map((e, i) => {
-    const path = e.path ?? e.field ?? `entry-${i}`;
-    const member = e.member ?? null;
-    const isColumn = member === bundle.joint.column.id || path.startsWith("column.");
-    const fieldLabel = e.field ?? path;
-    const fallbackPage = e.page ? bundle.pages?.[String(e.page)] : undefined;
-    const pageImageUrl = resolveBundlePageImageUrl(e.page_image ?? fallbackPage ?? null, bundleUrl);
-
-    return {
-      id: `${path}-${i}`,
-      path,
-      member,
-      field: fieldLabel,
-      layer: e.layer ?? null,
-      level: e.level ?? null,
-      page: e.page ?? null,
-      box_2d: e.box_2d ?? null,
-      text: e.text ?? null,
-      geminiText: e.gemini ?? e.text ?? "",
-      parserText: e.parser ?? e.text ?? "",
-      status: e.status ?? "agreed",
-      ocrRaw: e.ocr_raw ?? null,
-      pageImageUrl,
-      isColumn,
-    };
-  });
 }
 
 function StatusAgreementBadge({ status }: { status: string }) {
@@ -91,7 +40,10 @@ function StatusAgreementBadge({ status }: { status: string }) {
  * explanation when inspecting the pitch-deck worked example without provenance.
  */
 export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) {
-  const entries = useMemo(() => normalizeEntries(bundle, bundleUrl), [bundle, bundleUrl]);
+  const entries: NormalizedProvenanceEntry[] = useMemo(
+    () => normalizeProvenanceEntries(bundle, bundleUrl),
+    [bundle, bundleUrl],
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(2);
   const [pan, setPan] = useState({ x: 0, y: 0 });

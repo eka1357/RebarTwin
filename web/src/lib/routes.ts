@@ -10,8 +10,24 @@ export function projectReviewPath(projectId: string): string {
   return `/projects/${encodeURIComponent(projectId)}/review`;
 }
 
-export function projectReportPath(projectId: string): string {
-  return `/projects/${encodeURIComponent(projectId)}/report`;
+export function projectReportPath(
+  projectId: string,
+  opts?: {
+    joint?: string | null;
+    variant?: "zone2" | "zone3" | null;
+    option?: number | null;
+  },
+): string {
+  const base = `/projects/${encodeURIComponent(projectId)}/report`;
+  if (!opts) return base;
+  const params = new URLSearchParams();
+  if (opts.joint) params.set("joint", opts.joint);
+  if (opts.variant && opts.variant !== "zone2") params.set("variant", opts.variant);
+  if (opts.option !== undefined && opts.option !== null && opts.option >= 0) {
+    params.set("option", String(opts.option));
+  }
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 export function jointPath(projectId: string, jointId: string): string {

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Compass } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { StatusPill } from "../components/StatusPill";
 import { Button } from "../components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../components/ui/resizable";
@@ -21,10 +21,12 @@ export function DemoRoute() {
   const [variant, setVariant] = useState<DemoVariant>("zone2");
   const [tourOpen, setTourOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const setStatus = useWorkspaceStore((s) => s.setStatus);
+  const chosenOptionByKey = useWorkspaceStore((s) => s.chosenOptionByKey);
   const selectedFindingIndex = useWorkspaceStore((s) => s.selectedFindingIndex);
   const selectFinding = useWorkspaceStore((s) => s.selectFinding);
   const selectBar = useWorkspaceStore((s) => s.selectBar);
@@ -94,6 +96,14 @@ export function DemoRoute() {
     }
   }, [selectedFindingIndex, searchParams, setSearchParams]);
 
+  const reportKey = `c4-b12:${variant}:${bundle?.joint.id ?? "C4xB12"}`;
+  const chosenOption = chosenOptionByKey[reportKey] ?? null;
+  const reportHref = projectReportPath("c4-b12", {
+    joint: bundle?.joint.id ?? "C4xB12",
+    variant,
+    option: chosenOption,
+  });
+
   return (
     <main className="flex flex-1 min-h-0 flex-col gap-3 p-3 sm:p-4 lg:overflow-hidden">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-2.5">
@@ -138,7 +148,7 @@ export function DemoRoute() {
           </Button>
 
           <Button variant="outline" size="sm" asChild>
-            <Link to={projectReportPath("c4-b12")}>Report</Link>
+            <Link to={reportHref}>Report</Link>
           </Button>
         </div>
       </div>
@@ -172,7 +182,20 @@ export function DemoRoute() {
             </ResizablePanel>
             <ResizableHandle />
             <ResizablePanel defaultSize={32} minSize={24} className="flex min-h-0 flex-col">
-              <JointInspector bundle={bundle} bundleUrl={demoAssetUrl(variant, "bundle.json")} />
+              <JointInspector
+                bundle={bundle}
+                bundleUrl={demoAssetUrl(variant, "bundle.json")}
+                reportKey={reportKey}
+                onOpenReport={(optIdx) =>
+                  navigate(
+                    projectReportPath("c4-b12", {
+                      joint: bundle.joint.id,
+                      variant,
+                      option: optIdx,
+                    }),
+                  )
+                }
+              />
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
@@ -183,7 +206,20 @@ export function DemoRoute() {
               <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
             </Suspense>
           </div>
-          <JointInspector bundle={bundle} bundleUrl={demoAssetUrl(variant, "bundle.json")} />
+          <JointInspector
+            bundle={bundle}
+            bundleUrl={demoAssetUrl(variant, "bundle.json")}
+            reportKey={reportKey}
+            onOpenReport={(optIdx) =>
+              navigate(
+                projectReportPath("c4-b12", {
+                  joint: bundle.joint.id,
+                  variant,
+                  option: optIdx,
+                }),
+              )
+            }
+          />
         </div>
       )}
     </main>

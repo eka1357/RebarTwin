@@ -4,6 +4,7 @@
 @import "./tokens.css";
 
 @layer base {
+
   html,
   body {
     background-color: var(--background);
@@ -37,7 +38,71 @@
   background-size: 24px 24px;
 }
 
+.report-a4 {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
+@media print {
+
+  :root,
+  [data-theme="light"] {
+    color-scheme: light;
+    --background: var(--white);
+    --surface: var(--white);
+    --surface-raised: var(--white);
+    --surface-sunken: var(--paper-100);
+    --paper: var(--white);
+    --border: var(--paper-300);
+    --border-strong: var(--paper-400);
+    --foreground: var(--graphite-900);
+    --muted-foreground: var(--graphite-600);
+    --primary: var(--graphite-900);
+    --primary-foreground: var(--white);
+    --ring: var(--graphite-900);
+  }
+
+  html,
+  body,
+  .min-h-dvh {
+    min-height: 0 !important;
+    background-color: var(--white) !important;
+    color: var(--graphite-900) !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .app-topbar,
+  nav[aria-label="Skip links"],
+  [data-sonner-toaster],
+  section[aria-label^="Notifications"],
+  .no-print {
+    display: none !important;
+  }
+
+  .report-a4 {
+    max-width: none !important;
+    min-height: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background-color: var(--white) !important;
+  }
+
+  .report-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {

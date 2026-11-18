@@ -49,10 +49,16 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   const setCameraPreset = useWorkspaceStore((s) => s.setCameraPreset);
   const clearSelection = useWorkspaceStore((s) => s.clearSelection);
 
+  const attemptScenesCount = bundle.attempt_scenes?.length ?? 0;
   const isWorkingsActive =
     (inspectorTab === "workings" || replayPlaying) &&
     bundle.fix.attempts.length > 0 &&
-    Boolean(bundle.attempt_scenes?.length);
+    attemptScenesCount > 0;
+  const hasAttemptScene = !isWorkingsActive || replayIndex < attemptScenesCount;
+  const clampedAttemptSceneIndex =
+    isWorkingsActive && attemptScenesCount > 0
+      ? Math.min(Math.max(0, replayIndex), attemptScenesCount - 1)
+      : -1;
 
   const activeAttempt = useMemo(() => {
     if (!isWorkingsActive) return null;
@@ -61,9 +67,8 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
   }, [bundle.fix.attempts, isWorkingsActive, replayIndex]);
 
   const activeScene = useMemo(() => {
-    if (isWorkingsActive && bundle.attempt_scenes?.length) {
-      const idx = Math.min(Math.max(0, replayIndex), bundle.attempt_scenes.length - 1);
-      const att = bundle.attempt_scenes[idx];
+    if (isWorkingsActive && clampedAttemptSceneIndex >= 0 && bundle.attempt_scenes) {
+      const att = bundle.attempt_scenes[clampedAttemptSceneIndex];
       if (att) {
         return {
           units: "mm" as const,
@@ -78,10 +83,19 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
       return bundle.option_scenes[optionIndex];
     }
     return bundle.scene;
-  }, [bundle, isWorkingsActive, mode, optionIndex, replayIndex]);
+  }, [
+    bundle.attempt_scenes,
+    bundle.option_scenes,
+    bundle.scene,
+    clampedAttemptSceneIndex,
+    isWorkingsActive,
+    mode,
+    optionIndex,
+  ]);
 
   const activeFindings = useMemo<Finding[]>(() => {
-    if (isWorkingsActive && activeAttempt) {
+    if (isWorkingsActive) {
+      if (!hasAttemptScene || !activeAttempt) return [];
       return activeAttempt.failures.map((f) => ({
         rule: f.rule,
         clause: f.clause,
@@ -101,7 +115,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     }
     if (mode === "after") return [];
     return bundle.report.findings;
-  }, [activeAttempt, bundle.report.findings, bundle.rules, isWorkingsActive, mode]);
+  }, [activeAttempt, bundle.report.findings, bundle.rules, hasAttemptScene, isWorkingsActive, mode]);
 
   const { visibleFindings, mirroredFindings, overflowCount } = useMemo(() => {
     const indexed = activeFindings.map((f, index) => ({ f, index }));
@@ -366,10 +380,15 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
         />
 
         {isWorkingsActive && activeAttempt && (
-          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-strong bg-surface-raised/95 px-2.5 py-1 text-xs shadow-[var(--shadow-overlay)]">
+          <div className="pointer-events-none absolute top-3 left-3 flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-border-strong bg-surface-raised/95 px-2.5 py-1 text-xs shadow-[var(--shadow-overlay)]">
             <span className="font-num font-medium text-foreground">
               Workings · Attempt {replayIndex + 1} / {bundle.fix.attempts.length}
             </span>
+            {!hasAttemptScene && (
+              <span className="rounded-[var(--radius-xs)] border border-border bg-surface-sunken px-1.5 py-0.5 text-xs text-muted-foreground">
+                No 3D for this attempt
+              </span>
+            )}
           </div>
         )}
 

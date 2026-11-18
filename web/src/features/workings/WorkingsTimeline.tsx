@@ -343,8 +343,8 @@ export function WorkingsTimeline({ bundle }: { bundle: Bundle }) {
 
         {attemptScenesCount > 0 && safeIndex >= attemptScenesCount && (
           <p className="rounded-[var(--radius-sm)] border border-border bg-surface-sunken px-2 py-1 text-xs text-muted-foreground">
-            3D bar geometry stored for the first {attemptScenesCount} attempts; rejecting clauses are
-            shown for all {attempts.length}.
+            No 3D for this attempt. Geometry is stored for the first {attemptScenesCount} attempts;
+            rejecting clauses are shown for all {attempts.length}.
           </p>
         )}
 

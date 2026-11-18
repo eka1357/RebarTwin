@@ -275,6 +275,7 @@ def test_joint_id_carries_the_grid_place_safe_as_a_file_name(agreement):
     from rebartwin.reader.link import safe_id
     [v] = run(placed(agreement, {"f0008": "C/C1-25", "f0013": "C/C1-25"}), LINK).joints
     assert v.joint.id == "C4xB12xB13@C+C1-25" and v.place == "C/C1-25"
+    assert (v.joint.place, v.joint.floor) == ("C/C1-25", None)        # explicit fields: nobody parses the id
     assert blocking(run(placed(agreement, {"f0008": "C/C1-25", "f0013": "C/C1-25"}), LINK),
                     "C4xB12xB13@C+C1-25") == []
     assert safe_id("LMR OHT") == "LMR_OHT" and safe_id("F-14") == "F-14" and safe_id("a:b|c") == "a_b_c"
@@ -341,3 +342,32 @@ def test_a_joint_short_of_numbers_is_a_draft_from_accepted_values_only(agreement
     d2 = run(no_main, body_with(zero)).drafts[0]
     assert d2["column"]["main"] is None
     assert "column.main" in next(t for t in run(no_main, body_with(zero)).to_check if t.field == "joint").detail
+
+
+def test_a_bottom_extra_counts_at_a_joint_only_if_its_bar_reaches_the_support(agreement):
+    """The joint is at B-2; B12 runs along X, so its support here is line 2. B12's bottom is 4-16. An extra 2-12 whose
+    bar reaches lines 1 and 2 (at "1/2") is at the joint: bottom 4-16 + 2-12. One that stops short ("-") is left out
+    and noted: "B12 2-12 bottom extra stops short of C4 at 2 on the elevation: not at the joint." One with no `at`
+    (where it stops is not shown) blocks the joint as ambiguous."""
+    bottom = next(a for a in agreement.accepted if (a.member, a.field) == ("B12", "bottom"))
+    places = {"f0008": "B-2", "f0013": "B-2"}
+    bottom_ids = next(s["field_ids"] for s in LINK["joints"][0]["sources"] if s["path"] == "beams[0].bottom")
+
+    def body(ids, bars):
+        def change(i):
+            for s in i["sources"]:
+                if s["path"] == "beams[0].bottom":
+                    s["field_ids"] = ids
+            i["joint"]["beams"][0]["bottom"] = [{"bars": bars}]
+        return body_with(change)
+
+    jid = "C4xB12xB13@B-2"
+    reaches = replace(bottom, id="f0201", field="bottom_extra", value="2-12", at="1/2")
+    assert blocking(run(placed(agreement, places, [reaches]), body(bottom_ids + ["f0201"], "4-16 + 2-12")), jid) == []
+    short = replace(bottom, id="f0202", field="bottom_extra", value="2-12", at="-")
+    result = run(placed(agreement, places, [short]), body(bottom_ids, "4-16"))
+    assert blocking(result, jid) == []
+    assert "B12 2-12 bottom extra stops short of C4 at 2 on the elevation: not at the joint." in result.joints[0].joint.notes
+    unclear = replace(bottom, id="f0203", field="bottom_extra", value="2-12", at=None)
+    items = blocking(run(placed(agreement, places, [unclear]), body(bottom_ids, "4-16")), jid)
+    assert [(t.field, t.reason) for t in items] == [("beams[0].bottom", "ambiguous")]

@@ -167,6 +167,9 @@ class Joint(BaseModel):
     required_area: dict[str, float] = Field(
         default_factory=dict, description="'B12.top' -> mm² a fix must keep; by default the steel as drawn")
     notes: list[str] = Field(default_factory=list, description="assumptions the reader or a person made")
+    place: str | None = Field(default=None, description="the column's grid place on the plans, e.g. 'F-14' or "
+                                                        "'C/C1-25'; read from the drawing by the reader")
+    floor: str | None = Field(default=None, description="the floor of the beams' plan, e.g. 'FIRST'")
 
     @model_validator(mode="after")
     def _one_beam_each_way(self):

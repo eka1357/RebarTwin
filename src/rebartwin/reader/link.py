@@ -26,7 +26,7 @@ from .agree import Accepted, Agreement, ToCheck
 from .gemini import GLOBAL_MEMBERS, PROMPTS, ModelNotFound, Transport, call
 from .levels import ends_at, floor, storey
 
-LINK_PROMPT = "link_v3"
+LINK_PROMPT = "link_v4"
 DEFAULT_LINK_MODEL = "gemini-4-argon"
 DEFAULT_FALLBACK = "gemini-3.8-flash"
 
@@ -250,6 +250,23 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                     continue
                 line = support_line(place, direction_of(beam.id) or beam.direction)
                 expected = of(beam.id, "top") + [a for a in extras if set(a.at.split("/")) & line]
+            if face == "bottom" and place:
+                # A bottom extra counts at a joint only if its bar reaches that support on the elevation; a bar
+                # that stops short is noted and left out; one whose end the drawing does not show needs a person.
+                extras = of(beam.id, "bottom_extra")
+                unclear = [a for a in extras if not a.at]
+                if unclear:
+                    issues.append(Issue(f"{p}.bottom", "ambiguous", f"{beam.id} bottom extra bars "
+                                        f"{', '.join(a.value for a in unclear)}: the elevation does not show whether "
+                                        f"they reach {col.id} at {place}", unclear))
+                    continue
+                line = support_line(place, direction_of(beam.id) or beam.direction)
+                reach = [a for a in extras if a.at != "-" and set(a.at.split("/")) & line]
+                for a in extras:
+                    if a not in reach:
+                        notes.append(f"{beam.id} {a.value} bottom extra stops short of {col.id} at "
+                                     f"{'/'.join(sorted(line))} on the elevation: not at the joint.")
+                expected = of(beam.id, "bottom") + reach
             use(f"{p}.{face}", expected, (face, f"{face}_extra"), face_check)
 
         use(f"{p}.stirrups", of(beam.id, "links"), ("links",),
@@ -262,7 +279,8 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
             label=f"{beam.id} cover")
         notes.append(f"{beam.id} cover measured to the {'main bars' if beam.cover_to == 'main' else 'stirrups'} "
                      "(the linking model's reading of the notes).")
-        meets = [a for a in of(beam.id, "frames_into") if a.value == col.id and (place is None or a.at in (None, place))]
+        meets = [a for a in of(beam.id, "frames_into")
+                 if a.value == col.id and (place is None or a.at in (None, place))]
         stated = direction_of(beam.id)
         if stated and beam.direction != stated:
             issues.append(Issue(f"{p}.direction", "disagree", f"{beam.id} runs along {stated.upper()} by its prefix "
@@ -297,6 +315,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
 
     for u in linked.unresolved:
         issues.append(Issue(u.path, "ambiguous", f"Linking model: {u.reason}"))
+    j.floor, j.place = at_floor, place              # explicit, so nothing downstream parses the id
     if at_floor:
         j.id = f"{j.id}@{safe_id(at_floor)}"
     if place:
@@ -389,12 +408,19 @@ def draft(item, fields: dict[str, Accepted], place: str | None = None) -> dict |
         line = support_line(place, way or "x") if place else None
         top = vals(bid, ("top",), False)
         extras = [a for a in accepted if a.member == bid and a.field == "top_extra" and fits(a, False)]
-        here = vals(bid, ("top_extra",), False, keep=lambda a: bool(line and a.at and set(a.at.split("/")) & line))
+        def at_support(a: Accepted, line=line) -> bool:
+            return bool(line and a.at and a.at != "-" and set(a.at.split("/")) & line)
+        here = vals(bid, ("top_extra",), False, keep=at_support)
+        bottom = vals(bid, ("bottom",), False)
+        reach = vals(bid, ("bottom_extra",), False, keep=lambda a, s=at_support: not place or s(a))
         out_beams.append({
             "id": bid, "direction": way, "section": vals(bid, ("section",), False),
             "top": (top or []) + (here or []) or None,
             "top_extra_unplaced": bool(place and any(not a.at for a in extras)),
-            "bottom": vals(bid, ("bottom", "bottom_extra"), False), "stirrups": vals(bid, ("links",), False),
+            "bottom": bottom and bottom + (reach or []),
+            "bottom_extra_unclear": bool(place and any(not a.at for a in accepted if a.member == bid
+                                                       and a.field == "bottom_extra" and fits(a, False))),
+            "stirrups": vals(bid, ("links",), False),
             "cover": vals(bid, ("cover",), False, ("ALL", "ALL_BEAMS")),
             "frames_into": vals(bid, ("frames_into",), False, keep=lambda a: a.value == col and
                                 (place is None or a.at in (None, place)))})
@@ -416,6 +442,8 @@ def _nulls(d: dict) -> list[str]:
         paths += [f"beams[{i}].{k}" for k in ("section", "top", "bottom", "frames_into") if b[k] is None]
         if b["top_extra_unplaced"]:
             paths.append(f"beams[{i}].top")
+        if b["bottom_extra_unclear"]:
+            paths.append(f"beams[{i}].bottom")
     return paths
 
 

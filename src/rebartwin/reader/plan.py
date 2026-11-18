@@ -120,7 +120,8 @@ class Grid:
 
 
 def bubbles(page: Page) -> list[Bubble]:
-    """Short labels inside drawn circles, slab marks (S1, S14) excepted. A circle holding more or less than one such word is not a bubble, nor is
+    """Short labels inside drawn circles, slab marks (S1, S14) excepted. A circle holding more or less than one such
+    word is not a bubble, nor is
     one much larger than its text (a detail callout's circle). Cached on the page."""
     cached = getattr(page, "_bubbles", None)
     if cached is not None:
@@ -609,7 +610,8 @@ def meet(beam_page: Page, column_page: Page) -> Plans:
     reason is one problem. Each tied beam band, mapped onto the column layout, meets every column whose outline it
     overlaps across its width and reaches along its length (give or take one text height of the column layout, since
     edges stop at column faces). Outlines decide, not grid lines, so a beam flush with a column's face (off its grid
-    line) still meets it; the grid names the place. Where a band ends at a grid intersection with no column, that is a beam-on-beam junction, kept in
+    line) still meets it; the grid names the place. Where a band ends at a grid intersection with no column, that is
+    a beam-on-beam junction, kept in
     `junctions`, not a problem. A column with beams of different marks along one direction is a problem for each of
     them (the engine takes one beam per direction); the same mark either side is one beam."""
     out = Plans()
@@ -745,8 +747,9 @@ def read_plans(pages: list[Page], agreement) -> dict:
         if len(fits) != 1:
             flag(None, bp.number, None, "missing" if not fits else "ambiguous",
                  f"the beam layout on sheet {bp.number} lines up with "
-                 f"{'no column layout' if not fits else 'column layouts on sheets ' + ', '.join(str(p.number) for p in fits)}"
-                 "; which column each beam meets needs a person")
+                 + ("no column layout" if not fits else
+                    "column layouts on sheets " + ", ".join(str(p.number) for p in fits))
+                 + "; which column each beam meets needs a person")
             continue
         r = meet(bp, fits[0])
         info["alignment"].append(r.alignment)
@@ -957,7 +960,7 @@ def outline_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
     g = grid(page)
     if len(g.xs) < 2 or len(g.ys) < 2:
         return None
-    cache = getattr(page, "_plan_cache")              # set by grid()
+    cache = page._plan_cache                          # set by grid()
     if "columns" not in cache:
         cache["columns"] = columns(page, g)[0]
     cols = [c for c in cache["columns"] if c.outline]
@@ -971,3 +974,91 @@ def outline_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
     if len(near) > 1 and near[1][0] < 2 * near[0][0]:
         return {i for d, i in near if d < 2 * near[0][0] + 1e-9}, "two columns are as near"
     return {near[0][1]}, ""
+
+
+# --- where a bar on an elevation reaches -----------------------------------------------------------------------------
+
+REACH = 0.5               # title heights: a bar ending this close to a support (or past it) reaches it
+BAR_HOPS = 6              # a bar callout's leader: out of the text, up, across, down, and the arrow tip
+
+
+def leader_bar(page: Page, box: Box, e: Elevation) -> Line | None:
+    """The bar a callout points to on an elevation: follow its leader (up to BAR_HOPS short segments, from an end
+    within a third of a title height of the callout, glyph strokes inside the callout's box skipped) to a point on a
+    horizontal bar line at least two title heights long inside the elevation's span. None unless exactly one bar is
+    reached."""
+    h = e.title[2] - e.title[0]
+    segs = [s for s in (page.shapes.segments if page.shapes else [])
+            if 0 < ((s[0] - s[2]) ** 2 + (s[1] - s[3]) ** 2) ** 0.5 <= 6 * h
+            and not (_inside((s[1], s[0]), box) and _inside((s[3], s[2]), box))]
+    bars = [ln for ln in lines(page.shapes.segments if page.shapes else [], (0.3, 0.3)) if ln.axis == "h"
+            and ln.length >= 2 * h and ln.hi > e.lo and ln.lo < e.hi and e.title[0] - 8 * h < ln.at < e.title[0]]
+    # a leader is not drawn along a bar: pieces lying on a bar line are the bar itself
+    segs = [s for s in segs if not (abs(s[1] - s[3]) <= AXIS_TOL and any(
+        abs(ln.at - (s[1] + s[3]) / 2) <= 0.4 and ln.lo - 0.3 <= min(s[0], s[2]) and max(s[0], s[2]) <= ln.hi + 0.3
+        for ln in bars))]
+
+    def near_box(x: float, y: float) -> bool:                # a leader starts at the edge of its text
+        return box[0] - h / 3 <= y <= box[2] + h / 3 and box[1] - h / 3 <= x <= box[3] + h / 3
+
+    def on_bar(x: float, y: float) -> list[Line]:
+        return [ln for ln in bars if abs(ln.at - y) <= 0.4 and ln.lo - 0.3 <= x <= ln.hi + 0.3]
+
+    frontier = [((s[2], s[3]), s) for s in segs if near_box(s[0], s[1])] + \
+               [((s[0], s[1]), s) for s in segs if near_box(s[2], s[3])]
+    seen = {id(s) for _, s in frontier}
+    hit: dict[int, Line] = {}
+    for _ in range(BAR_HOPS):
+        nxt = []
+        for (x, y), _s in frontier:
+            for ln in on_bar(x, y):
+                hit[id(ln)] = ln
+            for s in segs:
+                if id(s) in seen:
+                    continue
+                for (ex, ey), f in (((s[0], s[1]), (s[2], s[3])), ((s[2], s[3]), (s[0], s[1]))):
+                    if abs(ex - x) <= JOIN_PT and abs(ey - y) <= JOIN_PT:
+                        nxt.append((f, s))
+                        seen.add(id(s))
+        frontier = nxt
+        if hit:
+            break
+    return next(iter(hit.values())) if len(hit) == 1 else None
+
+
+def bar_reach(page: Page, box: Box, supports: dict) -> str | None:
+    """Which plan supports an extra bottom bar reaches: its bar on the elevation (`leader_bar`), against the
+    elevation's supports mapped onto the plan's as for top extras (equal counts, spans matching in one direction, or
+    in both with the same answer). Returns the reached supports' grid lines joined by "/", "-" when the bar reaches
+    none (it stops short), or None when any of it is not clear: then where it stops needs a person."""
+    found = elevation_tie(page, box)
+    if not found or len(found[0]) != 1:
+        return None
+    member = next(iter(found[0]))
+    plan = supports.get(member)
+    cx = _centre(box)[1]
+    els = [e for e in elevations(page) if e.member == member and e.lo <= cx <= e.hi and e.title[0] >= box[2]]
+    if not isinstance(plan, list) or len(els) != 1:
+        return None
+    e = els[0]
+    es = elevation_supports(page, e)
+    if len(es) != len(plan) or len(es) < 2:
+        return None
+    ps = [p_[0] for p_ in plan]
+    want = _shares(es)
+    fwd = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares(ps)))
+    rev = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares([-v for v in reversed(ps)])))
+    bar = leader_bar(page, box, e)
+    if bar is None or not (fwd or rev):
+        return None
+    tol = REACH * (e.title[2] - e.title[0])
+    reached = [i for i, x in enumerate(es) if bar.lo - tol <= x <= bar.hi + tol]
+    answers = set()
+    if fwd:
+        answers.add(tuple(sorted(plan[i][1] for i in reached)))
+    if rev:
+        answers.add(tuple(sorted(plan[len(plan) - 1 - i][1] for i in reached)))
+    if len(answers) != 1:
+        return None
+    labels = answers.pop()
+    return "/".join(labels) if labels else "-"

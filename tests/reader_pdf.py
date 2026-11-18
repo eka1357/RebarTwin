@@ -294,6 +294,16 @@ def make_elevation_pdf(path: Path, supports: bool = False, breaks: bool = False)
             page.draw_line((x - 0.5, 262), (x + 0.5, 260))
         for x, text in ((102, "1Ø16"), (258, "2Ø12"), (386, "1Ø20")):
             tw.append((x, 195), text, font=font, fontsize=6)
+        # Bottom bars: continuous at y = 226 from x 97 to 400 (all three supports); an extra at y = 224 from x 120 to
+        # 245, stopping 23 pt short of the first support and 21.5 pt short of the second. Callouts below the beam at
+        # baseline 240 with a leader straight up from their left edge: "3Ø16" at x 300 to the continuous bar,
+        # "4Ø10" at x 180 to the extra.
+        page.draw_line((97, 226), (400, 226))
+        page.draw_line((120, 224), (245, 224))
+        page.draw_line((299, 236), (299, 226))
+        page.draw_line((179, 236), (179, 224))
+        for x, text in ((300, "3Ø16"), (180, "4Ø10")):
+            tw.append((x, 240), text, font=font, fontsize=6)
     if supports:
         # Grid bubbles "2" and "3" under XB5's supports at x = 115 and 385 pt (y = 268), and three extra top bar
         # callouts at baseline 195: "1Ø16" at x 120 (over 2), "1Ø20" at x 360 (over 3), "2Ø10" at x 240 (centre

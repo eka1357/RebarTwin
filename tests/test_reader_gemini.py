@@ -277,3 +277,15 @@ def test_a_dropped_connection_is_retried_here():
     with pytest.raises(ReadError):
         call(own, key="k", model="m", parts=[], schema={}, validate=PageReading.model_validate_json, sleep=sleeps.append)
     assert own.calls == 1
+
+
+def test_reply_caches_use_the_shared_folder_when_set(tmp_path, monkeypatch):
+    """With REBARTWIN_REPLIES_DIR set, every reply cache (Gemini read, linking, proposer, Vision) saves there, whatever
+    folder its caller names; unset or empty, the caller's folder."""
+    from rebartwin.reader.gemini import CachingTransport
+    from rebartwin.reader.ocr import CachingOcr
+    shared = tmp_path / "shared"
+    assert CachingTransport(None, tmp_path / "own").directory == tmp_path / "own"
+    monkeypatch.setenv("REBARTWIN_REPLIES_DIR", str(shared))
+    assert CachingTransport(None, tmp_path / "own").directory == shared
+    assert CachingOcr(None, tmp_path / "own").directory == shared

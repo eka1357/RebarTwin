@@ -231,12 +231,20 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    for (a number left at 0) is written as a draft, `joints/<id>.draft.json`: id, place, floor, storey, column and
    beams with, for each value, the accepted fields that give it or null, and the To check items blocking it, one of
    them naming the null paths. Never a placeholder number. The API lists drafts as blocked joints (`draft: true`)
-   and never checks them; a wrong structure (two beams one way) is still "link it by hand". A joint's floor is the floor of the plans its beams were read on; its column values must be
+   and never checks them; a wrong structure (two beams one way) is still "link it by hand". A `bottom_extra`'s
+   `at` is the grid lines of the supports its drawn bar reaches on the elevation (its callout's leader followed to
+   the bar; within half a title height of a support counts), or "-" for none; at a joint it counts only if it
+   reaches that support, a bar that stops short is left out with a note in `Joint.notes`, and one whose end the
+   drawing does not show is `ambiguous` on `beams[i].bottom`. Every Joint and draft carries `place` and `floor`
+   fields, so nothing downstream parses the id. Prompt `link_v4`. A joint's floor is the floor of the plans its beams were read on; its column values must be
    from the storey that ends there and its beam values from that floor, and that choice is a note. Without a floor,
    a column with values for several storeys goes to To check. Prompt `link_v3` (adds `at`: one joint per place, top
    extras by support).
 6. **Evaluation.** A golden set of 60 hand-labelled callouts; report accuracy per field. Target: at least 95%
    accepted and correct, zero wrong values accepted.
+
+Replies: when `REBARTWIN_REPLIES_DIR` is set (in `.env`), every reply cache (Gemini read, Vision, linking,
+proposer) saves to and replays from that one folder, whatever folder its caller names; tests hold it empty.
 
 Keys: an AI Studio key in `GEMINI_API_KEY` locally; Vertex AI on Cloud Run (`GOOGLE_GENAI_USE_VERTEXAI=true`).
 

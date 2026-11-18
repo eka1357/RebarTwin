@@ -356,7 +356,8 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
         n_tc += 1
         c = r.callout
         level = c.level
-        if level is None and _member_kind(c.member) == "column" and c.field in COLUMN_FIELDS                 and c.member not in GLOBAL_MEMBERS:
+        column_value = _member_kind(c.member) == "column" and c.field in COLUMN_FIELDS
+        if level is None and column_value and c.member not in GLOBAL_MEMBERS:
             # the storey header the value sits under on the sheet, so the item blocks only joints of that storey
             level = _storey_header(by_page[c.page], r.box)
         result.to_check.append(ToCheck(
@@ -439,6 +440,9 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
             from .plan import elevation_support_at, support_at
             support = support_at(by_page[c.page], m.box) or (
                 elevation_support_at(by_page[c.page], m.box, supports) if supports else None)
+        elif c.field == "bottom_extra" and supports:     # the supports its bar reaches, "-" for none (plan.py)
+            from .plan import bar_reach
+            support = bar_reach(by_page[c.page], m.box, supports)
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
                                         r.box, r.call, level, raw, joined, at=support))
 

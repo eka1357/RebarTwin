@@ -147,6 +147,10 @@ as TO (sheet 9 is the servant quarters, FOUNDATION TO GROUND ROOF); column-layou
 (no API): 301 accepted, no project-level items left but zone and exposure, and C1xXB17@FIRST@L1+M+M1-28 has no
 blocking item of its own. 282 tests.
 
+Then: a bottom extra counts at a joint only if its drawn bar reaches that support (else noted, or To check when
+not shown); Joint and drafts carry `place` and `floor`; every reply cache uses `REBARTWIN_REPLIES_DIR` when set
+(saved replies moved there); prompt `link_v4`. 285 tests.
+
 ## Next: built in Google Antigravity
 
 The API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

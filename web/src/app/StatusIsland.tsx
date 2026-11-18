@@ -12,7 +12,14 @@ export function StatusIsland() {
   const status = useWorkspaceStore((s) => s.status);
   const reduced = useReducedMotion();
 
-  const failPhrase = status.failCount > 0 ? `${status.failCount} fails` : "Passes";
+  const pillStatus =
+    status.failCount > 0 ? "fail" : status.toCheckCount > 0 ? "to_check" : "pass";
+  const failPhrase =
+    status.failCount > 0
+      ? `${status.failCount} fails`
+      : status.toCheckCount > 0
+        ? "To check"
+        : "Passes";
   const accessibleSummary = `${failPhrase}, ${status.toCheckCount} to check, zone ${status.zone}, IS 13920 ${status.is13920 ? "on" : "off"
     }`;
   const inlineSummary = `${status.toCheckCount} to check · zone ${status.zone} · IS 13920 ${status.is13920 ? "on" : "off"
@@ -35,7 +42,7 @@ export function StatusIsland() {
         ) : (
           <span aria-hidden="true" className="inline-flex items-center">
             <StatusPill
-              status={status.failCount > 0 ? "fail" : "pass"}
+              status={pillStatus}
               size="sm"
               count={status.failCount > 0 ? status.failCount : undefined}
             />
@@ -74,7 +81,7 @@ export function StatusIsland() {
             <div className="flex items-center justify-between gap-2">
               <span className="font-display text-sm font-semibold">{status.jointLabel}</span>
               <StatusPill
-                status={status.failCount > 0 ? "fail" : "pass"}
+                status={pillStatus}
                 size="sm"
                 count={status.failCount > 0 ? status.failCount : undefined}
               />

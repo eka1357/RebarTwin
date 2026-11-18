@@ -18,6 +18,13 @@ function VerificationStatus({ status }: { status: string }) {
       </Badge>
     );
   }
+  if (status === "geometry") {
+    return (
+      <Badge variant="muted" className="gap-1">
+        <span>Geometry</span>
+      </Badge>
+    );
+  }
   return (
     <Badge variant="pass" className="gap-1">
       <CheckCircle2 className="h-3 w-3" aria-hidden="true" />

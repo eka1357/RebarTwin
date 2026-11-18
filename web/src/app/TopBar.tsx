@@ -1,6 +1,6 @@
 import { HelpCircle, Menu, Moon, Search, Sun } from "lucide-react";
-import { useState } from "react";
-import { Link, NavLink } from "react-router";
+import { useMemo, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router";
 import { Button } from "../components/ui/button";
 import {
   Sheet,
@@ -21,18 +21,46 @@ import { cn } from "../lib/utils";
 import { useWorkspaceStore } from "../stores/workspace";
 import { StatusIsland } from "./StatusIsland";
 
-const NAV_LINKS = [
-  { label: "Demo", to: "/demo" },
-  { label: "Project", to: projectPath("c4-b12") },
-  { label: "Upload", to: projectUploadPath("c4-b12") },
-  { label: "To check", to: projectReviewPath("c4-b12") },
-  { label: "Joint", to: jointPath("c4-b12", "C4xB12") },
-  { label: "Report", to: projectReportPath("c4-b12") },
-  ...(import.meta.env.DEV ? [{ label: "Styleguide", to: "/styleguide" }] : []),
-];
+function buildNavLinks(pathname: string) {
+  const projMatch = /^\/projects\/([^/]+)/.exec(pathname);
+  const jointMatch = /^\/projects\/[^/]+\/joints\/([^/]+)/.exec(pathname);
+  let activeProject = "c4-b12";
+  if (projMatch?.[1]) {
+    try {
+      activeProject = decodeURIComponent(projMatch[1]);
+    } catch {
+      activeProject = projMatch[1];
+    }
+  }
+  let activeJoint: string | null = null;
+  if (jointMatch?.[1]) {
+    try {
+      activeJoint = decodeURIComponent(jointMatch[1]);
+    } catch {
+      activeJoint = jointMatch[1];
+    }
+  }
+  const jointTo = activeJoint
+    ? jointPath(activeProject, activeJoint)
+    : activeProject === "c4-b12"
+      ? jointPath("c4-b12", "C4xB12")
+      : projectPath(activeProject);
+
+  return [
+    { label: "Demo", to: "/demo" },
+    { label: "Project", to: projectPath(activeProject) },
+    { label: "Upload", to: projectUploadPath(activeProject) },
+    { label: "To check", to: projectReviewPath(activeProject) },
+    { label: "Joint", to: jointTo },
+    { label: "Report", to: projectReportPath(activeProject) },
+    ...(import.meta.env.DEV ? [{ label: "Styleguide", to: "/styleguide" }] : []),
+  ];
+}
 
 export function TopBar() {
   const [navOpen, setNavOpen] = useState(false);
+  const { pathname } = useLocation();
+  const navLinks = useMemo(() => buildNavLinks(pathname), [pathname]);
   const theme = useWorkspaceStore((s) => s.theme);
   const toggleTheme = useWorkspaceStore((s) => s.toggleTheme);
   const setCommandOpen = useWorkspaceStore((s) => s.setCommandOpen);
@@ -52,7 +80,7 @@ export function TopBar() {
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-0.5 lg:flex">
-          {NAV_LINKS.map((item) => (
+          {navLinks.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -153,7 +181,7 @@ export function TopBar() {
               >
                 Landing
               </NavLink>
-              {NAV_LINKS.map((item) => (
+              {navLinks.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

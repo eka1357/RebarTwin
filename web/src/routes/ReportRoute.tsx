@@ -207,7 +207,9 @@ export function ReportRoute() {
           </p>
           {isBlocked && (
             <Button size="sm" asChild>
-              <Link to={projectReviewPath(id)}>Resolve To check items</Link>
+              <Link to={projectReviewPath(id, targetJointId ? { joint: targetJointId } : undefined)}>
+                Resolve To check items
+              </Link>
             </Button>
           )}
         </div>

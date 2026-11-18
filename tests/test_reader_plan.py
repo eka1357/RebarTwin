@@ -198,3 +198,13 @@ def test_elevation_supports_map_to_plan_supports_only_when_spans_fix_the_directi
     assert at([(0.0, "1", "column"), (50.0, "2", "column"), (100.0, "3", "column")]) == {
         "1Ø16": None, "2Ø12": None, "1Ø20": None}
     assert at(three + [(120.0, "4", "beam")]) == {"1Ø16": None, "2Ø12": None, "1Ø20": None}
+
+
+def test_a_bottom_bar_reaches_the_supports_its_drawn_bar_reaches(tmp_path):
+    """XB5's supports are at x = 97, 266.5 and 400 pt (lines 1, 2, 3). "3Ø16"'s leader ends on the bar from 97 to 400:
+    it reaches all three, "1/2/3". "4Ø10"'s leader ends on the bar from 120 to 245: 23 pt short of the first support
+    and 21.5 pt short of the second, each far over half a title height (about 3.5 pt), so it reaches none: "-"."""
+    page = ingest(make_elevation_pdf(tmp_path / "b.pdf", breaks=True))[0]
+    sup = {"XB5": [(0.0, "1", "column"), (55.9, "2", "column"), (100.0, "3", "column")]}
+    reach = {w.text: plan.bar_reach(page, w.box, sup) for w in page.words if w.text in ("3Ø16", "4Ø10")}
+    assert reach == {"3Ø16": "1/2/3", "4Ø10": "-"}

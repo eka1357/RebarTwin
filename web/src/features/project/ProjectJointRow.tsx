@@ -98,7 +98,7 @@ export function ProjectJointRow({
               aria-label={`Blocking items for ${j.id}`}
               className="space-y-1 border-t border-border/70 pt-1.5 text-xs text-muted-foreground"
             >
-              {blockers.map((b, idx) => (
+              {blockers.slice(0, 4).map((b, idx) => (
                 <li key={b.id ?? `${j.id}-blocker-${idx}`}>
                   <span className="font-num font-medium text-foreground">
                     {b.project_level ? "Project" : b.member ?? "Joint"}
@@ -106,6 +106,11 @@ export function ProjectJointRow({
                   {` · ${b.field} · ${b.detail}`}
                 </li>
               ))}
+              {blockers.length > 4 && (
+                <li className="text-muted-foreground">
+                  +{formatNumber(blockers.length - 4)} more items in To check
+                </li>
+              )}
             </ul>
           )}
         </div>

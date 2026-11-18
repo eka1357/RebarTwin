@@ -25,6 +25,9 @@ function StatusAgreementBadge({ status }: { status: string }) {
   if (status === "agreed") {
     return <Badge variant="pass">Agreed</Badge>;
   }
+  if (status === "geometry") {
+    return <Badge variant="muted">Geometry</Badge>;
+  }
   if (status === "resolved") {
     return <Badge variant="check">Resolved</Badge>;
   }
@@ -102,7 +105,12 @@ export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) 
         <div className="flex flex-wrap gap-1" role="group" aria-label="Provenance values">
           {drawnEntries.map((item) => {
             const isCurrent = active?.id === item.id;
-            const title = `${item.member ?? item.path} ${item.field}${item.layer !== null ? ` L${item.layer}` : ""}`;
+            const head = item.member ?? item.path;
+            const label =
+              head === item.field || head.endsWith(`.${item.field}`)
+                ? head
+                : `${head} ${item.field}`;
+            const title = `${label}${item.layer !== null && item.layer !== 1 ? ` L${item.layer}` : ""}`;
             return (
               <button
                 key={item.id}

@@ -50,7 +50,7 @@ def test_read_writes_the_contract_and_checks_the_joint(tmp_path: Path, recorded,
     assert any(x["rule"] == "IS13920-7.1.1" and x["status"] == "fail" for x in bundle["report"]["findings"])
 
     reading = json.loads((out / "reading.json").read_text(encoding="utf-8"))
-    assert reading["prompts"] == {"read": "read_v2", "link": "link_v3"}
+    assert reading["prompts"] == {"read": "read_v2", "link": "link_v4"}
     assert reading["counts"]["accepted"] == 22
 
 

@@ -20,7 +20,7 @@ from collections import Counter
 from pathlib import Path
 
 from rebartwin.reader.agree import agree
-from rebartwin.reader.gemini import CachingTransport, read_pages
+from rebartwin.reader.gemini import CachingTransport, load_env, read_pages
 from rebartwin.reader.ingest import ingest
 from rebartwin.reader.ocr import CachingOcr, ocr_pages
 from rebartwin.reader.parser import parse_page
@@ -48,6 +48,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=17)
     ap.add_argument("--plans", default="", help="extra pages ingested for plan geometry only, e.g. 21")
     args = ap.parse_args()
+    load_env()                                   # REBARTWIN_REPLIES_DIR: the shared reply folder, when set
 
     old_acc = json.loads((args.out / "reading.json").read_text(encoding="utf-8"))["accepted"]
     old_tc = json.loads((args.out / "to_check.json").read_text(encoding="utf-8"))

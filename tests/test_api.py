@@ -368,3 +368,31 @@ def test_draft_joints_and_shared_rebartwin_replies_dir(tmp_path: Path, monkeypat
     rz = client.post("/projects/replay-two/to-check/tc_proj_zone_d/resolve?no_ifc=true", json={"value": "III"})
     assert rz.status_code == 200
     assert draft_id not in rz.json()["checked_joints"]
+
+    # Ambiguous member=None linking item cascades cleanly even when an unrelated unlinked joint=None item exists,
+    # and _apply_resolved_provenance avoids duplicate via-cascaded rows
+    amb_proj = tmp_path / "projects" / "cascade-proj"
+    j_dir = amb_proj / "joints"
+    j_dir.mkdir(parents=True)
+    joint_c1 = json.loads(EXAMPLE_JOINT.read_text(encoding="utf-8"))
+    joint_c1["id"] = "C1xXB17@FIRST@L1"
+    joint_c1["column"]["id"] = "C1"
+    joint_c1["place"] = "L1"
+    joint_c1["floor"] = "FIRST"
+    (j_dir / "C1xXB17@FIRST@L1.json").write_text(json.dumps(joint_c1), encoding="utf-8")
+    (amb_proj / "project.json").write_text(json.dumps({"id": "cascade-proj", "name": "Cascade", "status": "done"}), encoding="utf-8")
+    (amb_proj / "provenance.json").write_text("[]", encoding="utf-8")
+    (amb_proj / "to_check.json").write_text(
+        json.dumps([
+            {"id": "tc_unlinked", "member": "C1", "field": "main", "page": 7, "box_2d": None, "gemini": None, "parser": None, "reason": "ambiguous", "detail": "other", "layer": 1, "joint": None, "resolution": None, "level": None},
+            {"id": "tc_col", "member": "C1", "field": "column.main", "page": 7, "box_2d": None, "gemini": None, "parser": {"value": "4-16 + 4-12"}, "reason": "disagree", "detail": "mixed", "layer": 1, "joint": "C1xXB17@FIRST@L1", "resolution": None, "level": None},
+            {"id": "tc_link_amb", "member": None, "field": "column.main", "page": 0, "box_2d": None, "gemini": None, "parser": None, "reason": "ambiguous", "detail": "mixed linking", "layer": 1, "joint": "C1xXB17@FIRST@L1", "resolution": None, "level": None},
+        ]),
+        encoding="utf-8",
+    )
+    rc = client.post("/projects/cascade-proj/to-check/tc_col/resolve?no_ifc=true", json={"value": "8-16"})
+    assert rc.status_code == 200
+    assert rc.json()["checked_joints"] == ["C1xXB17@FIRST@L1"]
+    bundle_c1 = client.get("/projects/cascade-proj/joints/C1xXB17%40FIRST%40L1/bundle").json()
+    resolved_col_entries = [e for e in bundle_c1["provenance"] if e["field"] == "main" and e["status"] == "resolved"]
+    assert len(resolved_col_entries) == 1

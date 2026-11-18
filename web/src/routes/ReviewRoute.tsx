@@ -17,6 +17,8 @@ import { sortToCheckQueue } from "../lib/calloutGrammar";
 import { jointPath, projectPath } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
 
+const PAGE_SIZE = 12;
+
 export function ReviewRoute() {
   const { id = "c4-b12" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -26,6 +28,7 @@ export function ReviewRoute() {
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
   const [announcement, setAnnouncement] = useState("");
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
 
@@ -53,15 +56,8 @@ export function ReviewRoute() {
     if (!jointFilter) return allItems;
     const matchedJoint = project?.joints.find((j) => j.id === jointFilter);
     const blockingIds = new Set(matchedJoint?.blocking_item_ids ?? []);
-    const memberSet = new Set<string>();
-    if (matchedJoint?.column?.id) memberSet.add(matchedJoint.column.id);
-    for (const b of matchedJoint?.beams ?? []) memberSet.add(b.id);
     const filtered = allItems.filter(
-      (t) =>
-        t.project_level ||
-        t.joint === jointFilter ||
-        blockingIds.has(t.id) ||
-        (t.joint === null && t.member !== null && memberSet.has(t.member)),
+      (t) => t.project_level || t.joint === jointFilter || blockingIds.has(t.id),
     );
     return filtered.length > 0 ? filtered : allItems;
   }, [allItems, jointFilter, project]);
@@ -285,7 +281,7 @@ export function ReviewRoute() {
           )}
 
           <div className="space-y-3">
-            {items.map((item, idx) => (
+            {items.slice(0, visibleLimit).map((item, idx) => (
               <ToCheckCard
                 key={item.id}
                 ref={(el) => {
@@ -308,6 +304,21 @@ export function ReviewRoute() {
                 }}
               />
             ))}
+            {items.length > visibleLimit && (
+              <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-xs">
+                <span className="text-muted-foreground">
+                  Showing {visibleLimit} of {items.length} items (project-level items appear first).
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleLimit((prev) => prev + PAGE_SIZE)}
+                >
+                  Show {Math.min(PAGE_SIZE, items.length - visibleLimit)} more
+                </Button>
+              </div>
+            )}
           </div>
         </>
       )}

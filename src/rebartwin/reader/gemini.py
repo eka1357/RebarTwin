@@ -186,12 +186,19 @@ def reply_hash(model: str, parts: list[tuple[str, Any]]) -> str:
     return h.hexdigest()[:32]
 
 
+def replies_dir(directory: Path) -> Path:
+    """Where replies are cached: REBARTWIN_REPLIES_DIR when it is set (one folder shared by every run and project,
+    so a reply paid for once is replayed everywhere), else `directory`."""
+    shared = os.environ.get("REBARTWIN_REPLIES_DIR", "").strip()
+    return Path(shared) if shared else directory
+
+
 class CachingTransport:
     """Saves each reply as `<dir>/<hash>.json` and replays it next time. Keeps a ledger of calls for reading.json.
     With `inner` None it only replays. A reply that fails validation is still saved; delete the file to ask again."""
 
     def __init__(self, inner: Transport | None, directory: Path):
-        self.inner, self.directory = inner, directory
+        self.inner, self.directory = inner, replies_dir(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.ledger: list[CallRecord] = []
         self._lock = threading.Lock()

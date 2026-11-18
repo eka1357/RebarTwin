@@ -10,6 +10,7 @@ import shutil
 import threading
 import time
 import uuid
+from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -26,7 +27,7 @@ from .fixes import Enumerator, Proposer, apply, resolve as resolve_fixes
 from .gemini_proposer import GeminiProposer
 from .model import Exposure, Joint, Zone, format_bars, parse_bars
 from .reader.agree import Accepted, ToCheck, agree
-from .reader.gemini import READ_PROMPT, GenAITransport, CachingTransport, ReadError, load_env, read_pages
+from .reader.gemini import READ_PROMPT, GenAITransport, CachingTransport, ReadError, load_env, read_pages, replies_dir
 from .reader.ingest import box_2d, ingest
 from .reader.link import LINK_PROMPT, USED_FIELDS, blocks as item_blocks_joint, link, project_level as model_project_level
 from .reader.ocr import CachingOcr, VisionTransport, ocr_pages
@@ -76,7 +77,7 @@ def _projects_root() -> Path:
 def _replies_dir() -> Path:
     """Shared reply cache folder so repeated uploads replay saved model/OCR calls."""
     load_env()
-    return Path(os.environ.get("REBARTWIN_REPLIES_DIR") or "out/_replies")
+    return replies_dir(Path("out/_replies"))
 
 
 def _collect_blocking_items(
@@ -403,8 +404,10 @@ def _apply_resolution_to_joint(joint: Joint, item: dict[str, Any], value: str) -
                 suffix = "[0].bars" if len(target_list) == 1 else ""
                 touched.append(f"beams[{i}].{face_name}{suffix}")
 
-    scope_label = member or field
-    note = f"To check resolved by person: {scope_label} {leaf} set to {value}."
+    if member:
+        note = f"To check resolved by person: {member} {leaf} set to {value}."
+    else:
+        note = f"To check resolved by person: {field} set to {value}."
     if note not in joint.notes:
         joint.notes.append(note)
     return touched
@@ -423,7 +426,7 @@ def _mark_satisfied_linking_items(
     for tc in items:
         if tc.get("resolution") is not None or tc.get("joint") != joint.id:
             continue
-        if tc.get("reason") != "missing" or tc.get("member") is not None:
+        if tc.get("reason") not in ("missing", "ambiguous") or tc.get("member") is not None:
             continue
         tc_path = str(tc.get("field") or "")
         matches_touched = any(p == tc_path or p.startswith(f"{tc_path}[") for p in touched_paths)
@@ -449,7 +452,7 @@ def _mark_satisfied_linking_items(
             and other.get("id") != via_id
             and other.get("member") == target_member
             and other.get("field") in related_fields
-            and (other.get("joint") == joint.id or other.get("joint") is None)
+            and (other.get("joint") == joint.id or _dict_is_project_level(other))
             for other in items
         )
         if not still_pending_member:
@@ -496,27 +499,40 @@ def _apply_resolved_provenance(
                 "parser": p.get("parser"),
                 "status": p.get("status", "agreed"),
                 "ocr_raw": p.get("ocr_raw"),
+                "joined_from": p.get("joined_from"),
                 "page_image": f"pages/page-{page_num}.png" if page_num else None,
+                "refs": [
+                    {**r, "page_image": f"pages/page-{r['page']}.png"}
+                    for r in (p.get("refs") or [])
+                    if isinstance(r, dict)
+                ] or None,
             })
 
-    # Include resolved items that didn't already overwrite a fields entry
+    # Include resolved items that didn't already overwrite a fields entry or cascade via another item
     existing_paths = {e["path"] for e in entries}
+    seen_resolved: set[tuple[str | None, str]] = set()
     members = {joint.column.id, *(b.id for b in joint.beams)}
     for tc in items:
         res = tc.get("resolution")
-        if not res:
+        if not res or res.get("via"):
             continue
         if not _dict_is_assigned_to_joint(tc, joint.id, members):
             continue
         t_path = str(tc.get("field") or "resolved")
+        leaf = t_path.rsplit(".", 1)[-1]
         if t_path in existing_paths:
             continue
+        resolved_key = (tc.get("member"), leaf)
+        if resolved_key in seen_resolved:
+            continue
+        existing_paths.add(t_path)
+        seen_resolved.add(resolved_key)
         page_num = tc.get("page") or None
         gemini_v = (tc.get("gemini") or {}).get("value") if isinstance(tc.get("gemini"), dict) else None
         entries.append({
             "path": t_path,
             "member": tc.get("member"),
-            "field": t_path.rsplit(".", 1)[-1],
+            "field": leaf,
             "layer": tc.get("layer"),
             "level": tc.get("level"),
             "page": page_num,
@@ -550,8 +566,14 @@ def _apply_resolved_provenance(
             "page_image": None,
         })
 
-    # Copy cited page images alongside bundle.json
-    pages = sorted({int(e["page"]) for e in entries if e.get("page")})
+    # Copy cited page images (and geometry ref pages) alongside bundle.json
+    ref_pages = {
+        int(r["page"])
+        for e in entries
+        for r in (e.get("refs") or [])
+        if isinstance(r, dict) and r.get("page")
+    }
+    pages = sorted({int(e["page"]) for e in entries if e.get("page")} | ref_pages)
     pages_dir = bundle_path.parent / "pages"
     pages_dir.mkdir(exist_ok=True)
     for n in pages:
@@ -742,7 +764,12 @@ def _execute_read_job(
                 project_id,
                 project_dir,
                 "page_started",
-                {"page": sheet.number, "total": len(sheets), "needs_ocr": sheet.needs_ocr},
+                {
+                    "page": sheet.number,
+                    "total": len(sheets),
+                    "pages": [p.number for p in sheets],
+                    "needs_ocr": sheet.needs_ocr,
+                },
             )
             if sheet.needs_ocr:
                 ocr_skipped.extend(
@@ -901,6 +928,9 @@ def create_app(
     app.state.transport_factory = transport_factory
     app.state.ocr_factory = ocr_factory
     hub = _EventHub()
+    crop_lock = threading.Lock()
+    crop_bytes_cache: OrderedDict[tuple[str, int, str], bytes] = OrderedDict()
+    page_pixmap_cache: OrderedDict[tuple[str, int], Any] = OrderedDict()
 
     app.add_middleware(
         CORSMiddleware,
@@ -1014,7 +1044,7 @@ def create_app(
         )
 
     @app.get("/projects/{project_id}")
-    async def get_project(project_id: str) -> dict[str, Any]:
+    def get_project(project_id: str) -> dict[str, Any]:
         p_dir = _project_dir(project_id)
         meta = _read_json(p_dir / "project.json", {})
         reading = _read_json(p_dir / "reading.json", {})
@@ -1185,7 +1215,7 @@ def create_app(
         }
 
     @app.get("/projects/{project_id}/to-check")
-    async def get_to_check(project_id: str) -> list[dict[str, Any]]:
+    def get_to_check(project_id: str) -> list[dict[str, Any]]:
         p_dir = _project_dir(project_id)
         items: list[dict[str, Any]] = _read_json(p_dir / "to_check.json", [])
         enriched: list[dict[str, Any]] = []
@@ -1207,7 +1237,7 @@ def create_app(
         return enriched
 
     @app.post("/projects/{project_id}/to-check/{item_id}/resolve")
-    async def resolve_to_check_item(
+    def resolve_to_check_item(
         project_id: str,
         item_id: str,
         body: ResolveRequest,
@@ -1292,7 +1322,7 @@ def create_app(
         return j_dir
 
     @app.get("/projects/{project_id}/joints/{joint}/bundle")
-    async def get_joint_bundle(project_id: str, joint: str) -> dict[str, Any]:
+    def get_joint_bundle(project_id: str, joint: str) -> dict[str, Any]:
         p_dir = _project_dir(project_id)
         j_dir = _joint_folder(project_id, joint)
         data = _read_json(j_dir / "bundle.json", {})
@@ -1315,7 +1345,7 @@ def create_app(
         return data
 
     @app.get("/projects/{project_id}/joints/{joint}/joint.ifc")
-    async def get_joint_ifc(project_id: str, joint: str):
+    def get_joint_ifc(project_id: str, joint: str):
         j_dir = _joint_folder(project_id, joint)
         path = j_dir / "joint.ifc"
         if not path.is_file():
@@ -1323,7 +1353,7 @@ def create_app(
         return FileResponse(path, media_type="application/x-step", filename=f"{joint}.ifc")
 
     @app.get("/projects/{project_id}/joints/{joint}/fixed.ifc")
-    async def get_fixed_ifc(project_id: str, joint: str, option: int = Query(0, ge=0)):
+    def get_fixed_ifc(project_id: str, joint: str, option: int = Query(0, ge=0)):
         j_dir = _joint_folder(project_id, joint)
         if option == 0:
             path = j_dir / "fixed.ifc"
@@ -1349,7 +1379,7 @@ def create_app(
         return FileResponse(target_path, media_type="application/x-step", filename=f"{joint}-fixed-{option}.ifc")
 
     @app.get("/projects/{project_id}/joints/{joint}/issues.bcf")
-    async def get_issues_bcf(project_id: str, joint: str):
+    def get_issues_bcf(project_id: str, joint: str):
         j_dir = _joint_folder(project_id, joint)
         path = j_dir / "issues.bcf"
         if not path.is_file():
@@ -1357,7 +1387,7 @@ def create_app(
         return FileResponse(path, media_type="application/zip", filename=f"{joint}.bcf")
 
     @app.get("/projects/{project_id}/joints/{joint}/report.md")
-    async def get_report_md(project_id: str, joint: str):
+    def get_report_md(project_id: str, joint: str):
         j_dir = _joint_folder(project_id, joint)
         path = j_dir / "report.md"
         if not path.is_file():
@@ -1365,7 +1395,7 @@ def create_app(
         return FileResponse(path, media_type="text/markdown; charset=utf-8", filename=f"{joint}-report.md")
 
     @app.get("/projects/{project_id}/joints/{joint}/pages/{filename}")
-    async def get_joint_page_image(project_id: str, joint: str, filename: str):
+    def get_joint_page_image(project_id: str, joint: str, filename: str):
         j_dir = _joint_folder(project_id, joint)
         safe_file = _validate_id(filename, "page filename")
         path = j_dir / "pages" / safe_file
@@ -1376,7 +1406,7 @@ def create_app(
         return FileResponse(path, media_type="image/png")
 
     @app.get("/projects/{project_id}/pages/{page_num}.png")
-    async def get_page_png(project_id: str, page_num: int, crop: str | None = None):
+    def get_page_png(project_id: str, page_num: int, crop: str | None = None):
         p_dir = _project_dir(project_id)
         png_path = p_dir / "pages" / f"page-{page_num}.png"
         if not png_path.is_file():
@@ -1393,15 +1423,44 @@ def create_app(
             raise ProblemError(400, "Invalid crop box", "Crop coordinates must be numbers.") from exc
 
         import pymupdf
-        src = pymupdf.Pixmap(str(png_path))
-        x0 = max(0, min(src.width - 1, int(xmin * src.width / 1000.0)))
-        y0 = max(0, min(src.height - 1, int(ymin * src.height / 1000.0)))
-        x1 = max(x0 + 1, min(src.width, int(xmax * src.width / 1000.0)))
-        y1 = max(y0 + 1, min(src.height, int(ymax * src.height / 1000.0)))
-        clip = pymupdf.IRect(x0, y0, x1, y1)
-        sub = pymupdf.Pixmap(src.colorspace, clip, src.alpha)
-        sub.copy(src, clip)
-        return Response(content=sub.tobytes("png"), media_type="image/png")
+
+        mtime_ns = png_path.stat().st_mtime_ns
+        crop_key = (str(png_path), mtime_ns, crop)
+        with crop_lock:
+            cached_bytes = crop_bytes_cache.get(crop_key)
+            if cached_bytes is not None:
+                crop_bytes_cache.move_to_end(crop_key)
+                return Response(
+                    content=cached_bytes,
+                    media_type="image/png",
+                    headers={"Cache-Control": "private, max-age=300"},
+                )
+            page_key = (str(png_path), mtime_ns)
+            src = page_pixmap_cache.get(page_key)
+            if src is None:
+                src = pymupdf.Pixmap(str(png_path))
+                page_pixmap_cache[page_key] = src
+                if len(page_pixmap_cache) > 2:
+                    page_pixmap_cache.popitem(last=False)
+            else:
+                page_pixmap_cache.move_to_end(page_key)
+
+            x0 = max(0, min(src.width - 1, int(xmin * src.width / 1000.0)))
+            y0 = max(0, min(src.height - 1, int(ymin * src.height / 1000.0)))
+            x1 = max(x0 + 1, min(src.width, int(xmax * src.width / 1000.0)))
+            y1 = max(y0 + 1, min(src.height, int(ymax * src.height / 1000.0)))
+            clip = pymupdf.IRect(x0, y0, x1, y1)
+            sub = pymupdf.Pixmap(src.colorspace, clip, src.alpha)
+            sub.copy(src, clip)
+            png_bytes = sub.tobytes("png")
+            crop_bytes_cache[crop_key] = png_bytes
+            if len(crop_bytes_cache) > 256:
+                crop_bytes_cache.popitem(last=False)
+        return Response(
+            content=png_bytes,
+            media_type="image/png",
+            headers={"Cache-Control": "private, max-age=300"},
+        )
 
     return app
 

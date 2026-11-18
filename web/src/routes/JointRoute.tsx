@@ -83,7 +83,7 @@ export function JointRoute() {
           )}
           {isBlocked && (
             <Button size="sm" asChild>
-              <Link to={projectReviewPath(id)}>Go to To check</Link>
+              <Link to={projectReviewPath(id, { joint: jointId })}>Go to To check</Link>
             </Button>
           )}
           <Button variant="outline" size="sm" asChild>
@@ -102,7 +102,7 @@ export function JointRoute() {
           <p>{error instanceof Error ? error.message : "Could not load joint bundle."}</p>
           {isBlocked && (
             <Button variant="outline" size="sm" asChild>
-              <Link to={projectReviewPath(id)}>Resolve blocking To check items</Link>
+              <Link to={projectReviewPath(id, { joint: jointId })}>Resolve blocking To check items</Link>
             </Button>
           )}
         </div>

@@ -84,11 +84,21 @@ export function UploadRoute() {
       eventSourceRef.current = es;
 
       es.addEventListener("page_started", (ev) => {
-        const data = JSON.parse(ev.data) as { page: number; total: number; needs_ocr?: boolean };
+        const data = JSON.parse(ev.data) as {
+          page: number;
+          total: number;
+          pages?: number[];
+          needs_ocr?: boolean;
+        };
         setTotalPages(data.total);
         setTiles((prev) => {
           const map = new Map(prev.map((t) => [t.page, t]));
-          for (let n = 1; n <= data.total; n++) {
+          const expectedPages = Array.isArray(data.pages)
+            ? data.pages
+            : data.page <= data.total
+              ? Array.from({ length: data.total }, (_, i) => i + 1)
+              : [data.page];
+          for (const n of expectedPages) {
             if (!map.has(n)) map.set(n, { page: n, status: "queued" });
           }
           map.set(data.page, { page: data.page, status: "reading", needsOcr: data.needs_ocr });

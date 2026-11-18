@@ -85,7 +85,8 @@ class CachingOcr:
     """Saves each response as `<dir>/<hash>.json` and replays it. With `inner` None it only replays."""
 
     def __init__(self, inner: OcrTransport | None, directory: Path, ledger: list[CallRecord] | None = None):
-        self.inner, self.directory = inner, directory
+        from .gemini import replies_dir
+        self.inner, self.directory = inner, replies_dir(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.ledger = ledger if ledger is not None else []
         self._lock = threading.Lock()

@@ -136,6 +136,7 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
         <div className="mt-3 overflow-hidden rounded-[var(--radius-md)] border border-paper-border bg-paper p-2">
           <img
             src={cropSrc}
+            loading="lazy"
             alt={`Drawing crop for ${item.member ?? item.field} on page ${item.page}`}
             className="mx-auto max-h-40 w-auto object-contain"
           />

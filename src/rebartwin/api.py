@@ -33,6 +33,7 @@ from .reader.ocr import CachingOcr, VisionTransport, ocr_pages
 from .reader.parser import parse_page
 from .reader.pipeline import attach_sources
 from .report import bundle as build_bundle
+from .rules import CATALOGUE
 
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9._@-]+$")
 _SECTION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*$", re.IGNORECASE)
@@ -876,27 +877,100 @@ def create_app(
         meta = _read_json(p_dir / "project.json", {})
         reading = _read_json(p_dir / "reading.json", {})
         tc_items: list[dict[str, Any]] = _read_json(p_dir / "to_check.json", [])
+        prov_all: list[dict[str, Any]] = _read_json(p_dir / "provenance.json", [])
+        prov_by_joint = {p.get("joint"): p for p in prov_all if isinstance(p, dict)}
 
         joints_list: list[dict[str, Any]] = []
+        rule_failures: dict[str, int] = {}
+        rule_joints: dict[str, set[str]] = {}
+        rule_meta: dict[str, tuple[str, str]] = {}
+
         joints_dir = p_dir / "joints"
         if joints_dir.is_dir():
             for jf in sorted(joints_dir.glob("*.json")):
                 jid = jf.stem
                 j_data = _read_json(jf, {})
+                joint_id = j_data.get("id", jid)
                 b_dir = joints_dir / jid
                 b_data = _read_json(b_dir / "bundle.json") if (b_dir / "bundle.json").is_file() else None
-                blocked_n = sum(1 for t in tc_items if _dict_blocks_joint(t, jid))
+                blocking_ids = [str(t["id"]) for t in tc_items if _dict_blocks_joint(t, joint_id) and t.get("id")]
+                blocked_n = len(blocking_ids)
+
+                # Extract sheet pages and level from bundle provenance or provenance.json
+                sheet_pages: set[int] = set()
+                inferred_level: str | None = j_data.get("level")
+                if not inferred_level and "@" in joint_id:
+                    inferred_level = joint_id.split("@", 1)[1]
+                prov_entries = (b_data or {}).get("provenance") if isinstance((b_data or {}).get("provenance"), list) else []
+                for entry in prov_entries:
+                    if isinstance(entry, dict) and entry.get("status") != "default":
+                        if isinstance(entry.get("page"), int) and entry["page"] > 0:
+                            sheet_pages.add(entry["page"])
+                        if not inferred_level and entry.get("level"):
+                            inferred_level = entry["level"]
+                if not sheet_pages and joint_id in prov_by_joint:
+                    for raw_val in prov_by_joint[joint_id].get("fields", {}).values():
+                        rows = raw_val if isinstance(raw_val, list) else ([raw_val] if isinstance(raw_val, dict) else [])
+                        for r in rows:
+                            if isinstance(r, dict) and isinstance(r.get("page"), int) and r["page"] > 0:
+                                sheet_pages.add(r["page"])
+
+                worst_failure: dict[str, Any] | None = None
+                joint_failing_rules: list[str] = []
                 if b_data and blocked_n == 0:
                     findings = b_data.get("report", {}).get("findings", [])
-                    fail_n = sum(1 for f in findings if f.get("status") == "fail")
+                    failing_findings = [f for f in findings if f.get("status") == "fail"]
+                    fail_n = len(failing_findings)
                     fix_status = b_data.get("fix", {}).get("status")
                     j_status = "fail" if fail_n > 0 else "pass"
+
+                    for f in failing_findings:
+                        rid = str(f.get("rule") or "")
+                        if not rid:
+                            continue
+                        rule_failures[rid] = rule_failures.get(rid, 0) + 1
+                        rule_joints.setdefault(rid, set()).add(joint_id)
+                        if rid not in rule_meta:
+                            cat = CATALOGUE.get(rid)
+                            rule_meta[rid] = (
+                                str(f.get("clause") or (cat.clause if cat else rid)),
+                                str(f.get("title") or (cat.title if cat else rid)),
+                            )
+                        if rid not in joint_failing_rules:
+                            joint_failing_rules.append(rid)
+
+                    if failing_findings:
+                        worst = min(
+                            failing_findings,
+                            key=lambda f: (
+                                0 if str(f.get("rule", "")).startswith("IS13920")
+                                else 1 if f.get("rule") == "GEOM-CLASH"
+                                else 2,
+                                float(f.get("margin", 0.0)),
+                                str(f.get("rule", "")),
+                            ),
+                        )
+                        worst_failure = {
+                            "rule": worst.get("rule"),
+                            "clause": worst.get("clause"),
+                            "title": worst.get("title"),
+                            "measured": worst.get("measured"),
+                            "limit": worst.get("limit"),
+                            "compare": worst.get("compare"),
+                            "margin": worst.get("margin"),
+                            "unit": worst.get("unit"),
+                            "message": worst.get("message"),
+                        }
                 else:
                     fail_n = 0
                     fix_status = None
                     j_status = "to_check"
+
                 joints_list.append({
-                    "id": j_data.get("id", jid),
+                    "id": joint_id,
+                    "grid": j_data.get("grid") or j_data.get("location"),
+                    "level": inferred_level,
+                    "sheets": sorted(sheet_pages),
                     "column": j_data.get("column", {}),
                     "beams": j_data.get("beams", []),
                     "seismic_zone": j_data.get("settings", {}).get("seismic_zone"),
@@ -905,12 +979,38 @@ def create_app(
                     "fix_status": fix_status,
                     "fail_count": fail_n,
                     "blocked_count": blocked_n,
+                    "blocking_item_ids": blocking_ids,
+                    "worst_failure": worst_failure,
+                    "failing_rules": joint_failing_rules,
                     "bundle_ready": bool(b_data and blocked_n == 0),
                 })
 
-        # Failures first, then to_check, then pass
+        # Failures first, then to_check (most blockers first), then pass
         order = {"fail": 0, "to_check": 1, "pass": 2}
-        joints_list.sort(key=lambda j: (order.get(j["status"], 9), -j["fail_count"], j["id"]))
+        joints_list.sort(
+            key=lambda j: (order.get(j["status"], 9), -j["fail_count"], -j["blocked_count"], j["id"]),
+        )
+
+        failures_by_rule = [
+            {
+                "rule": rid,
+                "clause": rule_meta[rid][0],
+                "title": rule_meta[rid][1],
+                "failures": count,
+                "joints": len(rule_joints.get(rid, ())),
+            }
+            for rid, count in rule_failures.items()
+        ]
+        failures_by_rule.sort(key=lambda r: (-int(r["failures"]), -int(r["joints"]), str(r["rule"])))
+
+        beam_junctions_raw = _read_json(p_dir / "beam_junctions.json", None)
+        if beam_junctions_raw is None:
+            beam_junctions_raw = reading.get("beam_junctions")
+        if beam_junctions_raw is None and isinstance(reading.get("junctions"), list):
+            beam_junctions_raw = [
+                row for row in reading["junctions"] if isinstance(row, dict) and not row.get("column")
+            ]
+        beam_junctions = beam_junctions_raw if isinstance(beam_junctions_raw, list) else []
 
         unresolved = [t for t in tc_items if t.get("resolution") is None]
         proj_level_unresolved = [t for t in unresolved if _dict_is_project_level(t)]
@@ -921,6 +1021,15 @@ def create_app(
         return {
             **meta,
             "sheets": sheets_info,
+            "counts": {
+                "found": len(joints_list),
+                "checked": sum(1 for j in joints_list if j["status"] in ("fail", "pass")),
+                "failing": sum(1 for j in joints_list if j["status"] == "fail"),
+                "blocked": sum(1 for j in joints_list if j["status"] == "to_check"),
+                "passing": sum(1 for j in joints_list if j["status"] == "pass"),
+            },
+            "failures_by_rule": failures_by_rule,
+            "beam_junctions": beam_junctions,
             "joints": joints_list,
             "to_check_counts": {
                 "total": len(tc_items),

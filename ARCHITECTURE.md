@@ -229,7 +229,7 @@ web-ifc stays, lazy-loaded, behind "Open IFC".
 |---|---|
 | `/` | Landing |
 | `/demo` | The worked example, offline, with the guided tour |
-| `/projects/:id` | Project: sheets and joints, failures first |
+| `/projects/:id` | Project overview: counts (`found`, `checked`, `failing`, `blocked`), failures-by-rule chart, sorted joints with worst failure and links (`Joint`, `Report`, `To check`), beam-on-beam junctions as info |
 | `/projects/:id/upload` | Upload and reading progress |
 | `/projects/:id/review` | To check queue |
 | `/projects/:id/joints/:jointId` | Joint workspace (`?f=` selected finding, `?o=` option, `?a=` attempt) |

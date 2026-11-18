@@ -12,7 +12,7 @@ export function StatusIsland() {
   const status = useWorkspaceStore((s) => s.status);
   const reduced = useReducedMotion();
 
-  const failPhrase = `${status.failCount} ${status.failCount === 1 ? "fail" : "fails"}`;
+  const failPhrase = status.failCount > 0 ? `${status.failCount} fails` : "Passes";
   const accessibleSummary = `${failPhrase}, ${status.toCheckCount} to check, zone ${status.zone}, IS 13920 ${status.is13920 ? "on" : "off"
     }`;
   const inlineSummary = `${status.toCheckCount} to check · zone ${status.zone} · IS 13920 ${status.is13920 ? "on" : "off"

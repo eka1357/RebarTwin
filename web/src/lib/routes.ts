@@ -6,8 +6,15 @@ export function projectUploadPath(projectId: string): string {
   return `/projects/${encodeURIComponent(projectId)}/upload`;
 }
 
-export function projectReviewPath(projectId: string): string {
-  return `/projects/${encodeURIComponent(projectId)}/review`;
+export function projectReviewPath(
+  projectId: string,
+  opts?: { joint?: string | null },
+): string {
+  const base = `/projects/${encodeURIComponent(projectId)}/review`;
+  if (!opts?.joint) return base;
+  const params = new URLSearchParams();
+  params.set("joint", opts.joint);
+  return `${base}?${params.toString()}`;
 }
 
 export function projectReportPath(

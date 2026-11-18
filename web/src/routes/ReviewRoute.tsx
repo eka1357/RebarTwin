@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { StatusPill } from "../components/StatusPill";
 import { Button } from "../components/ui/button";
@@ -19,6 +19,8 @@ import { useWorkspaceStore } from "../stores/workspace";
 
 export function ReviewRoute() {
   const { id = "c4-b12" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const jointFilter = searchParams.get("joint");
   const queryClient = useQueryClient();
   const setStatus = useWorkspaceStore((s) => s.setStatus);
 
@@ -46,7 +48,23 @@ export function ReviewRoute() {
     retry: false,
   });
 
-  const items = useMemo(() => (rawItems ? sortToCheckQueue(rawItems) : []), [rawItems]);
+  const allItems = useMemo(() => (rawItems ? sortToCheckQueue(rawItems) : []), [rawItems]);
+  const items = useMemo(() => {
+    if (!jointFilter) return allItems;
+    const matchedJoint = project?.joints.find((j) => j.id === jointFilter);
+    const blockingIds = new Set(matchedJoint?.blocking_item_ids ?? []);
+    const memberSet = new Set<string>();
+    if (matchedJoint?.column.id) memberSet.add(matchedJoint.column.id);
+    for (const b of matchedJoint?.beams ?? []) memberSet.add(b.id);
+    const filtered = allItems.filter(
+      (t) =>
+        t.project_level ||
+        t.joint === jointFilter ||
+        blockingIds.has(t.id) ||
+        (t.joint === null && t.member !== null && memberSet.has(t.member)),
+    );
+    return filtered.length > 0 ? filtered : allItems;
+  }, [allItems, jointFilter, project]);
   const unresolvedCount = useMemo(
     () => items.filter((t) => !t.resolution).length,
     [items],
@@ -215,6 +233,26 @@ export function ReviewRoute() {
         </div>
       ) : (
         <>
+          {jointFilter && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface-raised px-3.5 py-2 text-xs">
+              <span className="text-foreground">
+                Showing items blocking joint <span className="font-num font-semibold">{jointFilter}</span>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => {
+                  const next = new URLSearchParams(searchParams);
+                  next.delete("joint");
+                  setSearchParams(next, { replace: true });
+                }}
+              >
+                Show all items ({allItems.length})
+              </Button>
+            </div>
+          )}
+
           {projectBlockersCount > 0 && (
             <div className="rounded-[var(--radius-md)] border border-check/40 bg-check-surface px-3.5 py-2.5 text-xs text-check">
               {projectBlockersCount} project-level item(s) (zone, exposure, or general notes) block

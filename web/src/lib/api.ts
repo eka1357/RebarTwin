@@ -38,8 +38,48 @@ export interface ProjectSheetInfo {
   ocr_repairs?: number;
 }
 
+export interface WorstFailure {
+  rule: string;
+  clause: string;
+  title: string;
+  measured?: number;
+  limit?: number;
+  compare?: ">=" | "<=";
+  margin?: number;
+  unit?: string;
+  message?: string;
+}
+
+export interface RuleFailureStat {
+  rule: string;
+  clause: string;
+  title: string;
+  failures: number;
+  joints: number;
+}
+
+export interface BeamJunctionInfo {
+  id: string;
+  beams: string[];
+  grid?: string | null;
+  level?: string | null;
+  page?: number | null;
+  note?: string | null;
+}
+
+export interface ProjectCounts {
+  found: number;
+  checked: number;
+  failing: number;
+  blocked: number;
+  passing: number;
+}
+
 export interface ProjectJointSummary {
   id: string;
+  grid?: string | null;
+  level?: string | null;
+  sheets?: number[];
   column: { id?: string; b?: number; h?: number; n_bars?: number; bar_dia?: number };
   beams: Array<{ id: string; b?: number; D?: number; direction?: string }>;
   seismic_zone?: string;
@@ -48,11 +88,17 @@ export interface ProjectJointSummary {
   fix_status?: string | null;
   fail_count: number;
   blocked_count: number;
+  blocking_item_ids?: string[];
+  worst_failure?: WorstFailure | null;
+  failing_rules?: string[];
   bundle_ready: boolean;
 }
 
 export interface ProjectDetail extends ProjectSummary {
   sheets: ProjectSheetInfo[];
+  counts?: ProjectCounts;
+  failures_by_rule?: RuleFailureStat[];
+  beam_junctions?: BeamJunctionInfo[];
   joints: ProjectJointSummary[];
   to_check_counts: {
     total: number;
@@ -62,6 +108,7 @@ export interface ProjectDetail extends ProjectSummary {
   reading?: {
     counts?: Record<string, number>;
     seconds?: number;
+    prompts?: Record<string, string>;
     link_model?: string | null;
   };
 }

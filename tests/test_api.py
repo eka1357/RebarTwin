@@ -172,3 +172,41 @@ def test_joint_ids_with_at_sign_encode_cleanly(tmp_path: Path, monkeypatch):
     r = client.get("/projects/at-proj/joints/C4xB12%40FIRST/bundle")
     assert r.status_code == 200
     assert r.json()["joint"]["id"] == "C4xB12@FIRST"
+
+
+def test_project_overview_exposes_counts_failures_by_rule_worst_and_beam_junctions(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path))
+    p_dir = tmp_path / "overview-proj"
+    j_dir = p_dir / "joints" / "C4xB12@FIRST"
+    j_dir.mkdir(parents=True)
+    joint_data = json.loads(EXAMPLE_JOINT.read_text(encoding="utf-8"))
+    joint_data["id"] = "C4xB12@FIRST"
+    joint_data["grid"] = "B-4"
+    (p_dir / "joints" / "C4xB12@FIRST.json").write_text(json.dumps(joint_data), encoding="utf-8")
+    from rebartwin.check import check
+    from rebartwin.fixes import Enumerator, resolve
+    from rebartwin.model import Joint
+    from rebartwin.report import bundle as make_bundle
+
+    jm = Joint.model_validate(joint_data)
+    rep, cage = check(jm)
+    fix = resolve(jm, [Enumerator()])
+    (j_dir / "bundle.json").write_text(json.dumps(make_bundle(jm, rep, fix, cage)), encoding="utf-8")
+    (p_dir / "project.json").write_text(json.dumps({"id": "overview-proj", "name": "Overview", "status": "done"}), encoding="utf-8")
+    (p_dir / "to_check.json").write_text("[]", encoding="utf-8")
+    (p_dir / "beam_junctions.json").write_text(
+        json.dumps([{"id": "B21-B4", "beams": ["B21", "B4"], "grid": "A/B-3", "level": "FIRST FLOOR", "page": 2}]),
+        encoding="utf-8",
+    )
+
+    client = TestClient(create_app())
+    ov = client.get("/projects/overview-proj").json()
+    assert ov["counts"] == {"found": 1, "checked": 1, "failing": 1, "blocked": 0, "passing": 0}
+    assert ov["joints"][0]["grid"] == "B-4"
+    assert ov["joints"][0]["level"] == "FIRST"
+    assert ov["joints"][0]["worst_failure"]["rule"] == "GEOM-CLASH"
+    assert ov["failures_by_rule"][0]["rule"] == "IS456-26.3.2-H"
+    assert ov["failures_by_rule"][0]["failures"] == 4
+    assert ov["failures_by_rule"][0]["joints"] == 1
+    assert len(ov["beam_junctions"]) == 1
+    assert ov["beam_junctions"][0]["beams"] == ["B21", "B4"]

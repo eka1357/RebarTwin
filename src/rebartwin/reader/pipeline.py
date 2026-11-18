@@ -108,11 +108,12 @@ def source_entries(v: Verified, fields: dict[str, Accepted]) -> list[dict]:
                 "layer": a.layer if a else None, "page": p["page"], "box_2d": p["box_2d"], "text": p["text"],
                 "gemini": p["gemini"], "parser": p["parser"], "status": p["status"],
                 "ocr_raw": p.get("ocr_raw"), "joined_from": p.get("joined_from"),
-                "page_image": f"pages/page-{p['page']}.png"})
+                "page_image": f"pages/page-{p['page']}.png",
+                "refs": [{**r, "page_image": f"pages/page-{r['page']}.png"} for r in p.get("refs") or []] or None})
     for path, value in v.defaults.items():
         entries.append({"path": path, "member": None, "field": None, "layer": None, "page": None, "box_2d": None,
                         "text": None, "gemini": None, "parser": value, "status": "default", "ocr_raw": None,
-                        "joined_from": None, "page_image": None})
+                        "joined_from": None, "page_image": None, "refs": None})
     return entries
 
 
@@ -121,7 +122,7 @@ def attach_sources(bundle_path: Path, v: Verified, fields: dict[str, Accepted], 
     bundle folder is self-contained (paths relative to bundle.json)."""
     bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
     entries = source_entries(v, fields)
-    pages = sorted({e["page"] for e in entries if e["page"]})
+    pages = sorted({e["page"] for e in entries if e["page"]} | {r["page"] for e in entries for r in e["refs"] or []})
     (bundle_path.parent / "pages").mkdir(exist_ok=True)
     for n in pages:
         shutil.copyfile(out / "pages" / f"page-{n}.png", bundle_path.parent / "pages" / f"page-{n}.png")

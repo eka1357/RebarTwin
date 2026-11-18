@@ -116,6 +116,15 @@ Built `web/` W8 on `feature/w8-upload`: typed API client (`lib/api.ts`), Manus-s
 
 Built `web/` W9 on `feature/w9-review`: client callout grammar validator and project-level-first queue sorter (`lib/calloutGrammar.ts`), `ToCheckCard` (`features/review/ToCheckCard.tsx`) on `surface-paper` with live `/pages/{n}.png?crop=` images, Gemini/Parser radio group, quick zone/exposure chips, keys `1`, `2`, `E`, `S`, `J`, `K`, grammar-validated inline editing, and `ReviewRoute.tsx` unlocking and linking directly to checked `@`-encoded joints (`C4xB12@FIRST`). Verified with ESLint, TypeScript, Vitest (24 passed), Vite production build, and Playwright + axe across dark/light themes, reduced motion, and 320 px width (13 passed).
 
+## 18 November 2026: joints from geometry, item 4 (`feature/R-ocr`)
+
+Claude Code. Master (A1, W8, W9) merged into `feature/R-ocr`. Gemini's Cyrillic Ф and Greek Ά read as Ø in its
+values. `plan.py`: grids from bubbles and their lines, sheet alignment, columns on the grid, beam bands, beam-column
+meets as code-made `frames_into` (status `geometry`), beam-on-beam junctions; size labels on plans tie by band and
+elevation callouts by the title below. Sheets 15 and 21: 35 x and 28 y grid lines on both, aligned to 0.28 units,
+45 joints from 82 meets, 10 To check items. Replay of the saved t3000 replies: 104 to 238 accepted (top 0 to 30,
+top_extra 0 to 29, frames_into 58). 268 tests, no key needed.
+
 ## Next: built in Google Antigravity
 
 The Gemini fix proposer and the API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

@@ -91,8 +91,9 @@ def test_bundle_carries_its_sources_and_page_images(tmp_path: Path, recorded):
     assert bundle["pages"] == {"1": "pages/page-1.png"}
     assert (folder / "pages" / "page-1.png").is_file()
     keys = {"path", "member", "field", "layer", "page", "box_2d", "text", "gemini", "parser", "status", "ocr_raw", "joined_from",
-            "page_image"}
+            "page_image", "refs"}
     assert all(set(e) == keys for e in bundle["provenance"])
+    assert all(e["refs"] is None for e in bundle["provenance"])     # this sheet's frames_into are both-channel reads
     top = next(e for e in bundle["provenance"] if e["path"] == "beams[0].top[0].bars")
     assert (top["member"], top["field"], top["layer"], top["text"], top["parser"], top["status"], top["page_image"]) \
         == ("B12", "top", 1, "5-20", "5-20", "agreed", "pages/page-1.png")

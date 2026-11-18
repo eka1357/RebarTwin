@@ -1,5 +1,37 @@
 # Handoff: item 4, joints from geometry (Claude Code, 18 November 2026)
 
+# Status, 18 November 2026 (evening): item 4 built
+
+Done on `feature/R-ocr` (master's A1, W8, W9 merged in first; 268 Python tests and 24 web tests pass):
+
+- Gemini's Cyrillic Ф and Greek Ά read as Ø in `parser.normalise` (Gemini's values only).
+- `plan.py`: grids, alignment, columns, beam bands, beam-column meets, read into the pipeline as `frames_into` with
+  status `geometry` (`refs` holds the column label on the column layout); beam-on-beam junctions in reading.json
+  `plans`. Bubble text is never a member id. Plan size labels tie by band; elevation callouts by the title below.
+- Two changes from the plan, both from the drawing: (a) close sub-grids (B and B1, 250 mm apart) both cross many
+  columns, so a column keeps every grid line its outline covers ("C/C1-25"), not one intersection; (b) a beam meets
+  a column when its band overlaps the column's outline, not only when both share a grid line, because XB1A is flush
+  with the column faces, about 8 units off grid A. Same 80 joints either way, plus XB1A's two.
+- `scripts/plan_joints.py --beams 15 --columns 21` prints the joints with no API call: 45 joints from 82 meets,
+  25 junctions, 10 To check (YB5, YB6, YB7 and one YB10 label between two bands; C5, C6, C12 on the unlabelled grid
+  line between N1 and P1). **For Eka to check against the drawing** before any linking or whole-set run.
+- Replay (`scripts/replay_agreement.py ... --plans 21`): accepted 104 to 238. Per field (saved run, after Ф/Ά, now):
+  section 47, 39, 38; main 2, 5, 5; links 10, 9, 9; top 0, 0, 30; top_extra 0, 0, 29; bottom 0, 27, 32;
+  bottom_extra 0, 18, 31; cover 0, 0, 0; concrete 4, 4, 4; steel 2, 2, 2; frames_into 0, 0, 58 of 69.
+  Section dropped one because stepped beams (XB12(200x450/200x600-inv)) now give two sizes and rule 7 sends both
+  to To check.
+
+Open:
+- Sheet 19 (TERRACE FLOOR, LMR and OHT layouts on one sheet) is found as a beam layout but does not fit sheet 21's
+  grid (worst residual 11.4 units): one To check item, no joints. Splitting a sheet into its layouts is not built.
+- Slab marks in circles (S1, S14...) are found as bubbles; they place no grid line and are not member ids, but
+  `plan_joints.py` lists them as "bubbles with no line", and on sheet 19 one (S10) was taken as a grid label.
+- The web shows status `geometry` as a plain grey badge with that word; a proper badge and the `refs` crop (the
+  column label on the column layout) are web work.
+- Not done: fast-forward master to `feature/R-ocr` (waits for Eka's OK and Antigravity idle). Still on hold: the
+  `--tile 1500` comparison, the whole set, the storey prompt nudge.
+
+
 Written at the end of a long session so a fresh Claude Code session can pick up item 4 with nothing lost. Read
 CLAUDE.md, AGENTS.md, ARCHITECTURE.md (Reader) first, then this.
 

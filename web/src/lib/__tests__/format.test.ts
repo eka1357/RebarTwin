@@ -6,14 +6,17 @@ import {
   formatBarMark,
   formatCalloutValue,
   formatClause,
+  formatFindingReportSentence,
   formatFindingValue,
   formatFixToastSummary,
   formatMeasure,
   formatNumber,
   formatOverlap,
   formatPercentDelta,
+  groupReportFindings,
   NBSP,
 } from "../format";
+import type { Finding } from "../../types/bundle";
 import { jointPath } from "../routes";
 
 describe("format.ts", () => {
@@ -146,5 +149,53 @@ describe("format.ts", () => {
     ).toBe("Fails: B12 top bars 1 and 2 are 16 mm apart, need 25 mm, IS 456 clause 26.3.2");
 
     expect(jointPath("p1", "C4xB12@FIRST")).toBe("/projects/p1/joints/C4xB12%40FIRST");
+  });
+
+  it("groups findings sharing rule, members, measured, and limit while never merging differing numbers", () => {
+    const mkSpacing = (idx: number, gap: number): Finding => ({
+      rule: "IS456-26.3.2-H",
+      clause: "IS 456:2000 cl. 26.3.2",
+      title: "Clear gap between parallel bars",
+      status: "fail",
+      measured: gap,
+      limit: 25,
+      compare: ">=",
+      margin: gap - 25,
+      unit: "mm",
+      members: ["B12"],
+      bars: [`B12/T1-${idx}`, `B12/T1-${idx + 1}`],
+      at: [-750, 0, -43],
+      span: null,
+      message: `B12 top bars ${idx} and ${idx + 1} are ${gap} mm apart; with 20 mm aggregate and 20 mm bars the code needs 25 mm`,
+    });
+
+    const grouped = groupReportFindings([
+      mkSpacing(1, 16),
+      mkSpacing(2, 16),
+      mkSpacing(3, 16),
+      mkSpacing(4, 16),
+    ]);
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].count).toBe(4);
+    expect(grouped[0].sentence).toBe(
+      `B12 top bars 1-2, 2-3, 3-4 and 4-5 are 16${NBSP}mm apart; IS 456 cl. 26.3.2 needs 25${NBSP}mm.`,
+    );
+
+    const differing = groupReportFindings([mkSpacing(1, 16), mkSpacing(2, 18)]);
+    expect(differing).toHaveLength(2);
+
+    const clashSentence = formatFindingReportSentence({
+      rule: "GEOM-CLASH",
+      clause: "Geometry",
+      measured: -18,
+      limit: 0,
+      compare: ">=",
+      unit: "mm",
+      status: "fail",
+      message:
+        "C4 column bar 4 (16 mm) runs into B12 top bar 3 (20 mm): they overlap by 18 mm, so one of them cannot be placed as drawn",
+    });
+    expect(clashSentence).not.toContain("overlap allowed");
+    expect(clashSentence).not.toContain("Geometry)");
   });
 });

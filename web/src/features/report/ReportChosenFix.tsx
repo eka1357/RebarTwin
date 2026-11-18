@@ -50,10 +50,10 @@ export function ReportChosenFix({
   const pillStatus = hasRedesign ? "redesign" : hasRecheck ? "recheck" : "pass";
 
   return (
-    <section aria-labelledby="report-fix-heading" className="report-break-avoid space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-1.5">
+    <section aria-labelledby="report-fix-heading" className="report-break-avoid space-y-3 print:space-y-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-1.5 print:pb-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 id="report-fix-heading" className="font-display text-base font-semibold text-foreground">
+          <h2 id="report-fix-heading" className="font-display text-base font-semibold text-foreground print:text-sm">
             Chosen fix
           </h2>
           <Badge variant="muted" className="font-num">
@@ -63,11 +63,13 @@ export function ReportChosenFix({
         <StatusPill status={pillStatus} size="sm" />
       </div>
 
-      <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3.5 space-y-3">
+      <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3.5 space-y-3 print:p-2 print:space-y-1.5">
         <div>
           <p className="font-num text-sm font-semibold text-foreground">{option.candidate.title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Passes every IS 456, IS 13920, and geometry check once applied.
+            {bundle.report.is13920
+              ? "Passes every check that applies (IS 456, IS 13920, and geometry) once applied."
+              : `Passes every check that applies once applied. IS 13920 is off in zone ${bundle.report.seismic_zone}.`}
           </p>
         </div>
 
@@ -82,8 +84,11 @@ export function ReportChosenFix({
         )}
 
         {option.faces.map((fc) => (
-          <div key={`${fc.beam}-${fc.face}`} className="space-y-2.5">
-            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+          <div
+            key={`${fc.beam}-${fc.face}`}
+            className="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)] md:items-center print:grid-cols-[auto_minmax(0,1fr)] print:items-center print:gap-2.5"
+          >
+            <div className="grid grid-cols-2 gap-2.5">
               <SectionGlyph
                 scene={bundle.scene}
                 beamId={fc.beam}
@@ -100,7 +105,7 @@ export function ReportChosenFix({
               />
             </div>
 
-            <dl className="grid gap-2 border-t border-border pt-2.5 text-xs sm:grid-cols-3">
+            <dl className="grid gap-2 text-xs sm:grid-cols-2 md:grid-cols-1 print:grid-cols-2 print:gap-x-4 print:gap-y-1">
               <div>
                 <dt className="text-muted-foreground">
                   {fc.beam} {fc.face} bars
@@ -110,16 +115,16 @@ export function ReportChosenFix({
                 </dd>
               </div>
               <div>
+                <dt className="text-muted-foreground">Effective depth</dt>
+                <dd className="mt-0.5 font-num font-medium text-foreground">
+                  {formatNumber(fc.depth_before)} → {formatMeasure(fc.depth_after, "mm")}
+                </dd>
+              </div>
+              <div className="print:col-span-2">
                 <dt className="text-muted-foreground">Steel area (before → provided)</dt>
                 <dd className="mt-0.5 font-num font-medium text-foreground">
                   {formatNumber(fc.area_before)} → {formatArea(fc.area_provided)} (
                   {formatPercentDelta(fc.overshoot_pct)} vs {formatArea(fc.area_required)} needed)
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Effective depth</dt>
-                <dd className="mt-0.5 font-num font-medium text-foreground">
-                  {formatNumber(fc.depth_before)} → {formatMeasure(fc.depth_after, "mm")}
                 </dd>
               </div>
             </dl>

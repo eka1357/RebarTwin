@@ -4,6 +4,7 @@
 @import "./tokens.css";
 
 @layer base {
+
   html,
   body {
     background-color: var(--background);
@@ -45,28 +46,33 @@
 
 @page {
   size: A4 portrait;
-  margin: 12mm;
+  margin: 8mm;
 }
 
 @media print {
-  :root {
+
+  :root,
+  [data-theme="light"] {
     color-scheme: light;
-    --background: var(--paper-50);
-    --surface: var(--paper-50);
-    --surface-raised: var(--paper-50);
+    --background: var(--white);
+    --surface: var(--white);
+    --surface-raised: var(--white);
     --surface-sunken: var(--paper-100);
+    --paper: var(--white);
     --border: var(--paper-300);
     --border-strong: var(--paper-400);
     --foreground: var(--graphite-900);
     --muted-foreground: var(--graphite-600);
     --primary: var(--graphite-900);
-    --primary-foreground: var(--paper-50);
+    --primary-foreground: var(--white);
     --ring: var(--graphite-900);
   }
 
   html,
-  body {
-    background-color: var(--paper-50) !important;
+  body,
+  .min-h-dvh {
+    min-height: 0 !important;
+    background-color: var(--white) !important;
     color: var(--graphite-900) !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
@@ -86,7 +92,7 @@
     border: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
-    background-color: var(--paper-50) !important;
+    background-color: var(--white) !important;
   }
 
   .report-break-avoid {
@@ -96,6 +102,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {

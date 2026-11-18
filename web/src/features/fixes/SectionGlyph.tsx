@@ -67,13 +67,13 @@ export function SectionGlyph({ scene, beamId, face, caption, faceSummary }: Sect
   const ariaLabel = describeFaceLayersInWords(beamId, face, faceBars);
 
   return (
-    <div className="flex flex-col items-center gap-1 rounded-[var(--radius-sm)] border border-border bg-surface-sunken px-2 py-2">
+    <div className="flex flex-col items-center gap-1 rounded-[var(--radius-sm)] border border-border bg-surface-sunken px-2 py-2 print:gap-0.5 print:py-1">
       <span className="text-xs font-medium text-muted-foreground">{caption}</span>
       <svg
         role="img"
         aria-label={ariaLabel}
         viewBox={`0 0 ${vw} ${vh}`}
-        className="h-24 w-16 overflow-visible select-none"
+        className="h-24 w-16 overflow-visible select-none print:h-16 print:w-12"
       >
         <rect
           x={rectX}

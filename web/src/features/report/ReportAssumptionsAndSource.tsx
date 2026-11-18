@@ -43,26 +43,38 @@ export function ReportAssumptionsAndSource({ bundle, entries }: ReportAssumption
       combinedNotes.push(trimmed);
     }
   }
-  const skippedRules = Object.entries(bundle.report.rules_skipped);
+  // Group identical rule-skip explanations so related skipped clauses stay on one compact line.
+  const skippedByReason = new Map<string, string[]>();
+  for (const [ruleId, reason] of Object.entries(bundle.report.rules_skipped)) {
+    const clause = formatClause(bundle.rules[ruleId]?.clause ?? ruleId);
+    const list = skippedByReason.get(reason);
+    if (list) list.push(clause);
+    else skippedByReason.set(reason, [clause]);
+  }
+  const skippedGroups = [...skippedByReason.entries()];
 
   return (
-    <div className="space-y-5">
-      <section aria-labelledby="report-assumptions-heading" className="report-break-avoid space-y-2.5">
+    <div
+      className={`space-y-5 print:space-y-2 ${
+        drawnEntries.length === 0 ? "print:grid print:grid-cols-[1.8fr_1fr] print:gap-3 print:space-y-0 print:items-start" : ""
+      }`}
+    >
+      <section aria-labelledby="report-assumptions-heading" className="report-break-avoid space-y-2.5 print:space-y-1">
         <h2
           id="report-assumptions-heading"
-          className="border-b border-border pb-1.5 font-display text-base font-semibold text-foreground"
+          className="border-b border-border pb-1.5 font-display text-base font-semibold text-foreground print:pb-1 print:text-sm"
         >
           Assumptions
         </h2>
 
-        {combinedNotes.length === 0 && defaultEntries.length === 0 && skippedRules.length === 0 ? (
+        {combinedNotes.length === 0 && defaultEntries.length === 0 && skippedGroups.length === 0 ? (
           <p className="text-xs text-muted-foreground">No additional assumptions recorded.</p>
         ) : (
-          <ul className="space-y-1.5 text-xs text-foreground">
+          <ul className="space-y-1.5 text-xs text-foreground print:space-y-0.5">
             {combinedNotes.map((note, idx) => (
               <li
                 key={`note-${idx}`}
-                className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-2"
+                className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-2 print:border-0 print:bg-transparent print:p-0"
               >
                 {note}
               </li>
@@ -70,7 +82,7 @@ export function ReportAssumptionsAndSource({ bundle, entries }: ReportAssumption
             {defaultEntries.map((def) => (
               <li
                 key={def.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-2 print:border-0 print:bg-transparent print:p-0"
               >
                 <span className="font-num text-foreground">
                   {def.path}: {def.parserText || def.text || ""}
@@ -78,13 +90,13 @@ export function ReportAssumptionsAndSource({ bundle, entries }: ReportAssumption
                 <Badge variant="muted">Assumed, not on the drawing</Badge>
               </li>
             ))}
-            {skippedRules.map(([ruleId, reason]) => (
+            {skippedGroups.map(([reason, clauses]) => (
               <li
-                key={`skip-${ruleId}`}
-                className="rounded-[var(--radius-sm)] border border-border bg-surface-sunken px-3 py-2 text-muted-foreground"
+                key={clauses.join(",")}
+                className="rounded-[var(--radius-sm)] border border-border bg-surface-sunken px-3 py-2 text-muted-foreground print:border-0 print:bg-transparent print:p-0"
               >
                 <span className="font-num font-medium text-foreground">
-                  {formatClause(bundle.rules[ruleId]?.clause ?? ruleId)}:
+                  {clauses.join(", ")}:
                 </span>{" "}
                 {reason}
               </li>
@@ -93,16 +105,16 @@ export function ReportAssumptionsAndSource({ bundle, entries }: ReportAssumption
         )}
       </section>
 
-      <section aria-labelledby="report-provenance-heading" className="space-y-2.5">
+      <section aria-labelledby="report-provenance-heading" className="space-y-2.5 print:space-y-1">
         <h2
           id="report-provenance-heading"
-          className="border-b border-border pb-1.5 font-display text-base font-semibold text-foreground"
+          className="border-b border-border pb-1.5 font-display text-base font-semibold text-foreground print:pb-1 print:text-sm"
         >
           Where each value came from
         </h2>
 
         {entries.length === 0 ? (
-          <p className="rounded-[var(--radius-md)] border border-border bg-surface-sunken p-3 text-xs leading-relaxed text-foreground">
+          <p className="rounded-[var(--radius-md)] border border-border bg-surface-sunken p-3 text-xs leading-relaxed text-foreground print:p-2">
             This worked example was typed in from the pitch deck. Read a drawing to trace each value
             to its sheet.
           </p>

@@ -48,6 +48,7 @@ export function PrePourReport({
   const beamsSummary = bundle.joint.beams
     .map((b) => `${b.id} ${b.b} × ${b.D} mm`)
     .join("; ");
+  const jointDisplay = `${col.id} × ${bundle.joint.beams.map((b) => b.id).join(" / ")}`;
 
   const verdictText =
     failCount > 0 ? `Fails ${failCount} ${failCount === 1 ? "check" : "checks"}` : "Passes every check";
@@ -55,44 +56,35 @@ export function PrePourReport({
     sheetPages.length > 0
       ? sheetPages.map((p) => `Page ${p}`).join(", ")
       : "Pitch deck worked example (no sheets)";
-  const fixPillStatus =
-    bundle.fix.status === "redesign"
-      ? "redesign"
-      : bundle.fix.status === "no_fix"
-        ? "fail"
-        : bundle.fix.status === "clean"
-          ? "pass"
-          : bundle.fix.options[chosenOptionIndex]?.flags.length
-            ? "recheck"
-            : "pass";
 
   return (
     <article
       data-theme="light"
       aria-label={`Pre-pour joint report for ${bundle.joint.id}`}
-      className="report-a4 surface-paper mx-auto rounded-[var(--radius-lg)] border p-6 shadow-xs sm:p-8 space-y-6"
+      className="report-a4 surface-paper mx-auto rounded-[var(--radius-lg)] border p-6 shadow-xs sm:p-8 space-y-5 print:space-y-1.5"
     >
       {/* Header: project, joint id, sheets, zone, date */}
-      <header className="space-y-4 border-b border-border pb-4">
+      <header className="space-y-3 border-b border-border pb-3 print:space-y-1 print:pb-1.5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-num text-xs uppercase tracking-[0.08em] text-muted-foreground">
-              RebarTwin Pre-Pour Joint Report
+            <p className="font-num text-xs uppercase tracking-[0.08em] text-muted-foreground print:hidden">
+              RebarTwin Pre-Pour Check
             </p>
-            <h1 className="mt-1 font-display text-2xl font-semibold text-foreground">
-              Printable Joint Report
+            <h1 className="mt-1 font-display text-2xl font-semibold text-foreground print:mt-0 print:text-lg">
+              Pre-pour check · {jointDisplay}
             </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              IS 456:2000 and IS 13920:2016 detailing verification
+            <p className="mt-0.5 text-sm text-muted-foreground print:mt-0 print:text-xs">
+              {bundle.report.is13920
+                ? "IS 456:2000 and IS 13920:2016 detailing verification"
+                : `IS 456:2000 detailing check. IS 13920 is off in zone ${bundle.report.seismic_zone}.`}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={failCount > 0 ? "fail" : "pass"} count={failCount > 0 ? failCount : undefined} />
-            {failCount > 0 && <StatusPill status={fixPillStatus} />}
           </div>
         </div>
 
-        <dl className="grid gap-3 rounded-[var(--radius-md)] border border-border bg-surface-raised p-3.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="grid gap-3 rounded-[var(--radius-md)] border border-border bg-surface-raised p-3.5 text-xs sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-[1fr_1.4fr_1fr] print:gap-x-3 print:gap-y-1 print:p-2">
           <div>
             <dt className="text-muted-foreground">Project</dt>
             <dd className="mt-0.5 font-medium text-foreground">
@@ -134,11 +126,10 @@ export function PrePourReport({
       {/* Verdict banner: status never by colour alone */}
       <section
         aria-labelledby="report-verdict-heading"
-        className={`report-break-avoid rounded-[var(--radius-md)] border p-4 ${
-          failCount > 0
-            ? "border-fail/40 bg-fail-surface"
-            : "border-pass/40 bg-pass-surface"
-        }`}
+        className={`report-break-avoid rounded-[var(--radius-md)] border p-4 print:p-2 ${failCount > 0
+          ? "border-fail/40 bg-fail-surface"
+          : "border-pass/40 bg-pass-surface"
+          }`}
       >
         <div className="flex flex-wrap items-center gap-2.5">
           {failCount > 0 ? (
@@ -148,12 +139,12 @@ export function PrePourReport({
           )}
           <h2
             id="report-verdict-heading"
-            className={`font-display text-lg font-semibold ${failCount > 0 ? "text-fail" : "text-pass"}`}
+            className={`font-display text-lg font-semibold print:text-base ${failCount > 0 ? "text-fail" : "text-pass"}`}
           >
             {verdictText}
           </h2>
         </div>
-        <p className="mt-1.5 text-sm leading-relaxed text-foreground">{bundle.fix.summary}</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-foreground print:mt-0.5 print:text-xs">{bundle.fix.summary}</p>
       </section>
 
       <ReportFindings bundle={bundle} />
@@ -167,25 +158,25 @@ export function PrePourReport({
       <ReportAssumptionsAndSource bundle={bundle} entries={entries} />
 
       {/* Sign-off block */}
-      <section aria-labelledby="report-signoff-heading" className="report-break-avoid space-y-3 pt-2">
+      <section aria-labelledby="report-signoff-heading" className="report-break-avoid space-y-3 pt-2 print:space-y-1 print:pt-0">
         <h2
           id="report-signoff-heading"
-          className="border-b border-border pb-1.5 font-display text-base font-semibold text-foreground"
+          className="border-b border-border pb-1.5 font-display text-base font-semibold text-foreground print:pb-1 print:text-sm"
         >
           Sign-off
         </h2>
-        <div className="grid gap-6 rounded-[var(--radius-md)] border border-border bg-surface-raised p-4 sm:grid-cols-3">
+        <div className="grid gap-6 rounded-[var(--radius-md)] border border-border bg-surface-raised p-4 sm:grid-cols-3 print:grid-cols-3 print:gap-4 print:p-2">
           <div>
-            <div className="h-8 border-b border-control-border" aria-hidden="true" />
-            <p className="mt-1.5 text-xs font-medium text-foreground">Checked by</p>
+            <div className="h-8 border-b border-control-border print:h-5" aria-hidden="true" />
+            <p className="mt-1.5 text-xs font-medium text-foreground print:mt-1">Checked by</p>
           </div>
           <div>
-            <div className="h-8 border-b border-control-border" aria-hidden="true" />
-            <p className="mt-1.5 text-xs font-medium text-foreground">Engineer of record</p>
+            <div className="h-8 border-b border-control-border print:h-5" aria-hidden="true" />
+            <p className="mt-1.5 text-xs font-medium text-foreground print:mt-1">Engineer of record</p>
           </div>
           <div>
-            <div className="h-8 border-b border-control-border" aria-hidden="true" />
-            <p className="mt-1.5 text-xs font-medium text-foreground">Date</p>
+            <div className="h-8 border-b border-control-border print:h-5" aria-hidden="true" />
+            <p className="mt-1.5 text-xs font-medium text-foreground print:mt-1">Date</p>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">

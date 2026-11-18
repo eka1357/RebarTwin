@@ -8,7 +8,7 @@ const ROUTES = [
   { path: "/projects/c4-b12/upload", heading: /Upload Structural Drawings/i },
   { path: "/projects/c4-b12/review", heading: /To Check Queue/i },
   { path: "/projects/c4-b12/joints/C4xB12", heading: /Joint Workspace: C4xB12/i },
-  { path: "/projects/c4-b12/report", heading: /Printable Joint Report/i },
+  { path: "/projects/c4-b12/report", heading: /Pre-pour check · C4 × B12/i },
   { path: "/styleguide", heading: /Tokens, Type, Status and Primitives/i },
 ];
 

@@ -10,7 +10,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/\/upload$/, "Upload Drawings — RebarTwin"],
   [/\/review$/, "To Check Queue — RebarTwin"],
   [/\/joints\//, "Joint Workspace — RebarTwin"],
-  [/\/report$/, "Joint Report — RebarTwin"],
+  [/\/report$/, "Pre-pour check · RebarTwin"],
   [/^\/projects\//, "Project Overview — RebarTwin"],
   [/^\/styleguide/, "Styleguide — RebarTwin"],
 ];

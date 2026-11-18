@@ -25,9 +25,17 @@ describe("W11 PrePourReport", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: /Printable Joint Report/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Pre-pour check · C4 × B12/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/IS 13920 is off in zone II/i)).toHaveLength(2);
     expect(screen.getByText(/Zone II \(IS 13920 off\)/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Fails 6 checks/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /B12 top bars 1-2, 2-3, 3-4 and 4-5 are 16\s*mm apart; IS 456 cl\. 26\.3\.2 needs 25\s*mm/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/C4 column bars 4 and 8 run into B12 top bar 3/i)).toBeInTheDocument();
+    expect(screen.getByText(/Passes every check that applies once applied\. IS 13920 is off in zone II\./i)).toBeInTheDocument();
     expect(screen.getByText(/1,571 → 1,610/i)).toBeInTheDocument();
     expect(screen.getByText(/Top ranked/i)).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /Beam B12 top face cross-section/i })).toHaveLength(2);

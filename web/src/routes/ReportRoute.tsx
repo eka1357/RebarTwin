@@ -197,7 +197,9 @@ export function ReportRoute() {
         <Skeleton className="report-a4 mx-auto min-h-96" />
       ) : activeError || !bundle ? (
         <div className="surface-paper rounded-[var(--radius-lg)] border p-6 space-y-3" data-theme="light">
-          <h1 className="font-display text-2xl font-semibold text-foreground">Printable Joint Report</h1>
+          <h1 className="font-display text-2xl font-semibold text-foreground">
+            Pre-pour check · {targetJointId ?? id}
+          </h1>
           <p className="text-sm text-fail">
             {activeError instanceof Error
               ? activeError.message

@@ -4,12 +4,14 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-function extractPdfText(pdfPath: string): string {
+function extractPdfInfo(pdfPath: string): { pageCount: number; text: string } {
   const repoRoot = path.resolve("..");
   const venvPython = path.join(repoRoot, ".venv", "Scripts", "python.exe");
   const pythonCmd = fs.existsSync(venvPython) ? venvPython : "python";
-  const script = "import pymupdf, sys; doc = pymupdf.open(sys.argv[1]); print('\\n'.join(p.get_text() for p in doc))";
-  return execFileSync(pythonCmd, ["-c", script, pdfPath], { encoding: "utf8" });
+  const script =
+    "import json, pymupdf, sys; doc = pymupdf.open(sys.argv[1]); print(json.dumps({'pageCount': doc.page_count, 'text': '\\n'.join(p.get_text() for p in doc)}))";
+  const raw = execFileSync(pythonCmd, ["-c", script, pdfPath], { encoding: "utf8" });
+  return JSON.parse(raw) as { pageCount: number; text: string };
 }
 
 test.describe("Pre-pour Report W11", () => {
@@ -34,19 +36,25 @@ test.describe("Pre-pour Report W11", () => {
       .click();
 
     await expect(page).toHaveURL(/\/projects\/c4-b12\/report\?.*joint=C4xB12.*option=1/);
-    await expect(page.getByRole("heading", { name: /Printable Joint Report/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Pre-pour check · C4 × B12/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Fails 6 checks/i })).toBeVisible();
     await expect(page.getByText(/Option #2 · Selected in workspace/i)).toBeVisible();
     await expect(page.getByText(/1,571 → 1,609/i)).toBeVisible();
+    await expect(page.getByText(/Passes every check that applies once applied\. IS 13920 is off in zone II\./i)).toBeVisible();
     await expect(
       page.getByText(/This worked example was typed in from the pitch deck\./i),
     ).toBeVisible();
+    // Header does not hold Recheck chip; Chosen fix section holds it
+    await expect(page.locator("article.report-a4 > header").getByText("Recheck", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("region", { name: /Chosen fix/i }).getByText("Recheck", { exact: true }),
+    ).toBeVisible();
 
-    // Light theme is forced on the A4 sheet even when app shell stays dark
-    const sheetBg = await page
+    // Warm paper tone stays on screen even when app shell is dark
+    const sheetBgScreen = await page
       .locator("article.report-a4")
       .evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(sheetBg).toBe("rgb(255, 253, 249)");
+    expect(sheetBgScreen).toBe("rgb(255, 253, 249)");
 
     // Axe clean on report in both dark shell and light shell
     const darkShellAxe = await new AxeBuilder({ page }).analyze();
@@ -76,10 +84,14 @@ test.describe("Pre-pour Report W11", () => {
     );
     expect(printCalls).toBe(1);
 
-    // Emulate print media: app chrome disappears while report sheet remains visible
+    // Emulate print media: app chrome disappears and sheet prints on crisp white
     await page.emulateMedia({ media: "print" });
     await expect(page.locator("header.app-topbar")).toBeHidden();
-    await expect(page.getByRole("heading", { name: /Printable Joint Report/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Pre-pour check · C4 × B12/i })).toBeVisible();
+    const sheetBgPrint = await page
+      .locator("article.report-a4")
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(sheetBgPrint).toBe("rgb(255, 255, 255)");
     await page.emulateMedia({ media: null });
 
     // Generate actual A4 PDF and extract text via PyMuPDF
@@ -91,12 +103,17 @@ test.describe("Pre-pour Report W11", () => {
     });
     expect(pdfBytes.byteLength).toBeGreaterThan(10_000);
 
-    const pdfText = extractPdfText(pdfPath);
-    expect(pdfText).toContain("Printable Joint Report");
+    const { pageCount, text: rawPdfText } = extractPdfInfo(pdfPath);
+    const pdfText = rawPdfText.replace(/\s+/g, " ");
+    expect(pageCount).toBe(1);
+    expect(pdfText).toContain("Pre-pour check · C4 × B12");
     expect(pdfText).toContain("C4xB12");
     expect(pdfText).toContain("Zone II");
+    expect(pdfText).toContain("IS 13920 is off in zone II");
     expect(pdfText).toContain("Fails 6 checks");
-    expect(pdfText).toMatch(/IS 456 cl\. 26\.3\.2/);
+    expect(pdfText).toMatch(/B12 top bars 1-2, 2-3, 3-4 and 4-5 are 16\s*mm apart; IS 456 cl\. 26\.3\.2 needs 25\s*mm/);
+    expect(pdfText).toContain("C4 column bars 4 and 8 run into B12 top bar 3");
+    expect(pdfText).not.toContain("0 mm overlap allowed");
     expect(pdfText).toContain("Option #2");
     expect(pdfText).toContain("1,609");
     expect(pdfText).toContain("Assumptions");

@@ -105,4 +105,95 @@ test.describe("Project Overview W10", () => {
     );
     expect(hasHorizOverflow).toBe(false);
   });
+
+  test("renders blocked draft joints with accepted values, 'not on the drawing yet' for nulls, and blocking items", async ({
+    page,
+  }) => {
+    const fixture = buildIitFirstFloorFixture();
+    fixture.id = "iit-drafts";
+    fixture.joints = [
+      {
+        id: "C5xXB8@FIRST@F-14",
+        draft: true,
+        place: "F-14",
+        floor: "FIRST",
+        storey: "FOUNDATION TO FIRST FLOOR",
+        sheets: [8, 15, 17],
+        column: {
+          id: "C5",
+          section: [{ value: "300x600", field: "section", page: 8 }],
+          main: null,
+          ties: null,
+          cover: null,
+        },
+        beams: [
+          {
+            id: "XB8",
+            direction: "x",
+            section: null,
+            top: [{ value: "4-16", field: "top", page: 17 }],
+            top_extra_unplaced: false,
+            bottom: null,
+            stirrups: null,
+            cover: null,
+            frames_into: [{ value: "C5", field: "frames_into", page: 15, at: "F-14" }],
+          },
+        ],
+        status: "to_check",
+        fix_status: null,
+        fail_count: 0,
+        blocked_count: 2,
+        blocking_item_ids: ["tc_draft_col_main", "tc_proj_zone"],
+        blocking_items: [
+          {
+            id: "tc_draft_col_main",
+            member: "C5",
+            field: "column.main",
+            reason: "missing",
+            detail: "C5 main steel not agreed",
+            page: 8,
+            project_level: false,
+          },
+          {
+            id: "tc_proj_zone",
+            member: "ALL",
+            field: "seismic_zone",
+            reason: "missing",
+            detail: "Drawing does not state seismic zone",
+            page: 0,
+            project_level: true,
+          },
+        ],
+        bundle_ready: false,
+      },
+      ...fixture.joints.filter((j) => j.status === "fail").slice(0, 2),
+      ...fixture.joints.filter((j) => j.status === "pass").slice(0, 1),
+    ];
+    fixture.counts = { found: 4, checked: 3, failing: 2, blocked: 1, passing: 1 };
+
+    await page.route("**/api/projects/iit-drafts**", async (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(fixture),
+      });
+    });
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/projects/iit-drafts");
+
+    const list = page.getByRole("list", { name: "Project joints list" });
+    const draftRow = list.locator("> li").nth(2);
+    await expect(draftRow).toContainText("C5xXB8@FIRST@F-14");
+    await expect(draftRow).toContainText("Draft");
+    await expect(draftRow).toContainText("Grid F-14");
+    await expect(draftRow).toContainText("300x600");
+    await expect(draftRow).toContainText("not on the drawing yet");
+    await expect(draftRow).toContainText("C5 main steel not agreed");
+    await expect(draftRow.getByRole("link", { name: /^To check items for/i })).toBeVisible();
+    await expect(draftRow.getByRole("link", { name: /^Joint /i })).toHaveCount(0);
+
+    const axe = await new AxeBuilder({ page }).analyze();
+    expect(axe.violations).toEqual([]);
+  });
 });

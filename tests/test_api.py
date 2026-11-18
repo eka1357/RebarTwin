@@ -41,6 +41,7 @@ def test_post_joints_check_stateless():
 
 def test_project_upload_sse_to_check_unlock_bundle_exports_and_crop(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path))
+    monkeypatch.setenv("REBARTWIN_REPLIES_DIR", str(tmp_path / "shared_replies"))
 
     # Corrupt C4 section (last sorted field f0022) in recorded page reply so C4xB12xB13
     # is initially blocked by To check without shifting earlier f0001..f0021 field ids!
@@ -157,32 +158,43 @@ def test_project_upload_sse_to_check_unlock_bundle_exports_and_crop(tmp_path: Pa
     assert crop_img.content.startswith(b"\x89PNG")
 
 
-def test_joint_ids_with_at_sign_encode_cleanly(tmp_path: Path, monkeypatch):
-    """Joint ids like C4xB12@FIRST with storey suffix must serve bundle & assets cleanly over encoded URLs."""
+def test_joint_ids_with_at_and_plus_encode_cleanly(tmp_path: Path, monkeypatch):
+    """Joint ids like C5xXB3xYB14@FIRST@C+C1-25 with floor and place suffixes serve bundles cleanly."""
     monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path))
     p_dir = tmp_path / "at-proj"
-    j_dir = p_dir / "joints" / "C4xB12@FIRST"
-    j_dir.mkdir(parents=True)
-    _bundle = {"joint": {"id": "C4xB12@FIRST"}, "provenance": []}
+    for jid in ("C4xB12@FIRST", "C5xXB3xYB14@FIRST@C+C1-25"):
+        j_dir = p_dir / "joints" / jid
+        j_dir.mkdir(parents=True)
+        (j_dir / "bundle.json").write_text(json.dumps({"joint": {"id": jid}, "provenance": []}), encoding="utf-8")
     (p_dir / "project.json").write_text(json.dumps({"id": "at-proj", "name": "At Proj", "status": "done"}), encoding="utf-8")
     (p_dir / "to_check.json").write_text("[]", encoding="utf-8")
-    (j_dir / "bundle.json").write_text(json.dumps(_bundle), encoding="utf-8")
 
     client = TestClient(create_app())
     r = client.get("/projects/at-proj/joints/C4xB12%40FIRST/bundle")
     assert r.status_code == 200
     assert r.json()["joint"]["id"] == "C4xB12@FIRST"
 
+    r_plus = client.get("/projects/at-proj/joints/C5xXB3xYB14%40FIRST%40C%2BC1-25/bundle")
+    assert r_plus.status_code == 200
+    assert r_plus.json()["joint"]["id"] == "C5xXB3xYB14@FIRST@C+C1-25"
+
 
 def test_project_overview_exposes_counts_failures_by_rule_worst_and_beam_junctions(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path))
     p_dir = tmp_path / "overview-proj"
-    j_dir = p_dir / "joints" / "C4xB12@FIRST"
+    j_dir = p_dir / "joints" / "C4xB12@FIRST@B-4"
     j_dir.mkdir(parents=True)
     joint_data = json.loads(EXAMPLE_JOINT.read_text(encoding="utf-8"))
-    joint_data["id"] = "C4xB12@FIRST"
-    joint_data["grid"] = "B-4"
-    (p_dir / "joints" / "C4xB12@FIRST.json").write_text(json.dumps(joint_data), encoding="utf-8")
+    joint_data["id"] = "C4xB12@FIRST@B-4"
+    joint_data["place"] = "B-4"
+    joint_data["floor"] = "FIRST"
+    (p_dir / "joints" / "C4xB12@FIRST@B-4.json").write_text(json.dumps(joint_data), encoding="utf-8")
+
+    # Joint without explicit place/floor must stay null (never split from id).
+    no_meta = json.loads(EXAMPLE_JOINT.read_text(encoding="utf-8"))
+    no_meta["id"] = "C4xB12@SECOND@G-9"
+    (p_dir / "joints" / "C4xB12@SECOND@G-9.json").write_text(json.dumps(no_meta), encoding="utf-8")
+
     from rebartwin.check import check
     from rebartwin.fixes import Enumerator, resolve
     from rebartwin.model import Joint
@@ -194,19 +206,165 @@ def test_project_overview_exposes_counts_failures_by_rule_worst_and_beam_junctio
     (j_dir / "bundle.json").write_text(json.dumps(make_bundle(jm, rep, fix, cage)), encoding="utf-8")
     (p_dir / "project.json").write_text(json.dumps({"id": "overview-proj", "name": "Overview", "status": "done"}), encoding="utf-8")
     (p_dir / "to_check.json").write_text("[]", encoding="utf-8")
-    (p_dir / "beam_junctions.json").write_text(
-        json.dumps([{"id": "B21-B4", "beams": ["B21", "B4"], "grid": "A/B-3", "level": "FIRST FLOOR", "page": 2}]),
+    (p_dir / "reading.json").write_text(
+        json.dumps({
+            "plans": {
+                "junctions": [
+                    {
+                        "beam": "XB9",
+                        "page": 15,
+                        "kind": "beam on beam",
+                        "at": ["C-4"],
+                        "detail": "XB9 ends at C-4, where no column is on the column layout",
+                    }
+                ]
+            }
+        }),
         encoding="utf-8",
     )
 
     client = TestClient(create_app())
     ov = client.get("/projects/overview-proj").json()
-    assert ov["counts"] == {"found": 1, "checked": 1, "failing": 1, "blocked": 0, "passing": 0}
-    assert ov["joints"][0]["grid"] == "B-4"
-    assert ov["joints"][0]["level"] == "FIRST"
-    assert ov["joints"][0]["worst_failure"]["rule"] == "GEOM-CLASH"
+    assert ov["counts"] == {"found": 2, "checked": 1, "failing": 1, "blocked": 1, "passing": 0}
+    first_j = next(j for j in ov["joints"] if j["id"] == "C4xB12@FIRST@B-4")
+    second_j = next(j for j in ov["joints"] if j["id"] == "C4xB12@SECOND@G-9")
+    assert first_j["place"] == "B-4" and first_j["floor"] == "FIRST"
+    assert first_j["grid"] == "B-4" and first_j["level"] == "FIRST"
+    assert second_j["place"] is None and second_j["floor"] is None
+    assert first_j["worst_failure"]["rule"] == "GEOM-CLASH"
     assert ov["failures_by_rule"][0]["rule"] == "IS456-26.3.2-H"
     assert ov["failures_by_rule"][0]["failures"] == 4
     assert ov["failures_by_rule"][0]["joints"] == 1
     assert len(ov["beam_junctions"]) == 1
-    assert ov["beam_junctions"][0]["beams"] == ["B21", "B4"]
+    assert ov["beam_junctions"][0]["beams"] == ["XB9"]
+    assert ov["beam_junctions"][0]["grid"] == "C-4"
+
+
+def test_draft_joints_and_shared_rebartwin_replies_dir(tmp_path: Path, monkeypatch):
+    """Drafts list as blocked with explicit place/floor/storey and nulls; resolve skips drafts;
+    upload replies reuse REBARTWIN_REPLIES_DIR with no per-project replies folder."""
+    monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path / "projects"))
+    replies_dir = tmp_path / "shared_replies"
+    monkeypatch.setenv("REBARTWIN_REPLIES_DIR", str(replies_dir))
+
+    fixtures = tmp_path / "fx"
+    fixtures.mkdir()
+    (fixtures / "read-p1-t0.json").write_text((FIXTURES / "read-p1-t0.json").read_text(encoding="utf-8"), encoding="utf-8")
+    (fixtures / "link.json").write_text((FIXTURES / "link.json").read_text(encoding="utf-8"), encoding="utf-8")
+
+    rec = gemini.RecordedTransport(fixtures)
+    app = create_app(transport_factory=lambda: rec)
+    client = TestClient(app)
+
+    client.post("/projects", json={"id": "replay-one", "name": "Replay One"})
+    pdf_bytes = make_pdf(tmp_path / "sheet.pdf").read_bytes()
+    client.post(
+        "/projects/replay-one/drawings",
+        files={"file": ("sheet.pdf", pdf_bytes, "application/pdf")},
+        data={"sync": "true", "no_ifc": "true"},
+    )
+    assert len(rec.calls) > 0
+    assert replies_dir.is_dir() and any(replies_dir.glob("*.json"))
+    assert not (tmp_path / "projects" / "replay-one" / "replies").exists()
+
+    # Second project upload hits REBARTWIN_REPLIES_DIR cache without calling reading/linking Gemini again
+    calls_before = len(rec.calls)
+    client.post("/projects", json={"id": "replay-two", "name": "Replay Two"})
+    client.post(
+        "/projects/replay-two/drawings",
+        files={"file": ("sheet.pdf", pdf_bytes, "application/pdf")},
+        data={"sync": "true", "no_ifc": "true"},
+    )
+    extra_reader_calls = [
+        c for c in rec.calls[calls_before:] if not str(c.get("key", "")).startswith("propose")
+    ]
+    assert extra_reader_calls == []
+    reading_two = json.loads((tmp_path / "projects" / "replay-two" / "reading.json").read_text(encoding="utf-8"))
+    assert reading_two["calls"] and all(c["cached"] is True for c in reading_two["calls"])
+    assert not (tmp_path / "projects" / "replay-two" / "replies").exists()
+
+    # Add a *.draft.json alongside a project-level item and verify overview + resolve skip
+    p_dir = tmp_path / "projects" / "replay-two"
+    draft_id = "C5xXB8@FIRST@F-14"
+    draft_payload = {
+        "id": draft_id,
+        "draft": True,
+        "place": "F-14",
+        "floor": "FIRST",
+        "storey": "FOUNDATION TO FIRST FLOOR",
+        "column": {
+            "id": "C5",
+            "section": [{"value": "300x600", "field": "section", "layer": 1, "field_id": "f0001", "page": 8, "level": "FOUNDATION TO FIRST FLOOR", "at": None}],
+            "main": None,
+            "ties": None,
+            "cover": None,
+        },
+        "beams": [
+            {
+                "id": "XB8",
+                "direction": "x",
+                "section": None,
+                "top": [{"value": "4-16", "field": "top", "layer": 1, "field_id": "f0002", "page": 17, "level": "FIRST", "at": None}],
+                "top_extra_unplaced": False,
+                "bottom": None,
+                "stirrups": None,
+                "cover": None,
+                "frames_into": [{"value": "C5", "field": "frames_into", "layer": 1, "field_id": "f0003", "page": 15, "level": "FIRST", "at": "F-14"}],
+            }
+        ],
+    }
+    (p_dir / "joints" / f"{draft_id}.draft.json").write_text(json.dumps(draft_payload), encoding="utf-8")
+    tc_path = p_dir / "to_check.json"
+    tc_list = json.loads(tc_path.read_text(encoding="utf-8"))
+    tc_list.append({
+        "id": "tc_draft_col_main",
+        "member": "C5",
+        "field": "column.main",
+        "page": 8,
+        "box_2d": None,
+        "gemini": None,
+        "parser": None,
+        "reason": "missing",
+        "detail": "column.main has no accepted value",
+        "layer": 1,
+        "joint": draft_id,
+        "resolution": None,
+        "level": "FIRST",
+    })
+    tc_list.append({
+        "id": "tc_proj_zone_d",
+        "member": "ALL",
+        "field": "seismic_zone",
+        "page": 0,
+        "box_2d": None,
+        "gemini": None,
+        "parser": None,
+        "reason": "missing",
+        "detail": "the drawing does not state the seismic zone",
+        "layer": 1,
+        "joint": None,
+        "resolution": None,
+        "level": None,
+    })
+    tc_path.write_text(json.dumps(tc_list), encoding="utf-8")
+
+    ov = client.get("/projects/replay-two").json()
+    assert ov["counts"]["blocked"] >= 1
+    draft_entry = next(j for j in ov["joints"] if j["id"] == draft_id)
+    assert draft_entry["draft"] is True
+    assert draft_entry["status"] == "to_check"
+    assert draft_entry["bundle_ready"] is False
+    assert draft_entry["place"] == "F-14"
+    assert draft_entry["floor"] == "FIRST"
+    assert draft_entry["storey"] == "FOUNDATION TO FIRST FLOOR"
+    assert draft_entry["column"]["section"][0]["value"] == "300x600"
+    assert draft_entry["column"]["main"] is None
+    assert draft_entry["blocked_count"] == 2
+    assert set(draft_entry["blocking_item_ids"]) == {"tc_draft_col_main", "tc_proj_zone_d"}
+    assert len(draft_entry["blocking_items"]) == 2
+    assert sorted(draft_entry["sheets"]) == [8, 15, 17]
+
+    # Resolving project zone succeeds and skips the draft file without crashing
+    rz = client.post("/projects/replay-two/to-check/tc_proj_zone_d/resolve?no_ifc=true", json={"value": "III"})
+    assert rz.status_code == 200
+    assert draft_id not in rz.json()["checked_joints"]

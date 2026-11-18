@@ -3,12 +3,14 @@
     out/pages/page-<n>.png    rendered pages, for Source crops
     out/replies/<hash>.json   every model reply, replayed on a re-run (no API wait)
     out/joints/<id>.json      one Joint per joint (blocked joints too, so a person can see what was linked)
+    out/joints/<id>.draft.json an incomplete joint: accepted values only, null for the rest, and its blocking items
     out/joints/<id>/          for each checked joint: the check outputs, bundle.json with `provenance` and `pages`,
                               and the page images it cites (see `attach_sources`)
     out/provenance.json       [{joint, fields: {path: {page, box_2d, text, gemini, parser, status}}, link_notes}]
     out/to_check.json         every item a person must decide; joint null + member ALL = project-level
     out/reading.json          the run: models, prompt versions, counts, calls (tokens, latency, cached), accepted
-                              fields, unassigned values
+                              fields, unassigned values, and `plans`: beam and column layouts, their grid alignment,
+                              the joints found from geometry, and beam-on-beam junctions (plan.py)
 """
 from __future__ import annotations
 
@@ -24,6 +26,7 @@ from .ingest import box_2d, ingest
 from .ocr import CachingOcr, OcrTransport, ocr_pages
 from .link import LINK_PROMPT, Linked, Verified, blocks, link
 from .parser import parse_page
+from .plan import read_plans, support_map
 
 
 @dataclass
@@ -55,13 +58,15 @@ def read(pdf: Path, out: Path, transport: Transport | None, *, ocr: OcrTransport
         if any(p.needs_ocr for p in sheets) else []
     matches = [m for page in sheets for m in parse_page(page)]
     reads = read_pages(sheets, cache, read_model, tile_px=tile_px, concurrency=concurrency)
-    agreement = agree(reads, matches, sheets)
+    agreement = agree(reads, matches, sheets, support_map(sheets))
+    plans = read_plans(sheets, agreement)            # joints from geometry: code-made frames_into fields
     linked = link(agreement, cache, link_model)
 
     joints_dir = out / "joints"
     joints_dir.mkdir(exist_ok=True)
     for v in linked.joints:
         (joints_dir / f"{v.joint.id}.json").write_text(v.joint.model_dump_json(indent=1), encoding="utf-8")
+    write_drafts(joints_dir, linked)
     provenance = [{"joint": v.joint.id, "fields": v.provenance, "link_notes": linked.link_notes.get(v.joint.id, [])}
                   for v in linked.joints]
     (out / "provenance.json").write_text(json.dumps(provenance, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -80,16 +85,26 @@ def read(pdf: Path, out: Path, transport: Transport | None, *, ocr: OcrTransport
         "ocr_skipped": ocr_skipped,
         "counts": {"callouts": len(reads), "parser_matches": len(matches), "accepted": len(agreement.accepted),
                    "to_check": len(linked.to_check), "unassigned": len(agreement.unassigned),
-                   "joints": len(linked.joints), "ocr_repairs": sum(p.ocr_repairs for p in sheets)},
+                   "joints": len(linked.joints), "drafts": len(linked.drafts), "ocr_repairs": sum(p.ocr_repairs for p in sheets)},
         "tokens": {"prompt": sum(c["prompt_tokens"] or 0 for c in calls if not c["cached"]),
                    "output": sum(c["output_tokens"] or 0 for c in calls if not c["cached"])},
         "calls": calls,
         "accepted": [{**asdict(a), "box": box_2d(a.box), "gemini_box": box_2d(a.gemini_box)}
                      for a in agreement.accepted],
         "unassigned": [t.to_json() for t in agreement.unassigned],
+        "plans": plans,
     }
     (out / "reading.json").write_text(json.dumps(reading, indent=1, ensure_ascii=False), encoding="utf-8")
     return Result(out, len(sheets), agreement, linked, seconds, calls, blocked)
+
+
+def write_drafts(joints_dir: Path, linked: Linked) -> None:
+    """joints/<id>.draft.json for each incomplete joint: the draft (accepted values only, null for the rest) and the
+    To check items blocking it, project-level ones included."""
+    for d in linked.drafts:
+        items = [t.to_json() for t in linked.to_check if blocks(t, d["id"])]
+        (joints_dir / f"{d['id']}.draft.json").write_text(json.dumps({**d, "to_check": items}, indent=1,
+                                                                      ensure_ascii=False), encoding="utf-8")
 
 
 def source_entries(v: Verified, fields: dict[str, Accepted]) -> list[dict]:
@@ -103,11 +118,13 @@ def source_entries(v: Verified, fields: dict[str, Accepted]) -> list[dict]:
                 "path": path, "member": a.member if a else None, "field": a.field if a else None,
                 "layer": a.layer if a else None, "page": p["page"], "box_2d": p["box_2d"], "text": p["text"],
                 "gemini": p["gemini"], "parser": p["parser"], "status": p["status"],
-                "ocr_raw": p.get("ocr_raw"), "page_image": f"pages/page-{p['page']}.png"})
+                "ocr_raw": p.get("ocr_raw"), "joined_from": p.get("joined_from"),
+                "page_image": f"pages/page-{p['page']}.png",
+                "refs": [{**r, "page_image": f"pages/page-{r['page']}.png"} for r in p.get("refs") or []] or None})
     for path, value in v.defaults.items():
         entries.append({"path": path, "member": None, "field": None, "layer": None, "page": None, "box_2d": None,
                         "text": None, "gemini": None, "parser": value, "status": "default", "ocr_raw": None,
-                        "page_image": None})
+                        "joined_from": None, "page_image": None, "refs": None})
     return entries
 
 
@@ -116,7 +133,7 @@ def attach_sources(bundle_path: Path, v: Verified, fields: dict[str, Accepted], 
     bundle folder is self-contained (paths relative to bundle.json)."""
     bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
     entries = source_entries(v, fields)
-    pages = sorted({e["page"] for e in entries if e["page"]})
+    pages = sorted({e["page"] for e in entries if e["page"]} | {r["page"] for e in entries for r in e["refs"] or []})
     (bundle_path.parent / "pages").mkdir(exist_ok=True)
     for n in pages:
         shutil.copyfile(out / "pages" / f"page-{n}.png", bundle_path.parent / "pages" / f"page-{n}.png")

@@ -34,6 +34,19 @@ def box_2d(b: Box) -> list[int]:
 OCR_BELOW_WORDS = 20                     # a page with no comments and fewer text words than this is read by OCR
 
 
+Seg = tuple[float, float, float, float]  # a drawn straight segment: x0, y0, x1, y1 in box units after rotation
+
+
+@dataclass
+class Shapes:
+    """A page's vector drawing, for reading plans and elevations (plan.py): every straight segment, any length (CAD
+    exports draw dashed lines as separate dashes), every circle (a closed path of curves about as wide as tall, in
+    points), and the box of every small filled shape (columns are drawn filled). Box units after rotation."""
+    segments: list[Seg] = field(default_factory=list)
+    circles: list[Box] = field(default_factory=list)
+    fills: list[Box] = field(default_factory=list)
+
+
 @dataclass(frozen=True)
 class Word:
     text: str
@@ -42,6 +55,7 @@ class Word:
     line: tuple[int, int]                # PyMuPDF (block, line): words of one text entity share it
     source: str = "text"                 # "text" (the PDF text layer), "annotation" (a comment) or "ocr"
     raw: str | None = None               # OCR only: the text as Vision read it, when a misread Ø was repaired
+    joined: tuple[str, ...] | None = None  # parser view only: the comments a split Ø callout was joined from
 
 
 @dataclass
@@ -60,6 +74,7 @@ class Page:
     ocr_repairs: int = 0
     h_rules: list[Rule] = field(default_factory=list, repr=False)   # drawn horizontal lines (table rules)
     v_rules: list[Rule] = field(default_factory=list, repr=False)
+    shapes: Shapes | None = field(default=None, repr=False)         # every drawn segment, circle and fill (plans)
 
     def lines(self) -> list[list[Word]]:
         """Words grouped by text entity, in reading order inside each entity."""
@@ -76,6 +91,35 @@ def normalise_rect(x0: float, y0: float, x1: float, y1: float, width: float, hei
         return max(0.0, min(1000.0, 1000 * v / size))
     ymin, xmin, ymax, xmax = scale(y0, height), scale(x0, width), scale(y1, height), scale(x1, width)
     return ymin, xmin, max(ymax, ymin + 0.1), max(xmax, xmin + 0.1)
+
+
+FILL_MAX = 60.0                          # box units: a filled shape larger than this either way is a region, not a part
+
+
+def shapes(page) -> Shapes:
+    """The page's drawing for plan.py: segments, circles and small filled shapes, in box units after rotation."""
+    import pymupdf
+
+    rect, matrix = page.rect, page.rotation_matrix
+    W, H = rect.width, rect.height
+    out = Shapes()
+
+    def pt(p):
+        p = pymupdf.Point(p) * matrix
+        return 1000 * p.x / W, 1000 * p.y / H
+
+    for path in page.get_drawings():
+        items = path["items"]
+        for item in items:
+            if item[0] == "l":
+                out.segments.append((*pt(item[1]), *pt(item[2])))
+        r = path["rect"] * matrix
+        box = normalise_rect(r.x0, r.y0, r.x1, r.y1, W, H)
+        if len(items) >= 4 and all(i[0] == "c" for i in items) and r.width > 0 and 0.8 <= r.height / r.width <= 1.25:
+            out.circles.append(box)
+        elif path.get("fill") is not None and box[2] - box[0] <= FILL_MAX and box[3] - box[1] <= FILL_MAX:
+            out.fills.append(box)
+    return out
 
 
 def rulings(page) -> tuple[list[Rule], list[Rule]]:
@@ -190,7 +234,7 @@ def ingest(pdf: Path, out: Path | None = None, dpi: int = 200, pages: list[int] 
             hs, vs = rulings(page)
             result.append(Page(number, page.rect.width, page.rect.height, words, image, png, text_words=n_text,
                                annotations=by_author, comments=kept, needs_ocr=needs_ocr(n_text, kept),
-                               h_rules=hs, v_rules=vs))
+                               h_rules=hs, v_rules=vs, shapes=shapes(page)))
     return result
 
 

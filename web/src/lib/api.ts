@@ -67,6 +67,26 @@ export interface BeamJunctionInfo {
   note?: string | null;
 }
 
+export interface DraftAcceptedValue {
+  value: string;
+  field?: string;
+  layer?: number;
+  field_id?: string;
+  page?: number;
+  level?: string | null;
+  at?: string | null;
+}
+
+export interface BlockingItemSummary {
+  id?: string | null;
+  member?: string | null;
+  field: string;
+  reason: string;
+  detail: string;
+  page?: number;
+  project_level?: boolean;
+}
+
 export interface ProjectCounts {
   found: number;
   checked: number;
@@ -77,21 +97,48 @@ export interface ProjectCounts {
 
 export interface ProjectJointSummary {
   id: string;
+  place?: string | null;
+  floor?: string | null;
+  storey?: string | null;
   grid?: string | null;
   level?: string | null;
   sheets?: number[];
-  column: { id?: string; b?: number; h?: number; n_bars?: number; bar_dia?: number };
-  beams: Array<{ id: string; b?: number; D?: number; direction?: string }>;
-  seismic_zone?: string;
-  exposure?: string;
+  column: {
+    id?: string;
+    b?: number;
+    h?: number;
+    n_bars?: number;
+    bar_dia?: number;
+    section?: DraftAcceptedValue[] | null;
+    main?: DraftAcceptedValue[] | null;
+    ties?: DraftAcceptedValue[] | null;
+    cover?: DraftAcceptedValue[] | null;
+  };
+  beams: Array<{
+    id: string;
+    b?: number;
+    D?: number;
+    direction?: string | null;
+    section?: DraftAcceptedValue[] | null;
+    top?: DraftAcceptedValue[] | null;
+    top_extra_unplaced?: boolean;
+    bottom?: DraftAcceptedValue[] | null;
+    stirrups?: DraftAcceptedValue[] | null;
+    cover?: DraftAcceptedValue[] | null;
+    frames_into?: DraftAcceptedValue[] | null;
+  }>;
+  seismic_zone?: string | null;
+  exposure?: string | null;
   status: "fail" | "to_check" | "pass";
   fix_status?: string | null;
   fail_count: number;
   blocked_count: number;
   blocking_item_ids?: string[];
+  blocking_items?: BlockingItemSummary[];
   worst_failure?: WorstFailure | null;
   failing_rules?: string[];
   bundle_ready: boolean;
+  draft?: boolean;
 }
 
 export interface ProjectDetail extends ProjectSummary {

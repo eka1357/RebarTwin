@@ -1,12 +1,9 @@
-import { FileText, HelpCircle, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { StatusPill } from "../../components/StatusPill";
-import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import type { ProjectJointSummary } from "../../lib/api";
-import { formatClause, formatNumber } from "../../lib/format";
-import { jointPath, projectReportPath, projectReviewPath } from "../../lib/routes";
+import type { DraftAcceptedValue, ProjectJointSummary } from "../../lib/api";
+import { formatNumber } from "../../lib/format";
+import { ProjectJointRow } from "./ProjectJointRow";
 import type { ProjectStatusFilter } from "./ProjectSummaryCards";
 
 const STATUS_RANK: Record<ProjectJointSummary["status"], number> = {
@@ -35,17 +32,8 @@ function sortProjectJoints(joints: ProjectJointSummary[]): ProjectJointSummary[]
   });
 }
 
-function worstRuleSummary(j: ProjectJointSummary): string {
-  if (j.status === "to_check") {
-    return `Blocked by ${formatNumber(j.blocked_count)} To check ${j.blocked_count === 1 ? "item" : "items"}`;
-  }
-  if (j.status === "fail" && j.worst_failure) {
-    return `${formatClause(j.worst_failure.clause)} · ${j.worst_failure.title}`;
-  }
-  if (j.status === "fail") {
-    return `${formatNumber(j.fail_count)} failing ${j.fail_count === 1 ? "check" : "checks"}`;
-  }
-  return "Passes all applicable checks";
+function collectEntryValues(entries?: DraftAcceptedValue[] | null): string {
+  return entries ? entries.map((e) => e.value).join(" ") : "";
 }
 
 export function ProjectJointsTable({
@@ -69,12 +57,23 @@ export function ProjectJointsTable({
         if (!hasRule) return false;
       }
       if (!q) return true;
+      const col = j.column ?? {};
+      const beams = j.beams ?? [];
       const haystack = [
         j.id,
-        j.grid ?? "",
-        j.level ?? "",
-        j.column.id ?? "",
-        ...j.beams.map((b) => b.id),
+        j.place ?? j.grid ?? "",
+        j.floor ?? j.level ?? "",
+        j.storey ?? "",
+        col.id ?? "",
+        collectEntryValues(col.section),
+        collectEntryValues(col.main),
+        ...beams.flatMap((b) => [
+          b.id,
+          collectEntryValues(b.section),
+          collectEntryValues(b.top),
+          collectEntryValues(b.bottom),
+        ]),
+        ...(j.blocking_items ?? []).map((item) => `${item.member ?? ""} ${item.field} ${item.detail}`),
         j.worst_failure?.clause ?? "",
         j.worst_failure?.title ?? "",
       ]
@@ -155,88 +154,9 @@ export function ProjectJointsTable({
         </p>
       ) : (
         <ol aria-label="Project joints list" className="space-y-2">
-          {visibleJoints.map((j) => {
-            const colSummary = `${j.column.id ?? "Col"}${j.column.b && j.column.h ? ` ${j.column.b} × ${j.column.h}` : ""}`;
-            const beamSummary = j.beams
-              .map((b) => `${b.id}${b.b && b.D ? ` ${b.b} × ${b.D}` : ""}`)
-              .join(" · ");
-            return (
-              <li
-                key={j.id}
-                className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3"
-              >
-                <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="muted" className="font-num">
-                        Grid {j.grid ?? "Unassigned"}
-                      </Badge>
-                      <h3 className="font-display text-sm font-semibold text-foreground">{j.id}</h3>
-                      <StatusPill
-                        status={j.status}
-                        size="sm"
-                        count={
-                          j.status === "fail"
-                            ? j.fail_count
-                            : j.status === "to_check"
-                              ? j.blocked_count
-                              : undefined
-                        }
-                      />
-                      {j.level && (
-                        <span className="font-num text-xs text-muted-foreground">{j.level}</span>
-                      )}
-                    </div>
-                    <p className="font-num text-xs text-muted-foreground">
-                      {colSummary}
-                      {beamSummary ? ` · ${beamSummary}` : ""}
-                    </p>
-                    <p
-                      className={`text-xs ${
-                        j.status === "fail"
-                          ? "font-medium text-fail"
-                          : j.status === "to_check"
-                            ? "text-check"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      {worstRuleSummary(j)}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                    <Button variant="secondary" size="sm" asChild>
-                      <Link to={jointPath(projectId, j.id)} aria-label={`Joint ${j.id}`}>
-                        Joint
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link
-                        to={projectReportPath(projectId, { joint: j.id })}
-                        aria-label={`Report for ${j.id}`}
-                      >
-                        <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>Report</span>
-                      </Link>
-                    </Button>
-                    <Button
-                      variant={j.status === "to_check" ? "default" : "outline"}
-                      size="sm"
-                      asChild
-                    >
-                      <Link
-                        to={projectReviewPath(projectId, { joint: j.id })}
-                        aria-label={`To check items for ${j.id}`}
-                      >
-                        <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>To check</span>
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
+          {visibleJoints.map((j) => (
+            <ProjectJointRow key={j.id} projectId={projectId} joint={j} />
+          ))}
         </ol>
       )}
     </section>

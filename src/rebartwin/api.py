@@ -26,16 +26,17 @@ from .fixes import Enumerator, Proposer, apply, resolve as resolve_fixes
 from .gemini_proposer import GeminiProposer
 from .model import Exposure, Joint, Zone, format_bars, parse_bars
 from .reader.agree import Accepted, ToCheck, agree
-from .reader.gemini import GenAITransport, CachingTransport, ReadError, load_env, read_pages
+from .reader.gemini import READ_PROMPT, GenAITransport, CachingTransport, ReadError, load_env, read_pages
 from .reader.ingest import box_2d, ingest
-from .reader.link import USED_FIELDS, blocks as item_blocks_joint, link, project_level as model_project_level
+from .reader.link import LINK_PROMPT, USED_FIELDS, blocks as item_blocks_joint, link, project_level as model_project_level
 from .reader.ocr import CachingOcr, VisionTransport, ocr_pages
 from .reader.parser import parse_page
-from .reader.pipeline import attach_sources
+from .reader.plan import read_plans, support_map
+from .reader.pipeline import attach_sources, write_drafts
 from .report import bundle as build_bundle
 from .rules import CATALOGUE
 
-_SAFE_ID_RE = re.compile(r"^[A-Za-z0-9._@-]+$")
+_SAFE_ID_RE = re.compile(r"^[A-Za-z0-9._@+-]+$")
 _SECTION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*$", re.IGNORECASE)
 _DIA_RE = re.compile(r"(?:\d+\s*L\s*[-–]\s*)?(?:Ø|Φ|ø|φ|#)?\s*(\d+(?:\.\d+)?)\s*(?:mm|φ|Φ|ø)?", re.IGNORECASE)
 _NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*$", re.IGNORECASE)
@@ -70,6 +71,131 @@ def _utc_now() -> str:
 
 def _projects_root() -> Path:
     return Path(os.environ.get("REBARTWIN_PROJECTS_DIR", "web/public/live"))
+
+
+def _replies_dir() -> Path:
+    """Shared reply cache folder so repeated uploads replay saved model/OCR calls."""
+    load_env()
+    return Path(os.environ.get("REBARTWIN_REPLIES_DIR") or "out/_replies")
+
+
+def _collect_blocking_items(
+    tc_items: list[dict[str, Any]],
+    tc_by_id: dict[str, dict[str, Any]],
+    j_data: dict[str, Any],
+    joint_id: str,
+) -> list[dict[str, Any]]:
+    """Collect unresolved To check items blocking a joint or draft, summarized for overview UI."""
+    blockers = [t for t in tc_items if isinstance(t, dict) and _dict_blocks_joint(t, joint_id)]
+    seen = {str(t["id"]) for t in blockers if t.get("id")}
+    for inline in j_data.get("to_check") or []:
+        if not isinstance(inline, dict) or inline.get("resolution") is not None:
+            continue
+        tid = str(inline.get("id") or "")
+        if tid and (tid in tc_by_id or tid in seen):
+            continue
+        if tid:
+            seen.add(tid)
+        blockers.append(inline)
+    return [
+        {
+            "id": t.get("id"),
+            "member": t.get("member"),
+            "field": t.get("field"),
+            "reason": t.get("reason"),
+            "detail": t.get("detail"),
+            "page": t.get("page"),
+            "project_level": _dict_is_project_level(t),
+        }
+        for t in blockers
+    ]
+
+
+def _extract_joint_pages(
+    j_data: dict[str, Any],
+    b_data: dict[str, Any] | None,
+    prov_record: dict[str, Any] | None,
+    blocking_items: list[dict[str, Any]],
+) -> list[int]:
+    """Collect distinct 1-based drawing page numbers referenced by a joint or draft."""
+    pages: set[int] = set()
+    prov_entries = (b_data or {}).get("provenance") if isinstance((b_data or {}).get("provenance"), list) else []
+    for entry in prov_entries:
+        if isinstance(entry, dict) and entry.get("status") != "default":
+            if isinstance(entry.get("page"), int) and entry["page"] > 0:
+                pages.add(entry["page"])
+    if not pages and prov_record:
+        for raw_val in (prov_record.get("fields") or {}).values():
+            rows = raw_val if isinstance(raw_val, list) else ([raw_val] if isinstance(raw_val, dict) else [])
+            for row in rows:
+                if isinstance(row, dict) and isinstance(row.get("page"), int) and row["page"] > 0:
+                    pages.add(row["page"])
+    col = j_data.get("column")
+    if isinstance(col, dict):
+        for key in ("section", "main", "ties", "cover"):
+            val = col.get(key)
+            if isinstance(val, list):
+                for entry in val:
+                    if isinstance(entry, dict) and isinstance(entry.get("page"), int) and entry["page"] > 0:
+                        pages.add(entry["page"])
+    beams = j_data.get("beams")
+    if isinstance(beams, list):
+        for beam in beams:
+            if isinstance(beam, dict):
+                for key in ("section", "top", "bottom", "stirrups", "cover", "frames_into"):
+                    val = beam.get(key)
+                    if isinstance(val, list):
+                        for entry in val:
+                            if isinstance(entry, dict) and isinstance(entry.get("page"), int) and entry["page"] > 0:
+                                pages.add(entry["page"])
+    for blocker in blocking_items:
+        if isinstance(blocker.get("page"), int) and blocker["page"] > 0:
+            pages.add(blocker["page"])
+    return sorted(pages)
+
+
+def _normalize_beam_junctions(p_dir: Path, reading: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalize beam-on-beam and off-grid junctions from beam_junctions.json or reading.json."""
+    raw = _read_json(p_dir / "beam_junctions.json", None)
+    if raw is None:
+        raw = reading.get("beam_junctions")
+    if raw is None and isinstance(reading.get("plans"), dict):
+        raw = reading["plans"].get("junctions")
+    if raw is None and isinstance(reading.get("junctions"), list):
+        raw = [row for row in reading["junctions"] if isinstance(row, dict) and not row.get("column")]
+    if not isinstance(raw, list):
+        return []
+
+    out: list[dict[str, Any]] = []
+    for idx, row in enumerate(raw):
+        if not isinstance(row, dict):
+            continue
+        if row.get("beam"):
+            beams = [str(row["beam"])]
+        else:
+            beams = [str(b) for b in (row.get("beams") or []) if b]
+        if not beams:
+            continue
+        at_val = row.get("at")
+        if isinstance(at_val, list):
+            grid = ", ".join(str(x) for x in at_val if x) or None
+        elif isinstance(at_val, str) and at_val:
+            grid = at_val
+        else:
+            grid = row.get("grid")
+        jid = str(
+            row.get("id")
+            or (f"{'+'.join(beams)}@{grid}" if grid else f"{'+'.join(beams)}@p{row.get('page', idx + 1)}")
+        )
+        out.append({
+            "id": jid,
+            "beams": beams,
+            "grid": grid,
+            "level": row.get("level"),
+            "page": row.get("page"),
+            "note": row.get("note") or row.get("detail") or row.get("kind"),
+        })
+    return out
 
 
 def _validate_id(raw: str, label: str = "identifier") -> str:
@@ -449,6 +575,7 @@ def _safe_run_check(
 ) -> int:
     """Run check/resolve with GeminiProposer + Enumerator when a Gemini transport or key is available,
     falling back deterministically to Enumerator alone if no model access or replay miss occurs."""
+    del project_dir  # Reply caches live in shared REBARTWIN_REPLIES_DIR, not per-project folders.
     proposers: list[Proposer] | None = None
     transport_factory: Callable[[], Any] | None = getattr(app.state, "transport_factory", None)
     if cache is not None:
@@ -456,7 +583,7 @@ def _safe_run_check(
     elif transport_factory is not None or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true", "yes"):
         try:
             tr = transport_factory() if transport_factory else GenAITransport()
-            proposers = [GeminiProposer(CachingTransport(tr, project_dir / "replies")), Enumerator()]
+            proposers = [GeminiProposer(CachingTransport(tr, _replies_dir())), Enumerator()]
         except ReadError:
             proposers = None
 
@@ -582,6 +709,7 @@ def _execute_read_job(
         sheets = ingest(pdf_path, project_dir, dpi=200, pages=parsed_pages)
         update_meta(status="reading", pages=[p.number for p in sheets], error=None)
 
+        replies_dir = _replies_dir()
         transport_factory: Callable[[], Any] | None = getattr(app.state, "transport_factory", None)
         ocr_factory: Callable[[], Any] | None = getattr(app.state, "ocr_factory", None)
 
@@ -589,13 +717,22 @@ def _execute_read_job(
             transport = None
             ocr_tr = None
         else:
-            transport = transport_factory() if transport_factory else GenAITransport()
+            if transport_factory:
+                transport = transport_factory()
+            else:
+                try:
+                    transport = GenAITransport()
+                except ReadError:
+                    if any(replies_dir.glob("*.json")):
+                        transport = None
+                    else:
+                        raise
             if ocr_factory:
                 ocr_tr = ocr_factory()
             else:
                 ocr_tr = VisionTransport() if os.environ.get("VISION_API_KEY") else None
 
-        cache = CachingTransport(transport, project_dir / "replies")
+        cache = CachingTransport(transport, replies_dir)
         all_matches = []
         all_reads = []
         ocr_skipped: list[int] = []
@@ -611,7 +748,7 @@ def _execute_read_job(
                 ocr_skipped.extend(
                     ocr_pages(
                         [sheet],
-                        CachingOcr(ocr_tr, project_dir / "replies", cache.ledger),
+                        CachingOcr(ocr_tr, replies_dir, cache.ledger),
                         tile_px=3000,
                         concurrency=concurrency,
                     )
@@ -637,13 +774,15 @@ def _execute_read_job(
                 },
             )
 
-        agreement = agree(all_reads, all_matches, sheets)
+        agreement = agree(all_reads, all_matches, sheets, support_map(sheets))
+        plans = read_plans(sheets, agreement)    # joints from geometry: code-made frames_into (reader/plan.py)
         linked = link(agreement, cache)
 
         joints_dir = project_dir / "joints"
         joints_dir.mkdir(exist_ok=True)
         for v in linked.joints:
             (joints_dir / f"{v.joint.id}.json").write_text(v.joint.model_dump_json(indent=1), encoding="utf-8")
+        write_drafts(joints_dir, linked)
 
         provenance = [
             {
@@ -671,7 +810,7 @@ def _execute_read_job(
             "pages": [p.number for p in sheets],
             "dpi": 200,
             "tile_px": 3000,
-            "prompts": {"read": "read_v2", "link": "link_v2"},
+            "prompts": {"read": READ_PROMPT, "link": LINK_PROMPT},
             "link_model": linked.model,
             "seconds": round(time.perf_counter() - t0, 1),
             "text_layer": [
@@ -694,6 +833,7 @@ def _execute_read_job(
                 "to_check": len(linked.to_check),
                 "unassigned": len(agreement.unassigned),
                 "joints": len(linked.joints),
+                "drafts": len(linked.drafts),
                 "ocr_repairs": sum(p.ocr_repairs for p in sheets),
             },
             "tokens": {
@@ -702,6 +842,7 @@ def _execute_read_job(
             },
             "calls": calls,
             "accepted": [{**asdict(a), "box": box_2d(a.box), "gemini_box": box_2d(a.gemini_box)} for a in agreement.accepted],
+            "plans": plans,
             "unassigned": [t.to_json() for t in agreement.unassigned],
         }
         _write_json(project_dir / "reading.json", reading)
@@ -732,6 +873,7 @@ def _execute_read_job(
             {
                 "pages": len(sheets),
                 "joints": len(linked.joints),
+                "drafts": len(linked.drafts),
                 "ready": ready_ids,
                 "to_check": len(linked.to_check),
             },
@@ -877,6 +1019,7 @@ def create_app(
         meta = _read_json(p_dir / "project.json", {})
         reading = _read_json(p_dir / "reading.json", {})
         tc_items: list[dict[str, Any]] = _read_json(p_dir / "to_check.json", [])
+        tc_by_id = {str(t["id"]): t for t in tc_items if isinstance(t, dict) and t.get("id")}
         prov_all: list[dict[str, Any]] = _read_json(p_dir / "provenance.json", [])
         prov_by_joint = {p.get("joint"): p for p in prov_all if isinstance(p, dict)}
 
@@ -888,36 +1031,31 @@ def create_app(
         joints_dir = p_dir / "joints"
         if joints_dir.is_dir():
             for jf in sorted(joints_dir.glob("*.json")):
-                jid = jf.stem
+                is_draft_file = jf.name.endswith(".draft.json")  # incomplete joint: shown as blocked, never checked
+                jid = jf.name[: -len(".draft.json")] if is_draft_file else jf.stem
                 j_data = _read_json(jf, {})
-                joint_id = j_data.get("id", jid)
+                if not isinstance(j_data, dict):
+                    continue
+                is_draft = is_draft_file or bool(j_data.get("draft"))
+                joint_id = str(j_data.get("id") or jid)
                 b_dir = joints_dir / jid
-                b_data = _read_json(b_dir / "bundle.json") if (b_dir / "bundle.json").is_file() else None
-                blocking_ids = [str(t["id"]) for t in tc_items if _dict_blocks_joint(t, joint_id) and t.get("id")]
-                blocked_n = len(blocking_ids)
+                b_data = None if is_draft else (
+                    _read_json(b_dir / "bundle.json") if (b_dir / "bundle.json").is_file() else None
+                )
+                blocking_items = _collect_blocking_items(tc_items, tc_by_id, j_data, joint_id)
+                blocking_ids = [str(item["id"]) for item in blocking_items if item.get("id")]
+                blocked_n = len(blocking_items)
 
-                # Extract sheet pages and level from bundle provenance or provenance.json
-                sheet_pages: set[int] = set()
-                inferred_level: str | None = j_data.get("level")
-                if not inferred_level and "@" in joint_id:
-                    inferred_level = joint_id.split("@", 1)[1]
-                prov_entries = (b_data or {}).get("provenance") if isinstance((b_data or {}).get("provenance"), list) else []
-                for entry in prov_entries:
-                    if isinstance(entry, dict) and entry.get("status") != "default":
-                        if isinstance(entry.get("page"), int) and entry["page"] > 0:
-                            sheet_pages.add(entry["page"])
-                        if not inferred_level and entry.get("level"):
-                            inferred_level = entry["level"]
-                if not sheet_pages and joint_id in prov_by_joint:
-                    for raw_val in prov_by_joint[joint_id].get("fields", {}).values():
-                        rows = raw_val if isinstance(raw_val, list) else ([raw_val] if isinstance(raw_val, dict) else [])
-                        for r in rows:
-                            if isinstance(r, dict) and isinstance(r.get("page"), int) and r["page"] > 0:
-                                sheet_pages.add(r["page"])
+                explicit_place = j_data.get("place") or j_data.get("grid") or j_data.get("location")
+                explicit_floor = j_data.get("floor") or j_data.get("level")
+                explicit_storey = j_data.get("storey")
+                sheet_pages = _extract_joint_pages(
+                    j_data, b_data, prov_by_joint.get(joint_id), blocking_items,
+                )
 
                 worst_failure: dict[str, Any] | None = None
                 joint_failing_rules: list[str] = []
-                if b_data and blocked_n == 0:
+                if b_data and blocked_n == 0 and not is_draft:
                     findings = b_data.get("report", {}).get("findings", [])
                     failing_findings = [f for f in findings if f.get("status") == "fail"]
                     fail_n = len(failing_findings)
@@ -966,23 +1104,32 @@ def create_app(
                     fix_status = None
                     j_status = "to_check"
 
+                settings_data = j_data.get("settings") if isinstance(j_data.get("settings"), dict) else {}
+                column_data = j_data.get("column") if isinstance(j_data.get("column"), dict) else {}
+                beams_data = j_data.get("beams") if isinstance(j_data.get("beams"), list) else []
+
                 joints_list.append({
                     "id": joint_id,
-                    "grid": j_data.get("grid") or j_data.get("location"),
-                    "level": inferred_level,
-                    "sheets": sorted(sheet_pages),
-                    "column": j_data.get("column", {}),
-                    "beams": j_data.get("beams", []),
-                    "seismic_zone": j_data.get("settings", {}).get("seismic_zone"),
-                    "exposure": j_data.get("settings", {}).get("exposure"),
+                    "place": explicit_place,
+                    "floor": explicit_floor,
+                    "storey": explicit_storey,
+                    "grid": explicit_place,
+                    "level": explicit_floor,
+                    "sheets": sheet_pages,
+                    "column": column_data,
+                    "beams": beams_data,
+                    "seismic_zone": settings_data.get("seismic_zone"),
+                    "exposure": settings_data.get("exposure"),
                     "status": j_status,
                     "fix_status": fix_status,
                     "fail_count": fail_n,
                     "blocked_count": blocked_n,
                     "blocking_item_ids": blocking_ids,
+                    "blocking_items": blocking_items,
                     "worst_failure": worst_failure,
                     "failing_rules": joint_failing_rules,
-                    "bundle_ready": bool(b_data and blocked_n == 0),
+                    "bundle_ready": bool(b_data and blocked_n == 0 and not is_draft),
+                    "draft": is_draft,
                 })
 
         # Failures first, then to_check (most blockers first), then pass
@@ -1003,14 +1150,7 @@ def create_app(
         ]
         failures_by_rule.sort(key=lambda r: (-int(r["failures"]), -int(r["joints"]), str(r["rule"])))
 
-        beam_junctions_raw = _read_json(p_dir / "beam_junctions.json", None)
-        if beam_junctions_raw is None:
-            beam_junctions_raw = reading.get("beam_junctions")
-        if beam_junctions_raw is None and isinstance(reading.get("junctions"), list):
-            beam_junctions_raw = [
-                row for row in reading["junctions"] if isinstance(row, dict) and not row.get("column")
-            ]
-        beam_junctions = beam_junctions_raw if isinstance(beam_junctions_raw, list) else []
+        beam_junctions = _normalize_beam_junctions(p_dir, reading)
 
         unresolved = [t for t in tc_items if t.get("resolution") is None]
         proj_level_unresolved = [t for t in unresolved if _dict_is_project_level(t)]
@@ -1095,6 +1235,8 @@ def create_app(
         if joints_dir.is_dir():
             joint_models: dict[str, Joint] = {}
             for jf in sorted(joints_dir.glob("*.json")):
+                if jf.name.endswith(".draft.json"):             # drafts are not Joints until complete
+                    continue
                 jid = jf.stem
                 j_model = Joint.model_validate_json(jf.read_text(encoding="utf-8"))
                 members = {j_model.column.id, *(b.id for b in j_model.beams)}

@@ -97,4 +97,121 @@ describe("W10 Project Overview (IIT 45-joint fixture)", () => {
     expect(within(bjSection).getByText("SB1 into B14")).toBeInTheDocument();
     expect(within(bjSection).getByText("Grid A/B-3")).toBeInTheDocument();
   });
+
+  it("renders draft joints as blocked with accepted values, 'not on the drawing yet' for nulls, blocking items, and explicit place/floor without splitting ids", () => {
+    const draftJoints = [
+      {
+        id: "C5xXB8@FIRST@C+C1-14",
+        draft: true,
+        place: "C/C1-14",
+        floor: "FIRST",
+        storey: "FOUNDATION TO FIRST FLOOR",
+        column: {
+          id: "C5",
+          section: [{ value: "300x600", field: "section", page: 8 }],
+          main: null,
+          ties: null,
+          cover: null,
+        },
+        beams: [
+          {
+            id: "XB8",
+            direction: "x",
+            section: null,
+            top: [{ value: "4-16", field: "top", page: 17 }],
+            top_extra_unplaced: false,
+            bottom: null,
+            stirrups: null,
+            cover: null,
+            frames_into: [{ value: "C5", field: "frames_into", page: 15, at: "C/C1-14" }],
+          },
+        ],
+        status: "to_check" as const,
+        fail_count: 0,
+        blocked_count: 2,
+        blocking_item_ids: ["tc_col_main", "tc_zone"],
+        blocking_items: [
+          {
+            id: "tc_col_main",
+            member: "C5",
+            field: "column.main",
+            reason: "missing",
+            detail: "C5 longitudinal bars need confirmation",
+            page: 8,
+            project_level: false,
+          },
+          {
+            id: "tc_zone",
+            member: "ALL",
+            field: "seismic_zone",
+            reason: "missing",
+            detail: "Drawing does not state seismic zone",
+            page: 0,
+            project_level: true,
+          },
+        ],
+        bundle_ready: false,
+      },
+      {
+        id: "C9xXB2@SECOND@H-9",
+        draft: true,
+        place: null,
+        floor: null,
+        storey: null,
+        column: { id: "C9", section: null, main: null, ties: null, cover: null },
+        beams: [],
+        status: "to_check" as const,
+        fail_count: 0,
+        blocked_count: 1,
+        blocking_items: [
+          {
+            id: "tc_zone",
+            member: "ALL",
+            field: "seismic_zone",
+            reason: "missing",
+            detail: "Drawing does not state seismic zone",
+            page: 0,
+            project_level: true,
+          },
+        ],
+        bundle_ready: false,
+      },
+    ];
+
+    render(
+      <MemoryRouter>
+        <ProjectJointsTable
+          projectId="iit-live"
+          joints={draftJoints}
+          statusFilter="all"
+          onStatusFilterChange={() => {}}
+          ruleFilter={null}
+          onClearRuleFilter={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    const list = screen.getByRole("list", { name: "Project joints list" });
+    const rows = Array.from(list.children) as HTMLElement[];
+    expect(rows).toHaveLength(2);
+
+    // First draft: explicit place/floor/storey, accepted values + nulls + blocking items, To check CTA only
+    expect(within(rows[0]).getByText("Grid C/C1-14")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("FIRST")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("FOUNDATION TO FIRST FLOOR")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("Draft")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("300x600")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("4-16")).toBeInTheDocument();
+    expect(within(rows[0]).getAllByText("not on the drawing yet").length).toBeGreaterThanOrEqual(4);
+    expect(within(rows[0]).getByText(/C5 longitudinal bars need confirmation/)).toBeInTheDocument();
+    expect(within(rows[0]).getByText(/Drawing does not state seismic zone/)).toBeInTheDocument();
+    expect(within(rows[0]).queryByRole("link", { name: /^Joint /i })).toBeNull();
+    expect(within(rows[0]).queryByRole("link", { name: /^Report for /i })).toBeNull();
+    expect(within(rows[0]).getByRole("link", { name: /^To check items for C5xXB8@FIRST@C\+C1-14$/i })).toBeInTheDocument();
+
+    // Second draft has null place & floor: id is NEVER split on @
+    expect(within(rows[1]).getByText("Place not on the drawing yet")).toBeInTheDocument();
+    expect(within(rows[1]).queryByText("SECOND")).toBeNull();
+    expect(within(rows[1]).queryByText("H-9")).toBeNull();
+  });
 });

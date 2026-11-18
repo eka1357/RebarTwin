@@ -54,7 +54,7 @@ export function ReviewRoute() {
     const matchedJoint = project?.joints.find((j) => j.id === jointFilter);
     const blockingIds = new Set(matchedJoint?.blocking_item_ids ?? []);
     const memberSet = new Set<string>();
-    if (matchedJoint?.column.id) memberSet.add(matchedJoint.column.id);
+    if (matchedJoint?.column?.id) memberSet.add(matchedJoint.column.id);
     for (const b of matchedJoint?.beams ?? []) memberSet.add(b.id);
     const filtered = allItems.filter(
       (t) =>

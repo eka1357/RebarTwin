@@ -73,8 +73,9 @@ scene            { units: "mm", up: "z", concrete[{id, kind, min, max}],
                    loops[{id, member, role, dia, points[]}] }
 option_scenes[]  a scene per fix option, same order
 attempt_scenes[] { concrete[], bars[] } per attempt (first 60); a bar's findings index that attempt's failures
-provenance[]     { path, member, field, layer, page, box_2d, text, gemini, parser, status: agreed|resolved|default,
-                   ocr_raw, page_image }   only in bundles written by `rebartwin read`
+provenance[]     { path, member, field, layer, page, box_2d, text, gemini, parser,
+                   status: agreed|geometry|resolved|default, ocr_raw, joined_from, page_image,
+                   refs: [{page, box_2d, text, at, page_image}] | null }   only in bundles written by `rebartwin read`
 pages            { "<n>": "pages/page-<n>.png" }   page images copied beside bundle.json; paths relative to it
 ```
 
@@ -90,7 +91,10 @@ A bar's `findings` in `scene` index `report.findings`. The viewer never computes
 - Numbers in engine text (messages, flags, report.md) round half away from zero on the decimal value, as
   `Intl.NumberFormat` does by default (`rebartwin/numbers.py`): 388.5 mm reads "389 mm" in a flag and on a card.
 - Source (`provenance`, `pages`): `path` is the linking path, `box_2d` the drawing's box on `page`, `page_image`
-  the copied image (crop it with `box_2d`). `agreed` values came from both channels; `default` values (`parser`
+  the copied image (crop it with `box_2d`). `agreed` values came from both channels; `geometry` values (a beam's
+  `frames_into`) were made by code from the plans (`plan.py`): `page`, `box_2d` and `text` are the beam label on the
+  beam layout, `refs` the column label on the column layout with its grid place (`at`, "F-14"), `gemini` empty;
+  `default` values (`parser`
   holds the default, e.g. "20 mm") have no page, box or image; `resolved` marks a value a person gave in To check,
   written when the API re-checks a resolved joint.
 
@@ -138,7 +142,9 @@ A joint with unresolved items is shown as "To check" and is not checked until th
 The run: pdf name, pages, dpi, tile size, prompt versions (`read_v1`, `link_v1`), link model, seconds, text layer per
 page (words, annotations by author, whether annotations were read), counts, tokens (live calls only), every call
 (key, model, cached, tokens, latency), every accepted field with both boxes, and `unassigned`: values the parser read that Gemini did not report, shaped like To check items with
-`joint` null. They block nothing; they show what Gemini missed.
+`joint` null. They block nothing; they show what Gemini missed. `plans`: `{beam_layouts, column_layouts,
+alignment[{beam_page, column_page, x, y}], joints[{beam, column, at, level, beam_page, column_page}],
+junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctions are not To check items.
 
 ## Reader (Claude Code; `src/rebartwin/reader/`, `rebartwin read <pdf> --out out/<project>`)
 
@@ -183,7 +189,28 @@ page (words, annotations by author, whether annotations were read), counts, toke
    contradict the face, a column value's storey is the storey header above it (or beside it in its row) and a beam's
    or plan's floor is named on its sheet, and no other accepted callout gives the field another value at that
    level. Everything else becomes a To
-   check item with a reason.
+   check item with a reason. Ties use geometry before distance where the sheet has it: on a plan, a beam size on a
+   beam band belongs to the XB or YB label tied to that band; on a detail sheet, a beam callout belongs to the
+   elevation whose title ("XB1(200x600-inv)") is the nearest below it across its span; on a column layout, a size
+   belongs to the column whose outline is nearest (`plan.py`). A ruled table whose header cell says COVER gives
+   cover values scoped by their row (COLUMNS: ALL_COLUMNS, BEAMS: ALL_BEAMS); a Gemini cover for another scope
+   disagrees. General notes read on many sheets give one project-level item per field, scope and value (the other
+   pages listed), and none when that scope and value is accepted elsewhere. A column value's To check item carries
+   the storey header it sits under, so it blocks only joints of that storey. Greek and Cyrillic look-alike capitals
+   from OCR ("ΤΟ") read as Latin in storeys and floors. In OCR words, a hollow bar marker fused into the group after
+   a "+" ("04012" for "○ 4Ø12") is dropped when the rest is exactly one callout.
+4a. **Joints from geometry** (`plan.py`; item 4). Grid bubbles are short labels in drawn circles; each names the
+   line that leaves its circle (directly, or through a short, possibly dashed, leader); bubble text is never a member
+   id. A beam layout (grid plus XB/YB labels tied to bands of two parallel edges, dashes merged) is fitted onto the
+   column layout per axis by shared grid labels (at least 2, worst residual under 0.5% of the span; else one To check
+   item and no joints). Columns are labels tied to their filled outlines, covering the grid lines that cross them
+   (close sub-grids such as B and B1 can both cross one column); a column off the grid is To check. A band meets a
+   column when, mapped onto the column layout, it overlaps the outline across and reaches it along (one text height
+   of slack, since edges stop at column faces): that is a `frames_into` field with status `geometry`, level the
+   layout's title ("FIRST FLOOR BEAM LAYOUT") and `at` its place ("F-14"); one field per place. Slab marks in
+   circles (S1, S14) are never bubbles. Different marks along one direction at a column, or a label between
+   two bands, go to To check; a band ending where no column is, is a beam-on-beam junction in reading.json.
+   `scripts/plan_joints.py` prints them with no API call.
 5. **Linking** (`link.py`). `REBARTWIN_MODEL_LINK` (default `gemini-4-argon`; on model-not-found
    `REBARTWIN_MODEL_FALLBACK`) returns `{joints: [{joint, sources, unresolved}]}`, `joint` being
    `Joint.model_json_schema()`. The model chooses structure and cites, per linking path, the accepted field ids it
@@ -191,13 +218,29 @@ page (words, annotations by author, whether annotations were read), counts, toke
    drawn field becomes a To check item tied to the joint. Defaults and the model's structural choices (direction,
    column orientation, cover measured to, layer arrangement) are written into `Joint.notes` by code, never by the
    model. Joint ids are rebuilt from the members: `C4xB12xB13`, with `@<floor>` when the plans give one
-   (`C4xB12@FIRST`). A joint's floor is the floor of the plans its beams were read on; its column values must be
+   (`C4xB12@FIRST`) and `@<place>` when geometry gives the column's grid place (`C5xXB8@FIRST@F-14`,
+   `C5xXB3xYB14@FIRST@C+C1-25`): one column type stands at many places, so the place keeps ids unique. Id parts are
+   safe as Windows file names and URL path segments: "/" becomes "+", spaces "_", other characters outside
+   letters, digits, `_ + . -` become "_". In a joint with a place, a beam's `top_extra` counts only if its `at` (the
+   grid bubble under it on the detail sheet) is the beam's support line there (the number for a beam along X, the
+   letter along Y); an extra with no `at` is an `ambiguous` item on `beams[i].top`, never a guess. An extra's `at`
+   comes from a grid bubble under it on the detail sheet, else from mapping its elevation's supports (break marks
+   under the beam) onto the plan's supports along that beam (columns plus beam-on-beam ends), left to right, only
+   when the counts are equal and each span's share of the length matches within 3% in exactly one direction (or in
+   both, when both give the same support for that callout). A joint the model cannot give every required number
+   for (a number left at 0) is written as a draft, `joints/<id>.draft.json`: id, place, floor, storey, column and
+   beams with, for each value, the accepted fields that give it or null, and the To check items blocking it, one of
+   them naming the null paths. Never a placeholder number. The API lists drafts as blocked joints (`draft: true`)
+   and never checks them; a wrong structure (two beams one way) is still "link it by hand". A joint's floor is the floor of the plans its beams were read on; its column values must be
    from the storey that ends there and its beam values from that floor, and that choice is a note. Without a floor,
-   a column with values for several storeys goes to To check. Prompt `link_v2`.
+   a column with values for several storeys goes to To check. Prompt `link_v3` (adds `at`: one joint per place, top
+   extras by support).
 6. **Evaluation.** A golden set of 60 hand-labelled callouts; report accuracy per field. Target: at least 95%
    accepted and correct, zero wrong values accepted.
 
 Keys: an AI Studio key in `GEMINI_API_KEY` locally; Vertex AI on Cloud Run (`GOOGLE_GENAI_USE_VERTEXAI=true`).
+API reply caches (`CachingTransport`, `CachingOcr`, `GeminiProposer`) use `REBARTWIN_REPLIES_DIR` (default
+`out/_replies`) with no per-project `replies` folder so saved readings replay across uploads.
 
 ## API (built, `src/rebartwin/api.py`; Vite proxies `/api/*` -> `http://127.0.0.1:8000/*`)
 
@@ -207,7 +250,7 @@ Keys: an AI Studio key in `GEMINI_API_KEY` locally; Vertex AI on Cloud Run (`GOO
 | `POST /projects` | Create a project |
 | `POST /projects/{id}/drawings` | Upload a PDF; starts reading |
 | `GET /projects/{id}/events` | Server-sent events: `page_started`, `page_read` (agreed, to_check), `joint_ready`, `done`, `error` |
-| `GET /projects/{id}` | Sheets, joints and their status |
+| `GET /projects/{id}` | Sheets, overview counts, failures by rule, beam-on-beam junctions, joints (including `draft: true` blocked drafts) with explicit `place`/`floor` and blocking items |
 | `GET /projects/{id}/to-check` and `POST .../to-check/{item}/resolve` | The review queue |
 | `GET /projects/{id}/joints/{joint}/bundle` | The bundle |
 | `GET .../joint.ifc`, `.../fixed.ifc?option=n`, `.../issues.bcf`, `.../report.md` | Exports |

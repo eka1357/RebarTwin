@@ -44,7 +44,7 @@ export function BeamJunctionsList({ junctions }: BeamJunctionsListProps) {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-num font-semibold text-foreground">
-                  {item.beams.join(" into ")}
+                  {(item.beams ?? []).join(" into ")}
                 </span>
                 {item.grid && (
                   <Badge variant="muted" className="font-num">

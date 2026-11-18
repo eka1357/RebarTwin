@@ -124,9 +124,32 @@ Built `src/rebartwin/gemini_proposer.py` (`GeminiProposer`) and `src/rebartwin/r
 
 Fixed Workings playback past the 60-scene `attempt_scenes` cap (`Viewport.tsx`, `WorkingsTimeline.tsx`) to preserve the last stored 3D scene and display `No 3D for this attempt` (verified through Zone III Attempt 61 in Vitest and Playwright). Built W11 printable pre-pour report (`features/report/PrePourReport.tsx`, `ReportFindings.tsx`, `ReportChosenFix.tsx`, `ReportAssumptionsAndSource.tsx`, `routes/ReportRoute.tsx`, shared `lib/provenance.ts`) reachable from `Report` links (`DemoRoute`, `JointRoute`, `ProjectRoute`) and from `Use in report` (`Open report` in `FixOptionCard` / toast, persisted per joint and `?joint=&variant=&option=` URL params): `Pre-pour check · C4 × B12` A4 layout (warm `--paper` on screen, `--white` in `@media print`), hiding `.app-topbar` / `.no-print` chrome under `@media print`, `Print or save as PDF` button (`window.print()`), header metadata (status pill only; `Recheck`/`Redesign` pill on Chosen fix), verdict (`Fails N checks` / `Passes every check`), identical `(rule, members, measured, limit)` failing checks grouped cleanly on one line with one `ToleranceGauge` (1 A4 page on Zone II), honest `Passes every check that applies` + `IS 13920 is off in zone II` applicability text, chosen fix before/after `SectionGlyph`s, `area_before → area_provided`, effective-depth and redesign advisories (`The engineer of record decides`), `Joint.notes` + provenance defaults (`Assumed, not on the drawing`), provenance ledger (`Agreed` / `Resolved` / `OCR read '...'` or pitch-deck note), `Checked by` / `Engineer of record` / `Date` sign-off block, and `joint.ifc` / `fixed.ifc` / `issues.bcf` download links. Verified with ESLint, TypeScript, Vitest (29 passed), Vite production build, and Playwright + PyMuPDF 1-page A4 PDF text inspection + axe across 320 px width and reduced motion (16 passed).
 
-## 18 November 2026: Project overview dashboard and IIT 45-joint fixture (W10, `feature/w10-overview`)
+## 18 November 2026: joints from geometry, item 4 (`feature/R-ocr`)
 
-Extended `GET /projects/{id}` in `src/rebartwin/api.py` with overview `counts` (`found`, `checked`, `failing`, `blocked`, `passing`), `failures_by_rule`, `beam_junctions`, and per-joint `grid`, `level`, `sheets`, `worst_failure`, `failing_rules`, and `blocking_item_ids`. Built W10 `web/src/features/project/` components (`ProjectSummaryCards.tsx`, `FailuresByRuleChart.tsx`, `ProjectJointsTable.tsx`, `BeamJunctionsList.tsx`) wired in `ProjectRoute.tsx`, added `?joint=` filtering in `ReviewRoute.tsx` (`routes.ts`), fixed `StatusIsland.tsx` WCAG 2.5.3 label-content-name consistency (`"N fails"` / `"Passes"`), and tested against an IIT first-floor 45-joint fixture (`test/fixtures/iitFirstFloor.ts`, 14 failing, 9 blocked, 22 passing, 4 beam-on-beam junctions) in `tests/test_api.py`, Vitest, and Playwright + axe across dark/light themes, 320 px width, and reduced motion.
+Claude Code. Master (A1, W8, W9) merged into `feature/R-ocr`. Gemini's Cyrillic Ф and Greek Ά read as Ø in its
+values. `plan.py`: grids from bubbles and their lines, sheet alignment, columns on the grid, beam bands, beam-column
+meets as code-made `frames_into` (status `geometry`), beam-on-beam junctions; size labels on plans tie by band and
+elevation callouts by the title below. Sheets 15 and 21: 35 x and 28 y grid lines on both, aligned to 0.28 units,
+45 joints from 82 meets, 10 To check items. Replay of the saved t3000 replies: 104 to 238 accepted (top 0 to 30,
+top_extra 0 to 29, frames_into 58). 268 tests, no key needed.
+
+Then, on Eka's check of the joints list: joint ids carry the grid place and are safe as file names
+(`C5xXB8@FIRST@F-14`, `@C+C1-25`); extra top bars count only at the support whose grid bubble is under them on the
+detail sheet, else To check (sheets 17, 18 and 20 have no such bubbles); slab marks are never bubbles; prompt
+`link_v3`; the API runs the geometry step. IS 13920 skip note rewritten for engineers. Live linking run on sheets
+7 to 9 and 15 to 21 (7 live calls): 286 agreed, 5 joints linked, 48 of the model's joints rejected (column bar size
+0 where the column's bars are still To check), 18 project-level items (cover table, zone, exposure). 276 tests.
+
+Then, on Eka's decisions: drafts for incomplete joints (no placeholder numbers); elevation supports mapped to plan
+supports with the count and span-share guard; the clear-cover table read as a table with one project item per
+reading; C1's "• 4Ø16 + ○ 4Ø12" (OCR fused the hollow marker); column items carry their storey; Greek "ΤΟ" read
+as TO (sheet 9 is the servant quarters, FOUNDATION TO GROUND ROOF); column-layout sizes tie by outline. Replay
+(no API): 301 accepted, no project-level items left but zone and exposure, and C1xXB17@FIRST@L1+M+M1-28 has no
+blocking item of its own. 282 tests.
+
+## 18 November 2026: Project overview dashboard, draft joints, and shared reply cache (W10, `feature/w10-overview`)
+
+Extended `GET /projects/{id}` in `src/rebartwin/api.py` with overview `counts` (`found`, `checked`, `failing`, `blocked`, `passing`), `failures_by_rule`, `beam_junctions` (including `reading.plans.junctions`), `blocking_items`, explicit `place` / `floor` / `storey` fields (never splitting ids), `worst_failure`, `failing_rules`, and `draft` handling (`*.draft.json`); routed every reply cache in `api.py` (`CachingTransport`, `CachingOcr`, `_safe_run_check`) through `REBARTWIN_REPLIES_DIR` (default `out/_replies`, no per-project `replies` directory) and permitted `+` in `_SAFE_ID_RE` for place-tagged joint ids. Built W10 `web/src/features/project/` components (`ProjectSummaryCards.tsx`, `FailuresByRuleChart.tsx`, `ProjectJointsTable.tsx`, `DraftJointDetails.tsx`, `BeamJunctionsList.tsx`) wired in `ProjectRoute.tsx` so draft joints render as blocked with accepted values, `"not on the drawing yet"` for nulls, and blocking `To check` items; added `?joint=` filtering in `ReviewRoute.tsx` (`routes.ts`); fixed `StatusIsland.tsx` WCAG 2.5.3 label-content-name consistency; and tested against `*.draft.json` / IIT first-floor 45-joint fixtures (`test/fixtures/iitFirstFloor.ts`) in `tests/test_api.py`, Vitest, and Playwright + axe across dark/light themes, 320 px width, and reduced motion.
 
 ## Next: built in Google Antigravity
 

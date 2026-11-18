@@ -119,6 +119,17 @@ def test_normalise_reads_gemini_values():
     assert normalise("bars", "five twenty") is None
 
 
+def test_normalise_reads_gemini_cyrillic_ef_and_greek_alpha_tonos_as_diameter():
+    """Gemini writes the drawing's Ø as Cyrillic "Ф" (U+0424) in 31 values and Greek "Ά" (U+0386) in 25 values of
+    the saved t3000 replies (counted from out/iith-t3000/replies). Read as Ø, "4Ф20+8Ф16" is 4 bars of 20 mm plus
+    8 of 16 mm, "Ф8@200c/c" is 8 mm links at 200 mm, "2Ά12" is 2 bars of 12 mm: the same values as the Ø forms.
+    Only Gemini's values: the page scanner never takes these letters for Ø, so a stray Ф on a sheet reads nothing."""
+    assert normalise("bars", "4Ф20+8Ф16") == normalise("bars", "4Ø20+8Ø16") == "4-20 + 8-16"
+    assert normalise("links", "Ф8@200c/c") == "8@200"
+    assert normalise("bars", "2Ά12") == "2-12"
+    assert not [f for f in scan("2Ά12 4Ф20") if f[0] == "bars"]
+
+
 def test_parse_page_maps_matches_to_word_boxes(tmp_path: Path):
     """'8φ @ 150 c/c' is four words; the match covers all four and its box is their union."""
     page = ingest(make_pdf(tmp_path / "s.pdf"))[0]

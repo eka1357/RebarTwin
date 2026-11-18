@@ -83,7 +83,7 @@ def test_provenance_keeps_both_channels(sheet):
     a = next(a for a in result.accepted if (a.member, a.field) == ("B13", "links"))
     assert a.provenance() == {"page": 1, "box_2d": [round(v) for v in a.box], "text": "8φ @ 150 c/c",
                               "gemini": "8φ @ 150 c/c", "parser": "8@150", "status": "agreed", "field_id": a.id,
-                              "level": None, "ocr_raw": None}
+                              "level": None, "ocr_raw": None, "joined_from": None}
     assert all(isinstance(v, int) for v in a.provenance()["box_2d"])     # integers only in the files
 
 

@@ -45,8 +45,8 @@ Seismic zone II (IS 13920 off), mild exposure, 20 mm aggregate. Advisory: the en
 - IS 456:2000 cl. 26.4.2, Table 16, nominal cover for the exposure: 2 passed. Basis: Table 16 values as reproduced by civilengineeringweb.com, with Note 1's 5 mm reduction for mild exposure and main bars up to 12 mm.
 - IS 456:2000 cl. 26.4.2.1, cover to a column's main bars: 1 passed. Basis: Clause text as reproduced by brainkart.com (40 mm or the bar size; 25 mm for columns up to 200 mm with bars up to 12 mm).
 - Geometry, bars that run into each other: 0 passed. Basis: No clause: two bars cannot occupy the same space. Touching is allowed.
-- IS 13920:2016 cl. 7.1.1: not run. IS 13920 is off: seismic zone II. It runs in zones III, IV and V, or when apply_is13920 is true.
-- IS 13920:2016 cl. 6.2.3: not run. IS 13920 is off: seismic zone II. It runs in zones III, IV and V, or when apply_is13920 is true.
+- IS 13920:2016 cl. 7.1.1: not run. IS 13920 is off: the joint is in seismic zone II. It applies in zones III to V, or when the designer turns it on.
+- IS 13920:2016 cl. 6.2.3: not run. IS 13920 is off: the joint is in seismic zone II. It applies in zones III to V, or when the designer turns it on.
 
 ## Assumptions
 

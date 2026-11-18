@@ -8,7 +8,8 @@ compare with the run that saved them.
 Prints agreement per field (the saved run's reading.json and to_check.json against now), the commonest To check
 reasons, and a random sample of newly agreed values beside the drawing text near them, for a person to check.
 Stops with an error if any reply is missing: it never calls an API. Linking is not replayed (its input changes
-whenever agreement does, so its saved reply no longer matches).
+whenever agreement does, so its saved reply no longer matches). `--plans 21` also ingests sheet 21 for geometry only
+(no Gemini read), so joints from a beam layout and that column layout add their code-made frames_into (plan.py).
 """
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ from rebartwin.reader.gemini import CachingTransport, read_pages
 from rebartwin.reader.ingest import ingest
 from rebartwin.reader.ocr import CachingOcr, ocr_pages
 from rebartwin.reader.parser import parse_page
+from rebartwin.reader.plan import read_plans
 
 FIELDS = ["section", "main", "links", "top", "top_extra", "bottom", "bottom_extra", "cover", "concrete_grade",
           "steel_grade", "seismic_zone", "exposure", "frames_into"]
@@ -44,6 +46,7 @@ def main() -> None:
     ap.add_argument("--tile", type=int, default=3000)
     ap.add_argument("--sample", type=int, default=20)
     ap.add_argument("--seed", type=int, default=17)
+    ap.add_argument("--plans", default="", help="extra pages ingested for plan geometry only, e.g. 21")
     args = ap.parse_args()
 
     old_acc = json.loads((args.out / "reading.json").read_text(encoding="utf-8"))["accepted"]
@@ -55,6 +58,8 @@ def main() -> None:
     matches = [m for p in sheets for m in parse_page(p)]
     reads = read_pages(sheets, cache, tile_px=args.tile)
     result = agree(reads, matches, sheets)
+    extra = ingest(args.pdf, pages=pages_arg(args.plans)) if args.plans else []
+    plans = read_plans(sheets + extra, result)
     assert all(c.cached for c in cache.ledger), "a live call was made"
     print(f"replayed {len(cache.ledger)} saved replies, 0 live calls; {len(reads)} callouts")
 
@@ -69,6 +74,8 @@ def main() -> None:
                   f"({100 * n_acc[f] / max(1, n_all[f]):.0f}%)")
     print(f"total agreed {len(old_acc)} -> {len(result.accepted)}; to check {len(old_tc)} -> {len(result.to_check)}; "
           f"unassigned {len(result.unassigned)}")
+    print(f"plans: beam layouts {plans['beam_layouts']}, column layouts {plans['column_layouts']}, "
+          f"{len(plans['joints'])} beam-column meets, {len(plans['junctions'])} junctions")
     print("commonest To check reasons:")
     for reason, n in Counter(t.detail.split(";")[-1].strip()[:70] for t in result.to_check).most_common(10):
         print(f"  {n:4d}  {reason}")

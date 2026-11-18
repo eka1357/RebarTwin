@@ -173,3 +173,117 @@ def make_grid_pdf(path: Path, ruled: bool = True) -> Path:
     doc.save(path)
     doc.close()
     return path
+
+
+# --- item 4: a beam layout and a column layout with one grid, and a sheet of beam elevations -------------------------
+#
+# Beam layout (page 1), points: grid x lines 1, 2, 3 at x = 150, 350, 550; y lines A, B, C1 at y = 150, 300, 450.
+# Column layout (page 2): the same grid scaled 0.8 and moved (x' = 0.8 x + 60, y' = 0.8 y + 40), so 1, 2, 3 at
+# x' = 180, 340, 500 and A, B, C1 at y' = 160, 280, 400. The y bubble "C1" is a grid line, not column C1.
+PLAN_X = {"1": 150, "2": 350, "3": 550}
+PLAN_Y = {"A": 150, "B": 300, "C1": 450}
+COLUMN_AT = {"C2": ("A", "1"), "C3": ("A", "2"), "C4": ("A", "3"), "C5": ("B", "1"), "C6": ("B", "2"),
+             "C8": ("C1", "1")}            # C7 is drawn 20 pt right of C1-3: near it, not on it
+
+
+def _dashed(page, a, b, dash: float = 6, gap: float = 2) -> None:
+    (x0, y0), (x1, y1) = a, b
+    length = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
+    t = 0.0
+    while t < length:
+        e = min(t + dash, length)
+        page.draw_line((x0 + (x1 - x0) * t / length, y0 + (y1 - y0) * t / length),
+                       (x0 + (x1 - x0) * e / length, y0 + (y1 - y0) * e / length), color=(0.5, 0.5, 0.5))
+        t = e + gap
+
+
+def _grid(page, tw, font, xs: dict[str, float], ys: dict[str, float]) -> None:
+    """Bubbles of radius 8 at y = 100 (numbers) and x = 100 (letters), each with a dashed 60 pt stub from its edge."""
+    for label, x in xs.items():
+        page.draw_circle((x, 100), 8)
+        tw.append((x - 1.7 * len(label), 102), label, font=font, fontsize=6)
+        _dashed(page, (x, 108), (x, 168))
+    for label, y in ys.items():
+        page.draw_circle((100, y), 8)
+        tw.append((100 - 1.7 * len(label), y + 2), label, font=font, fontsize=6)
+        _dashed(page, (108, y), (168, y))
+
+
+def make_plan_pdf(path: Path) -> Path:
+    """Page 1, FIRST FLOOR BEAM LAYOUT; page 2, COLUMN LAYOUT. Beams are two dashed edges 4 pt apart, stopping 5 pt
+    short of each grid intersection; each label sits 2 pt above (XB) or 3 pt right of (YB) its band.
+
+    XB1 along A, 1 to 2 and again 2 to 3 (same mark either side of C3); XB2 along B, 1 to 2, and XB3 along B, 2 to 3
+    (different marks either side of C6; XB3 ends at B-3 with no column); YB1 along 1, A to B; YB2 along 2, B to C1
+    (ends at C1-2, no column); YB3 along 3, A to C1 (ends at C1-3, where C7 is off the grid). C8 at C1-1 has no
+    beam. A size "230x450" sits on XB2's band, 2 pt above it, beside the label."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    font = pymupdf.Font("cjk")
+    beam = doc.new_page(width=842, height=595)
+    tw = pymupdf.TextWriter(beam.rect)
+    _grid(beam, tw, font, PLAN_X, PLAN_Y)
+    tw.append((560, 560), "FIRST FLOOR BEAM LAYOUT", font=font, fontsize=8)
+
+    def xb(label: str, y: float, x0: float, x1: float, size: str | None = None) -> None:
+        _dashed(beam, (x0 + 5, y - 2), (x1 - 5, y - 2))
+        _dashed(beam, (x0 + 5, y + 2), (x1 - 5, y + 2))
+        tw.append((x0 + 20, y - 4), label, font=font, fontsize=6)
+        if size:
+            tw.append((x0 + 90, y - 4), size, font=font, fontsize=6)
+
+    def yb(label: str, x: float, y0: float, y1: float) -> None:
+        _dashed(beam, (x - 2, y0 + 5), (x - 2, y1 - 5))
+        _dashed(beam, (x + 2, y0 + 5), (x + 2, y1 - 5))
+        tw.append((x + 5, y0 + 40), label, font=font, fontsize=6)
+
+    xb("XB1", 150, 150, 350)
+    xb("XB1", 150, 350, 550)
+    xb("XB2", 300, 150, 350, "230x450")
+    xb("XB3", 300, 350, 550)
+    yb("YB1", 150, 150, 300)
+    yb("YB2", 350, 300, 450)
+    yb("YB3", 550, 150, 450)
+    tw.write_text(beam)
+
+    col = doc.new_page(width=842, height=595)
+    tw = pymupdf.TextWriter(col.rect)
+    _grid(col, tw, font, {k: 0.8 * v + 60 for k, v in PLAN_X.items()}, {k: 0.8 * v + 40 for k, v in PLAN_Y.items()})
+    tw.append((560, 560), "COLUMN LAYOUT", font=font, fontsize=8)
+    places = {c: (0.8 * PLAN_X[x] + 60, 0.8 * PLAN_Y[y] + 40) for c, (y, x) in COLUMN_AT.items()}
+    places["C7"] = (0.8 * PLAN_X["3"] + 60 + 20, 0.8 * PLAN_Y["C1"] + 40)
+    for c, (x, y) in places.items():
+        col.draw_rect(pymupdf.Rect(x - 5, y - 5, x + 5, y + 5), color=None, fill=(0.8, 0, 0.8))
+        tw.append((x + 7, y + 2), c, font=font, fontsize=6)
+    tw.write_text(col)
+    doc.save(path)
+    doc.close()
+    return path
+
+
+def make_elevation_pdf(path: Path) -> Path:
+    """Two beam elevations, one above the other, each titled below its dimension line. XB6: edges at y = 100 and
+    130, x 100 to 400, dimension line at 145, title "XB6(230x450)" at baseline 160, top callout "2Ø20" at baseline 95.
+    XB5: edges at 200 and 230, dimension line at 245, title "XB5(230x450)" at baseline 260, top callout "2Ø16" at
+    baseline 195 (below XB6's title) and bottom callout "3Ø12" at baseline 226 (inside, near the bottom edge). A
+    callout "2Ø25" at x 600, under no elevation."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page(width=842, height=595)
+    font = pymupdf.Font("cjk")
+    tw = pymupdf.TextWriter(page.rect)
+    for top, title, callouts in ((100, "XB6(230x450)", [(200, 95, "2Ø20")]),
+                                 (200, "XB5(230x450)", [(200, 195, "2Ø16"), (260, 226, "3Ø12")])):
+        page.draw_line((100, top), (400, top))
+        page.draw_line((100, top + 30), (400, top + 30))
+        page.draw_line((100, top + 45), (400, top + 45), color=(1, 0, 0))
+        tw.append((100, top + 60), title, font=font, fontsize=6)
+        for x, y, text in callouts:
+            tw.append((x, y), text, font=font, fontsize=6)
+    tw.append((600, 195), "2Ø25", font=font, fontsize=6)
+    tw.write_text(page)
+    doc.save(path)
+    doc.close()
+    return path

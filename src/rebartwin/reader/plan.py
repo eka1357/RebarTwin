@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from itertools import pairwise
 from statistics import median
 
 from .ingest import Box, Page, Seg, Word
@@ -113,7 +114,7 @@ class Grid:
         pos = sorted((self.xs if axis == "x" else self.ys).values())
         if len(pos) < 2:
             return 0.0
-        bays = [b - a for a, b in zip(pos, pos[1:]) if b - a > 0]
+        bays = [b - a for a, b in pairwise(pos) if b - a > 0]
         return min(min(bays) / 2 if bays else 0.0, (pos[-1] - pos[0]) / 100)
 
 
@@ -415,6 +416,14 @@ def text_height(page: Page) -> float:
     return median(hs) if hs else 10.0
 
 
+def _root(parent: list[int], k: int) -> int:
+    """Union-find: the representative of k's group."""
+    while parent[k] != k:
+        parent[k] = parent[parent[k]]
+        k = parent[k]
+    return k
+
+
 def bands(page: Page, sep: tuple[float, float] = (BAND_MIN, BAND_MAX)) -> list[Band]:
     """Beam bands: parallel lines at least 3 text heights long, dashes merged (gaps up to one text height), whose
     separation is `sep` text heights and which overlap along at least half the shorter. Bands sharing an edge merge
@@ -449,16 +458,11 @@ def bands(page: Page, sep: tuple[float, float] = (BAND_MIN, BAND_MAX)) -> list[B
         # merge pairs sharing a line
         parent = list(range(len(lns)))
 
-        def find(k: int) -> int:
-            while parent[k] != k:
-                parent[k] = parent[parent[k]]
-                k = parent[k]
-            return k
         for i, j in pairs:
-            parent[find(i)] = find(j)
+            parent[_root(parent, i)] = _root(parent, j)
         groups: dict[int, list[tuple[int, int]]] = {}
         for i, j in pairs:
-            groups.setdefault(find(i), []).append((i, j))
+            groups.setdefault(_root(parent, i), []).append((i, j))
         for ps in groups.values():
             ids = {k for p in ps for k in p}
             ls = [lns[k] for k in ids]
@@ -783,7 +787,7 @@ def elevation_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
     els = elevations(page)
     if not els:
         return None
-    cy, cx = _centre(box)
+    cx = _centre(box)[1]
     below = sorted((e for e in els if e.title[0] >= box[2] and e.lo <= cx <= e.hi), key=lambda e: e.title[0])
     if not below:
         return None

@@ -280,4 +280,92 @@ describe("W3 Scene & Demo Bundle", () => {
       Number(circles12[0].getAttribute("r")),
     );
   });
+
+  it("renders place_face_bars fixes as Recheck (not Redesign) with moved After column SectionGlyph and placing tolerance flag", () => {
+    const base = demoBundleRaw as unknown as Bundle;
+    const beforeBars = base.scene.bars.map((bar, idx) =>
+      bar.member === base.joint.column.id
+        ? {
+            ...bar,
+            member: "C1",
+            dia: idx % 2 === 0 ? 16 : 12,
+            p0: idx % 2 === 1 ? [bar.p0[0], bar.p0[1] < 0 ? -90 : 90, bar.p0[2]] as [number, number, number] : bar.p0,
+            p1: idx % 2 === 1 ? [bar.p1[0], bar.p1[1] < 0 ? -90 : 90, bar.p1[2]] as [number, number, number] : bar.p1,
+          }
+        : bar,
+    );
+    const afterBars = beforeBars.map((bar, idx) =>
+      bar.member === "C1" && idx % 2 === 1
+        ? {
+            ...bar,
+            status: "pass" as const,
+            p0: [bar.p0[0], bar.p0[1] < 0 ? -40 : 40, bar.p0[2]] as [number, number, number],
+            p1: [bar.p1[0], bar.p1[1] < 0 ? -40 : 40, bar.p1[2]] as [number, number, number],
+          }
+        : bar,
+    );
+
+    const placementBundle: Bundle = {
+      ...base,
+      joint: {
+        ...base.joint,
+        column: {
+          ...base.joint.column,
+          id: "C1",
+          n_bars: 8,
+          bar_dia: 16,
+          face_dia: 12,
+        },
+      },
+      fix: {
+        status: "fixed",
+        summary: "Passes without a redesign.",
+        attempts: [],
+        blocking: {},
+        options: [
+          {
+            candidate: {
+              title: "XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm",
+              source: "enumerator",
+              rationale: "move face bars clear of beam bars",
+              edits: [
+                { kind: "set_face", beam: "B12", face: "top", layers: ["2-16", "2-12"] },
+                { kind: "place_face_bars", along_y: [-40, 40] },
+              ],
+            },
+            faces: base.fix.options[0].faces,
+            column: "C1 face bars at y = -40, 40 mm",
+            flags: [
+              "C1's 12 mm face bars placed at y = -40, 40 mm from its centre line (the schedule does not dimension them), each at least 5 mm clear of the beams' bars: a placing tolerance chosen here, not a code rule. Show these positions on the drawing.",
+            ],
+          },
+        ],
+      },
+      scene: {
+        ...base.scene,
+        concrete: base.scene.concrete.map((c) => (c.kind === "column" ? { ...c, id: "C1" } : c)),
+        bars: beforeBars,
+      },
+      option_scenes: [
+        {
+          ...base.scene,
+          concrete: base.scene.concrete.map((c) => (c.kind === "column" ? { ...c, id: "C1" } : c)),
+          bars: afterBars,
+        },
+      ],
+    };
+
+    render(<FixPanel bundle={placementBundle} />);
+    expect(screen.getAllByText(/Recheck/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/^Redesign$/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Column face bars/i)).toBeInTheDocument();
+    expect(screen.getByText(/placing tolerance chosen here, not a code rule/i)).toBeInTheDocument();
+    const colSvgs = screen.getAllByRole("img", {
+      name: /Column C1 cross-section: 4 bars of 16 millimetres, 4 bars of 12 millimetres/i,
+    });
+    expect(colSvgs).toHaveLength(2);
+    const beforeYs = [...colSvgs[0].querySelectorAll('circle[data-bar-dia="12"]')].map((c) => c.getAttribute("cy"));
+    const afterYs = [...colSvgs[1].querySelectorAll('circle[data-bar-dia="12"]')].map((c) => c.getAttribute("cy"));
+    expect(afterYs).not.toEqual(beforeYs);
+  });
 });

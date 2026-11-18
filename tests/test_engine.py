@@ -219,3 +219,102 @@ def test_xb17_top_bars_read_on_the_failing_side():
     assert (mid.measured, mid.limit, mid.status) == (24.667, 25.0, "fail")
     assert "are 24.7 mm apart" in mid.message and "needs 25 mm" in mid.message
     assert top[("XB17/T1-1", "XB17/T1-2")].measured == 26.667
+
+
+def c1_xb17() -> Joint:
+    """C1 x XB17 at L1/M/M1-28 (IITH, first floor) as linked: C1 200 x 450, 4-16 corners and 4-12 faces, 8 mm ties,
+    40 mm clear cover to the ties (so the main bars sit 48 mm in); XB17 along X, 200 x 450, 25 mm cover to 8 mm
+    stirrups, top 2-12 + 2-16, bottom 2-12; zone II, mild exposure, 20 mm aggregate."""
+    from rebartwin.model import Layer
+    j = mixed_c1()
+    j.column = j.column.model_copy(update={"cover_to": "links"})
+    j.beams = [j.beams[0].model_copy(update={"id": "XB17", "direction": "x", "b": 200, "D": 450, "stirrup_dia": 8,
+                                              "cover": 25, "cover_to": "links", "top": [Layer(bars="2-12 + 2-16")],
+                                              "bottom": [Layer(bars="2-12")]})]
+    return Joint.model_validate(j.model_dump())
+
+
+def test_face_bar_placements_for_c1_x_xb17_by_hand():
+    """Corners at y = +-(225 - 48 - 8) = +-169. XB17's bars cross at y = +-61 (12 mm) and +-20.333 (16 mm). A 12 mm
+    face pair at +-s keeps 5 mm clear of them when |s - 61| - 12 >= 5 and |s - 20.333| - 14 >= 5: s <= 44 or s >= 78,
+    and s >= 39.333. Spacing (IS 456 cl. 26.3.2, 25 mm here): 2s - 12 >= 25 and (169 - s) - 14 >= 25, so
+    18.5 <= s <= 130. On 5 mm steps: 40, then 80 to 130; the six smallest moves from the drawn +-56.333 (the even
+    spread -169, -56.333, 56.333, 169) are 40, 80, 85, 90, 95, 100."""
+    from rebartwin.fixes import placements
+    got = [p.along_y for p in placements(c1_xb17())]
+    assert got == [[-40.0, 40.0], [-80.0, 80.0], [-85.0, 85.0], [-90.0, 90.0], [-95.0, 95.0], [-100.0, 100.0]]
+    assert all(p.along_x is None for p in placements(c1_xb17()))     # the 200 mm faces have no face bars
+
+
+def test_c1_x_xb17_is_fixed_by_a_beam_change_with_face_bars_placed():
+    """As drawn it fails 9 checks (XB17's top bars 24.7 mm apart, 8 clashes with C1's face bars). No beam change
+    alone passes, and no redesign is needed: the best fix re-arranges XB17's top as 2-16 in layer 1 and 2-12 in layer 2
+    (2 x 201.1 + 2 x 113.1 = 628.3 mm2, the same steel) and places C1's face bars at y = +-40. By hand: layer 1 16 mm
+    bars at +-(100 - 33 - 8) = +-59, layer 2 in line at +-59, bottom 12 mm at +-61; face bars at +-40 clear the
+    16 mm bars by 19 - 14 = 5 mm, the 12 mm layer 2 by 19 - 12 = 7 and the bottom bars by 21 - 12 = 9. The note says
+    the 5 mm is a placing tolerance, not a code rule."""
+    from rebartwin.fixes import Enumerator, PlaceFaceBars, ResizeColumn, apply, resolve
+    j = c1_xb17()
+    assert len(check(j)[0].failures) == 9
+    r = resolve(j, [Enumerator()])
+    assert r.status == "fixed"
+    best = r.options[0]
+    assert best.candidate.title == "XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm"
+    assert not any(isinstance(e, ResizeColumn) for o in r.options for e in o.candidate.edits)
+    place = next(e for e in best.candidate.edits if isinstance(e, PlaceFaceBars))
+    assert place.along_y == [-40.0, 40.0]
+    assert best.faces[0].area_provided == pytest.approx(628.3, abs=0.1)
+    assert any("placing tolerance chosen here, not a code rule" in f for f in best.flags)
+    report, cage = check(apply(j, best.candidate))
+    assert report.failures == []
+    xb17 = {b.id: (b.lateral, b.dia) for b in cage.bars if b.member == "XB17"}
+    assert xb17["XB17/T1-2"] == (59.0, 16.0) and xb17["XB17/T2-2"] == (59.0, 12.0) and xb17["XB17/B1-2"] == (61.0, 12.0)
+
+
+def test_rank_puts_beam_changes_first_then_placements_then_redesigns():
+    """Three passing options for one joint: a beam change, a face bar placement and a column resize. They rank in
+    that order whatever their steel."""
+    from rebartwin.fixes import Candidate, Option, PlaceFaceBars, ResizeColumn, SetFace, _rank
+    j = c1_xb17()
+    beam = Option(candidate=Candidate(title="b", edits=[SetFace(beam="XB17", face="top", layers=["4-12"])]),
+                  faces=[], flags=[])
+    place = Option(candidate=Candidate(title="p", edits=[PlaceFaceBars(along_y=[-40.0, 40.0])]), faces=[], flags=[])
+    grow = Option(candidate=Candidate(title="r", edits=[ResizeColumn(b=200, h=550)]), faces=[], flags=[])
+    assert [o.candidate.title for o in sorted([grow, place, beam], key=lambda o: _rank(o, j))] == ["b", "p", "r"]
+
+
+def test_the_demo_joints_never_try_a_placement():
+    """C4 (300 x 300, 8-16) has one face bar per face, on the centre line: a symmetric placement cannot move it, so
+    the fix loop for the C4 x B12 demo joints tries no placement and its result is what the bundles hold."""
+    from rebartwin.fixes import Enumerator, resolve
+    root = Path(__file__).parent.parent / "web" / "public" / "demo"
+    for name in ("C4xB12", "C4xB12-zone3"):
+        j = Joint.model_validate(json.loads((root / name / "bundle.json").read_text(encoding="utf-8"))["joint"])
+        assert not any(a.candidate.placement for a in resolve(j, [Enumerator()]).attempts)
+
+
+def test_face_bar_positions_must_be_symmetric_and_fit_the_face():
+    """C1's faces along Y hold 2 face bars: [-40, 40] is valid; [-40, 45] is not symmetric, [-40] is one bar short."""
+    c = c1_xb17().column
+    assert c.model_validate({**c.model_dump(), "face_along_y": [-40.0, 40.0]}).face_along_y == [-40.0, 40.0]
+    for bad in ([-40.0, 45.0], [-40.0]):
+        with pytest.raises(ValueError):
+            c.model_validate({**c.model_dump(), "face_along_y": bad})
+
+
+def test_a_redesign_passing_early_does_not_stop_the_search_for_a_re_detail():
+    """In the app a model proposer offered "C1 200 x 550" in round 1 and it passed, so the loop stopped with only a
+    redesign. Now the loop goes on while only redesigns pass: round 2 finds XB17's re-arranged top with C1's face bars
+    at +-40, which ranks first; the redesign stays listed below it only if kept, never ahead of it."""
+    from rebartwin.fixes import Candidate, Enumerator, ResizeColumn, resolve
+
+    class Grower:
+        name = "grower"
+
+        def propose(self, joint, report, history, round):
+            return [Candidate(title="C1 200 x 550", edits=[ResizeColumn(b=200, h=550)], source="grower")] \
+                if round == 1 else []
+    r = resolve(c1_xb17(), [Grower(), Enumerator()])
+    assert r.status == "fixed"
+    assert r.options[0].candidate.title == "XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm"
+    assert not r.options[0].candidate.redesign

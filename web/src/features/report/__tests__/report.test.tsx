@@ -214,4 +214,78 @@ describe("W11 PrePourReport", () => {
     });
     expect(colSvg).toBeInTheDocument();
   });
+
+  it("renders place_face_bars fixes cleanly in PrePourReport without labeling them Redesign", () => {
+    const base = demoBundleRaw as unknown as Bundle;
+    const colBars = base.scene.bars.map((bar, idx) =>
+      bar.member === base.joint.column.id
+        ? { ...bar, member: "C1", dia: idx % 2 === 0 ? 16 : 12 }
+        : bar,
+    );
+    const fixedPlacementBundle: Bundle = {
+      ...base,
+      joint: {
+        ...base.joint,
+        column: {
+          ...base.joint.column,
+          id: "C1",
+          n_bars: 8,
+          bar_dia: 16,
+          face_dia: 12,
+        },
+      },
+      fix: {
+        status: "fixed",
+        summary: "Passes without a redesign.",
+        attempts: [],
+        blocking: {},
+        options: [
+          {
+            candidate: {
+              title: "XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm",
+              source: "enumerator",
+              rationale: "move face bars clear of beam bars",
+              edits: [
+                { kind: "set_face", beam: "B12", face: "top", layers: ["2-16", "2-12"] },
+                { kind: "place_face_bars", along_y: [-40, 40] },
+              ],
+            },
+            faces: base.fix.options[0].faces,
+            column: "C1 face bars at y = -40, 40 mm",
+            flags: [
+              "C1's 12 mm face bars placed at y = -40, 40 mm from its centre line (the schedule does not dimension them), each at least 5 mm clear of the beams' bars: a placing tolerance chosen here, not a code rule. Show these positions on the drawing.",
+            ],
+          },
+        ],
+      },
+      scene: {
+        ...base.scene,
+        concrete: base.scene.concrete.map((c) => (c.kind === "column" ? { ...c, id: "C1" } : c)),
+        bars: colBars,
+      },
+      option_scenes: [
+        {
+          ...base.scene,
+          concrete: base.scene.concrete.map((c) => (c.kind === "column" ? { ...c, id: "C1" } : c)),
+          bars: colBars.map((b) => (b.member === "C1" ? { ...b, status: "pass" as const } : b)),
+        },
+      ],
+    };
+
+    render(
+      <PrePourReport
+        projectName="Placement Check"
+        bundle={fixedPlacementBundle}
+        chosenOptionIndex={0}
+        selectedExplicitly={false}
+        exports={EXPORTS}
+      />,
+    );
+
+    expect(screen.queryByText(/^Redesign$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Redesign: column section changes/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Column face bars:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/C1 face bars at y = -40, 40 mm/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/placing tolerance chosen here, not a code rule/i)).toBeInTheDocument();
+  });
 });

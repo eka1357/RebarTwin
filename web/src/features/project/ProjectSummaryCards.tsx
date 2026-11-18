@@ -48,43 +48,43 @@ export function ProjectSummaryCards({
     toneClass: string;
     borderClass: string;
   }> = [
-    {
-      key: "all",
-      label: "Joints found",
-      value: counts.found,
-      detail: `${formatNumber(counts.checked)} checked`,
-      Icon: Layers,
-      toneClass: "text-foreground",
-      borderClass: "border-border",
-    },
-    {
-      key: "pass",
-      label: "Checked",
-      value: counts.checked,
-      detail: `${formatNumber(counts.passing)} pass every rule`,
-      Icon: CheckCircle2,
-      toneClass: "text-pass",
-      borderClass: "border-pass/40",
-    },
-    {
-      key: "fail",
-      label: "Failing",
-      value: counts.failing,
-      detail: "Fails IS 456, IS 13920, or clearance",
-      Icon: AlertTriangle,
-      toneClass: "text-fail",
-      borderClass: "border-fail/40",
-    },
-    {
-      key: "to_check",
-      label: "Blocked by To check",
-      value: counts.blocked,
-      detail: formatToCheckDetail(unresolvedToCheck, blockingToCheck, nonBlockingToCheck),
-      Icon: HelpCircle,
-      toneClass: "text-check",
-      borderClass: "border-check/40",
-    },
-  ];
+      {
+        key: "all",
+        label: "Joints found",
+        value: counts.found,
+        detail: `${formatNumber(counts.checked)} checked`,
+        Icon: Layers,
+        toneClass: "text-foreground",
+        borderClass: "border-border",
+      },
+      {
+        key: "pass",
+        label: "Checked",
+        value: counts.checked,
+        detail: `${formatNumber(counts.passing)} pass every rule`,
+        Icon: CheckCircle2,
+        toneClass: "text-pass",
+        borderClass: "border-pass/40",
+      },
+      {
+        key: "fail",
+        label: "Failing",
+        value: counts.failing,
+        detail: "Fails IS 456, IS 13920, or clearance",
+        Icon: AlertTriangle,
+        toneClass: "text-fail",
+        borderClass: "border-fail/40",
+      },
+      {
+        key: "to_check",
+        label: "Blocked by To check",
+        value: counts.blocked,
+        detail: formatToCheckDetail(unresolvedToCheck, blockingToCheck, nonBlockingToCheck),
+        Icon: HelpCircle,
+        toneClass: "text-check",
+        borderClass: "border-check/40",
+      },
+    ];
 
   return (
     <section aria-label="Project joint counts" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -98,9 +98,8 @@ export function ProjectSummaryCards({
             type="button"
             aria-pressed={active}
             onClick={() => onSelectFilter(clickTarget)}
-            className={`flex flex-col items-start justify-between rounded-[var(--radius-lg)] border bg-surface p-3.5 text-left transition-colors duration-[var(--dur-1)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              active ? "border-2 border-ring bg-surface-raised" : `${borderClass} hover:bg-surface-raised`
-            }`}
+            className={`flex flex-col items-start justify-between rounded-[var(--radius-lg)] border bg-surface p-3.5 text-left transition-colors duration-[var(--dur-1)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-2 border-ring bg-surface-raised" : `${borderClass} hover:bg-surface-raised`
+              }`}
           >
             <div className="flex w-full items-center justify-between gap-2">
               <span className="text-xs font-medium text-muted-foreground">{label}</span>

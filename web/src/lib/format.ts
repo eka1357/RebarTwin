@@ -1,4 +1,4 @@
-import type { Finding } from "../types/bundle";
+import type { Finding, FixOption } from "../types/bundle";
 
 export const NBSP = "\u00a0";
 
@@ -126,6 +126,16 @@ export function formatAfterColumnSize(columnChange: string): string {
   return parts[parts.length - 1]?.trim() || columnChange;
 }
 
+export function optionHasRedesign(option: Pick<FixOption, "candidate" | "column">): boolean {
+  if (option.candidate.edits.some((e) => e.kind === "resize_column")) return true;
+  return Boolean(option.column && option.column.includes("->"));
+}
+
+export function optionHasFacePlacement(option: Pick<FixOption, "candidate" | "column">): boolean {
+  if (option.candidate.edits.some((e) => e.kind === "place_face_bars")) return true;
+  return Boolean(option.column && /face bars/i.test(option.column));
+}
+
 export function formatFindingValue(f: {
   rule: string;
   measured: number;
@@ -247,10 +257,12 @@ export function formatFixToastSummary(
     n_bars_before: number;
     n_bars: number;
   }[],
+  columnNote?: string | null,
 ): string {
   const f0 = faces[0];
-  if (!f0) return "Previewing repaired joint in 3D";
-  return `${formatNumber(f0.area_before)} → ${formatArea(f0.area_provided)} · ${f0.n_bars_before} ${f0.n_bars_before === 1 ? "bar" : "bars"} → ${f0.n_bars}`;
+  if (!f0) return columnNote || "Previewing repaired joint in 3D";
+  const base = `${formatNumber(f0.area_before)} → ${formatArea(f0.area_provided)} · ${f0.n_bars_before} ${f0.n_bars_before === 1 ? "bar" : "bars"} → ${f0.n_bars}`;
+  return columnNote ? `${base} · ${columnNote}` : base;
 }
 
 /** Format a report date in Indian English ("18 Nov 2026"). */

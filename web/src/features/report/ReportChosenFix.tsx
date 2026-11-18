@@ -8,6 +8,8 @@ import {
   formatMeasure,
   formatNumber,
   formatPercentDelta,
+  optionHasFacePlacement,
+  optionHasRedesign,
 } from "../../lib/format";
 import type { Bundle } from "../../types/bundle";
 import { SectionGlyph } from "../fixes/SectionGlyph";
@@ -66,7 +68,8 @@ export function ReportChosenFix({
     );
   }
 
-  const hasRedesign = bundle.fix.status === "redesign" || Boolean(option.column);
+  const hasRedesign = bundle.fix.status === "redesign" || optionHasRedesign(option);
+  const hasPlacement = optionHasFacePlacement(option);
   const hasRecheck = option.flags.length > 0 && !hasRedesign;
   const pillStatus = hasRedesign ? "redesign" : hasRecheck ? "recheck" : "pass";
 
@@ -159,17 +162,32 @@ export function ReportChosenFix({
                 scene={bundle.scene}
                 columnId={col.id}
                 caption="Before column"
-                faceSummary={`${col.b} × ${col.h} · ${colSummary}`}
+                faceSummary={
+                  hasRedesign
+                    ? `${col.b} × ${col.h} · ${colSummary}`
+                    : `${colSummary} (as drawn)`
+                }
               />
               <SectionGlyph
                 scene={bundle.option_scenes[clampedIdx] ?? bundle.scene}
                 columnId={col.id}
                 caption="After column"
-                faceSummary={`${formatAfterColumnSize(option.column)} · ${colSummary}`}
+                faceSummary={
+                  hasRedesign
+                    ? `${formatAfterColumnSize(option.column)} · ${colSummary}`
+                    : option.column
+                }
               />
             </div>
             <p className="font-num text-xs text-foreground">
-              Column size: <span className="font-semibold">{option.column} mm</span>
+              {hasRedesign
+                ? "Column size: "
+                : hasPlacement
+                  ? "Column face bars: "
+                  : "Column: "}
+              <span className="font-semibold">
+                {hasRedesign ? `${option.column} mm` : option.column}
+              </span>
             </p>
           </div>
         ) : (

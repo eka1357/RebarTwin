@@ -88,6 +88,12 @@ class Column(BaseModel):
     cover_to: CoverTo = Field(default="main", description="what the cover is measured to: the ties or the main bars")
     bars_x: int | None = Field(default=None, description="bars on each face that runs along X, corners included")
     bars_y: int | None = Field(default=None, description="bars on each face that runs along Y, corners included")
+    face_along_x: list[float] | None = Field(
+        default=None, description="x of the bars between the corners on the two faces that run along X, mm from the "
+                                  "centre line; None spreads them evenly")
+    face_along_y: list[float] | None = Field(
+        default=None, description="y of the bars between the corners on the two faces that run along Y, mm from the "
+                                  "centre line; None spreads them evenly")
 
     @model_validator(mode="after")
     def _share_bars(self):
@@ -104,6 +110,14 @@ class Column(BaseModel):
         if 2 * (self.bars_x + self.bars_y) - 4 != self.n_bars:
             raise ValueError(f"{self.id}: {self.bars_x} and {self.bars_y} bars per face make "
                              f"{2 * (self.bars_x + self.bars_y) - 4} bars, not {self.n_bars}")
+        for name, pos, n in (("face_along_x", self.face_along_x, self.bars_x),
+                             ("face_along_y", self.face_along_y, self.bars_y)):
+            if pos is None:
+                continue
+            symmetric = all(abs(a + b) <= 1e-6 for a, b in zip(pos, reversed(pos)))
+            if len(pos) != n - 2 or list(pos) != sorted(pos) or len(set(pos)) != len(pos) or not symmetric:
+                raise ValueError(f"{self.id}: {name} must be {n - 2} positions, increasing and symmetric about the "
+                                 "centre line")
         return self
 
     @property

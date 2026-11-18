@@ -17,6 +17,8 @@ import {
   formatPercentDelta,
   groupReportFindings,
   NBSP,
+  optionHasFacePlacement,
+  optionHasRedesign,
 } from "../format";
 import type { Finding } from "../../types/bundle";
 import { jointPath } from "../routes";
@@ -208,5 +210,27 @@ describe("format.ts", () => {
       "4-16 corners + 4-12 faces",
     );
     expect(formatAfterColumnSize("200 × 450 -> 200 × 550")).toBe("200 × 550");
+    expect(
+      optionHasRedesign({
+        column: "C1 face bars at y = -40, 40 mm",
+        candidate: {
+          title: "C1 face bars at y = -40, 40 mm",
+          edits: [{ kind: "place_face_bars", along_y: [-40, 40] }],
+          source: "enumerator",
+          rationale: "clear beam bars",
+        },
+      }),
+    ).toBe(false);
+    expect(
+      optionHasFacePlacement({
+        column: "C1 face bars at y = -40, 40 mm",
+        candidate: {
+          title: "C1 face bars at y = -40, 40 mm",
+          edits: [{ kind: "place_face_bars", along_y: [-40, 40] }],
+          source: "enumerator",
+          rationale: "clear beam bars",
+        },
+      }),
+    ).toBe(true);
   });
 });

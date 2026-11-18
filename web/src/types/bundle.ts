@@ -16,6 +16,8 @@ export interface ColumnSpec {
   cover_to: "links" | "main";
   bars_x: number | null;
   bars_y: number | null;
+  face_along_x?: number[] | null;
+  face_along_y?: number[] | null;
 }
 
 export interface BeamSpec {
@@ -90,6 +92,11 @@ export type EditSpec =
       kind: "resize_column";
       b: number;
       h: number;
+    }
+  | {
+      kind: "place_face_bars";
+      along_x?: number[] | null;
+      along_y?: number[] | null;
     };
 
 export interface CandidateSpec {

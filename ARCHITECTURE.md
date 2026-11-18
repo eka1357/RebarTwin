@@ -59,16 +59,25 @@ along X or Y. Bar ids: `C4/V3` (column bar 3), `B12/T1-3` (top layer 1, bar 3), 
 ```
 joint            Joint as read (model.py): { id, column, beams[], settings, required_area{}, notes[],
                    place?, floor? }
-  column         { id, b, h, n_bars, bar_dia, face_dia?, tie_dia, cover, cover_to, bars_x, bars_y }
+  column         { id, b, h, n_bars, bar_dia, face_dia?, tie_dia, cover, cover_to, bars_x, bars_y,
+                   face_along_x?, face_along_y? }
                    bar_dia is every bar's size, or with face_dia the four corner bars' size; face_dia is the size of
                    the n_bars - 4 bars between the corners ("4-16 + 4-12": n_bars 8, bar_dia 16, face_dia 12). Each
                    column bar in `scene` carries its own `dia`; draw from those, never from bar_dia alone.
+                   face_along_x / face_along_y: where a fix placed the bars between the corners (mm from the centre
+                   line, symmetric), on the faces that run along X / Y; null means spread evenly as drawn.
   place, floor   the column's grid place on the plans ("F-14", "C/C1-25") and the beams' floor ("FIRST"), when the
                    reader found them; null otherwise. Read these, never parse `id`.
 report           { findings[], rules_run[], rules_skipped{}, passed{}, is13920, seismic_zone, notes[] }
   finding        { rule, clause, title, status: fail|pass, measured, limit, compare: >=|<=, unit,
                    margin, members[], bars[], at: [x,y,z] mm, span: [[x,y,z], [x,y,z]] mm | null, message }
 fix              { status: clean|fixed|redesign|no_fix, summary, options[], attempts[], blocking{} }
+                   an edit is set_face {beam, face, layers[]}, resize_column {b, h} or place_face_bars {along_x?,
+                   along_y?}; an option with place_face_bars has `column` "C1 face bars at y = -40, 40 mm" and a flag
+                   saying the 5 mm clearance to beam bars is a placing tolerance, not a code rule. Options rank: beam
+                   changes only, then face bar placements (smallest move first, alone or with a beam change), then
+                   redesigns. The loop stops after a round only when something passes without a redesign; while only
+                   redesigns pass it runs the next round (up to two), where beam changes with placed face bars come.
   option         { candidate{title, edits[], source}, faces[{beam, face, before, after, area_before,
                    area_required, area_provided, overshoot_pct, depth_before, depth_after, n_bars_before,
                    n_layers_before, n_bars, n_layers}], column, flags[] }

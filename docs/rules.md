@@ -37,3 +37,7 @@ A rule that a different element must change to satisfy (a column size, the other
 Column bars of two sizes (`face_dia`, a schedule's "4-16 + 4-12"): every rule takes each bar at its own size. Clear
 gaps between column bars on a face are measured centre to centre less the two radii, against the larger of the two
 bars or aggregate + 5 mm; nominal cover counts the larger size; clashes use each bar's own radius.
+
+Face bar placement (the fix loop's `place_face_bars`): a column's bars between the corners are moved symmetrically
+along their faces in 5 mm steps until every crossing beam bar is at least 5 mm clear. The 5 mm is a placing tolerance
+chosen by RebarTwin, not a code rule, and the option says so; every code rule is still checked on the result.

@@ -54,7 +54,7 @@ export function FixPanel({ bundle, reportKey, onOpenReport }: FixPanelProps) {
               onClick={() => {
                 setMode("after");
                 const opt = options[optionIndex];
-                if (opt) toast.success(formatFixToastSummary(opt.faces), { id: "fix-morph", duration: 2400 });
+                if (opt) toast.success(formatFixToastSummary(opt.faces, opt.column), { id: "fix-morph", duration: 2400 });
               }}
             >
               After
@@ -77,7 +77,7 @@ export function FixPanel({ bundle, reportKey, onOpenReport }: FixPanelProps) {
           onPreviewAfter={() => {
             setOptionIndex(idx);
             setMode("after");
-            toast.success(formatFixToastSummary(opt.faces), { id: "fix-morph", duration: 2400 });
+            toast.success(formatFixToastSummary(opt.faces, opt.column), { id: "fix-morph", duration: 2400 });
           }}
           onShowBefore={() => setMode("before")}
           onUseInReport={() => {

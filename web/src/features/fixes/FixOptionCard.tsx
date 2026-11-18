@@ -8,6 +8,8 @@ import {
   formatColumnMainSummary,
   formatMeasure,
   formatPercentDelta,
+  optionHasFacePlacement,
+  optionHasRedesign,
 } from "../../lib/format";
 import type { ColumnSpec, FixOption, Scene } from "../../types/bundle";
 import { SectionGlyph } from "./SectionGlyph";
@@ -47,7 +49,8 @@ export function FixOptionCard({
   onOpenReport,
 }: FixOptionCardProps) {
   const primaryFace = option.faces[0];
-  const hasRedesign = Boolean(option.column);
+  const hasRedesign = optionHasRedesign(option);
+  const hasPlacement = optionHasFacePlacement(option);
   const hasRecheck = option.flags.length > 0 && !hasRedesign;
   const pillStatus = hasRedesign ? "redesign" : hasRecheck ? "recheck" : "pass";
 
@@ -79,13 +82,21 @@ export function FixOptionCard({
             scene={beforeScene}
             columnId={column.id}
             caption="Before column"
-            faceSummary={`${column.b} × ${column.h} · ${formatColumnMainSummary(column)}`}
+            faceSummary={
+              hasRedesign
+                ? `${column.b} × ${column.h} · ${formatColumnMainSummary(column)}`
+                : `${formatColumnMainSummary(column)} · as drawn`
+            }
           />
           <SectionGlyph
             scene={afterScene ?? beforeScene}
             columnId={column.id}
             caption="After column"
-            faceSummary={`${formatAfterColumnSize(option.column)} · ${formatColumnMainSummary(column)}`}
+            faceSummary={
+              hasRedesign
+                ? `${formatAfterColumnSize(option.column)} · ${formatColumnMainSummary(column)}`
+                : option.column
+            }
           />
         </div>
       )}
@@ -109,7 +120,7 @@ export function FixOptionCard({
         </div>
       )}
 
-      {option.faces.length > 0 && (
+      {(option.faces.length > 0 || option.column) && (
         <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border/70 pt-2.5 text-xs">
           {option.faces.map((fc) => (
             <div key={`${fc.beam}-${fc.face}`} className="contents">
@@ -131,8 +142,12 @@ export function FixOptionCard({
           ))}
           {option.column && (
             <div className="col-span-2">
-              <dt className="text-muted-foreground">Column resize</dt>
-              <dd className="font-num font-medium text-foreground">{option.column} mm</dd>
+              <dt className="text-muted-foreground">
+                {hasRedesign ? "Column resize" : hasPlacement ? "Column face bars" : "Column change"}
+              </dt>
+              <dd className="font-num font-medium text-foreground">
+                {hasRedesign ? `${option.column} mm` : option.column}
+              </dd>
             </div>
           )}
         </dl>

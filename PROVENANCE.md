@@ -155,6 +155,9 @@ Then: mixed column bars in the engine (corner bars `bar_dia`, face bars `face_di
 its own size, the fix loop keeping both; the C4 x B12 demo bundles unchanged (a test compares them); the linking
 model's "unresolved" ignored where code proved or defaulted the value; prompt `link_v5`. 290 tests.
 
+Then: engine text never rounds a failing value onto its limit (format.ts's rule; XB17's top bars read 24.7 mm
+against 25 mm); demo bundles unchanged. 292 tests.
+
 ## Next: built in Google Antigravity
 
 The API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

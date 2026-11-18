@@ -8,7 +8,7 @@ from typing import Callable, Literal
 
 from pydantic import BaseModel
 
-from .numbers import fmt
+from .numbers import fmt, shown
 from .geometry import boxes_overlap, clear_gap
 from .layout import Bar, Cage
 from .model import Joint
@@ -81,7 +81,8 @@ def horizontal_spacing(cage: Cage, joint: Joint) -> list[Finding]:
             limit = max(a.dia, b.dia, agg + 5)
             where = f"layer {k} " if k > 1 else ""
             out.append(_finding(HORIZONTAL, gap, limit, [beam_id],
-                                f"{beam_id} {face} {where}bars {a.index} and {b.index} are {fmt(gap)} mm apart; "
+                                f"{beam_id} {face} {where}bars {a.index} and {b.index} are {shown(gap, limit)} mm "
+                                f"apart; "
                                 f"with {agg:g} mm aggregate and {max(a.dia, b.dia):g} mm bars the code needs "
                                 f"{fmt(limit)} mm", bars=(a.id, b.id), at=_mid(a, b)))
     for face, row in cage.column_faces.items():
@@ -90,7 +91,8 @@ def horizontal_spacing(cage: Cage, joint: Joint) -> list[Finding]:
             gap = centres - (a.dia + b.dia) / 2
             limit = max(a.dia, b.dia, agg + 5)
             out.append(_finding(HORIZONTAL, gap, limit, [a.member],
-                                f"{a.member} column bars {a.index} and {b.index} on face {face} are {fmt(gap)} mm "
+                                f"{a.member} column bars {a.index} and {b.index} on face {face} are "
+                                f"{shown(gap, limit)} mm "
                                 f"apart; the code needs {fmt(limit)} mm", bars=(a.id, b.id), at=_mid(a, b)))
     return out
 
@@ -106,14 +108,16 @@ def vertical_spacing(cage: Cage, joint: Joint) -> list[Finding]:
             offset = abs(near.lateral - bar.lateral)
             if offset > LINE_TOL:
                 out.append(_finding(IN_LINE, offset, 0.0, [beam_id],
-                                    f"{beam_id} {face} bar {bar.index} of layer {k} is {fmt(offset)} mm off the line "
+                                    f"{beam_id} {face} bar {bar.index} of layer {k} is {shown(offset, 0.0, '<=')} mm "
+                                    f"off the line "
                                     f"of the bar it should sit under; rows must be vertically in line",
                                     bars=(bar.id, near.id), at=_mid(bar, near), compare="<="))
                 continue
             gap = abs(near.level - bar.level) - (near.dia + bar.dia) / 2
             limit = max(15.0, 2 * agg / 3, near.dia, bar.dia)
             out.append(_finding(VERTICAL, gap, limit, [beam_id],
-                                f"{beam_id} {face} layers {k - 1} and {k} are {fmt(gap)} mm apart vertically; the "
+                                f"{beam_id} {face} layers {k - 1} and {k} are {shown(gap, limit)} mm apart "
+                                f"vertically; the "
                                 f"code needs {fmt(limit)} mm", bars=(near.id, bar.id), at=_mid(near, bar)))
     return out
 
@@ -128,7 +132,8 @@ def nominal_cover(cage: Cage, joint: Joint) -> list[Finding]:
     for member, cover, dias, links in members:
         limit = need - 5 if s.exposure == "mild" and max(dias) <= 12 else need
         out.append(_finding(COVER, cover, limit, [member],
-                            f"{member} has {cover:g} mm of concrete outside its {links}; {s.exposure.replace('_', ' ')} "
+                            f"{member} has {shown(cover, limit)} mm of concrete outside its {links}; "
+                            f"{s.exposure.replace('_', ' ')} "
                             f"exposure needs {limit:g} mm"))
     return out
 
@@ -139,7 +144,8 @@ def column_main_cover(cage: Cage, joint: Joint) -> list[Finding]:
     small = min(c.b, c.h) <= 200 and big <= 12
     limit = 25.0 if small else max(40.0, big)
     return [_finding(COLUMN_COVER, c.main_cover, limit, [c.id],
-                     f"{c.id} has {c.main_cover:g} mm of concrete outside its main bars; the code needs {limit:g} mm")]
+                     f"{c.id} has {shown(c.main_cover, limit)} mm of concrete outside its main bars; the code needs "
+                     f"{limit:g} mm")]
 
 
 # ------------------------------------------------------------------------------------------------ geometry
@@ -155,7 +161,8 @@ def clashes(cage: Cage, joint: Joint) -> list[Finding]:
             gap, at = clear_gap(a, b)
             if gap < -0.01:
                 out.append(_finding(CLASH, gap, 0.0, sorted({a.member, b.member}),
-                                    f"{a.label} runs into {b.label}: they overlap by {fmt(-gap)} mm, so one of them "
+                                    f"{a.label} runs into {b.label}: they overlap by {shown(-gap, 0.0, '<=')} mm, so "
+                                    f"one of them "
                                     f"cannot be placed as drawn", bars=(a.id, b.id), at=at))
     return out
 
@@ -176,7 +183,7 @@ def column_size_for_beam_bars(cage: Cage, joint: Joint) -> list[Finding]:
     short = "x" if c.b <= c.h else "y"
     span, at = _across(c, short, 0.0)
     out.append(_finding(COLUMN_SIZE, min(c.b, c.h), 300.0, [c.id],
-                        f"{c.id}'s smaller side is {min(c.b, c.h):g} mm; the code needs at least 300 mm",
+                        f"{c.id}'s smaller side is {shown(min(c.b, c.h), 300.0)} mm; the code needs at least 300 mm",
                         span=span, at=at))
     for beam in joint.beams:
         along = c.b if beam.direction == "x" else c.h
@@ -184,7 +191,8 @@ def column_size_for_beam_bars(cage: Cage, joint: Joint) -> list[Finding]:
         top = cage.layers.get((beam.id, "top", 1))
         span, at = _across(c, beam.direction, top[0].level if top else 0.0)
         out.append(_finding(COLUMN_SIZE, along, 20 * db, [c.id, beam.id],
-                            f"{c.id} is {along:g} mm deep along {beam.id}; with {db:g} mm bars in {beam.id} the code "
+                            f"{c.id} is {shown(along, 20 * db)} mm deep along {beam.id}; with {db:g} mm bars in "
+                            f"{beam.id} the code "
                             f"needs 20 × {db:g} = {20 * db:g} mm", span=span, at=at))
     return out
 
@@ -194,7 +202,8 @@ def bottom_steel_at_joint(cage: Cage, joint: Joint) -> list[Finding]:
     for beam in joint.beams:
         top, bottom = beam.area("top"), beam.area("bottom")
         out.append(_finding(BOTTOM_HALF, bottom, top / 2, [beam.id],
-                            f"{beam.id} has {fmt(bottom)} mm² of bottom steel at the joint face against {fmt(top)} mm² "
+                            f"{beam.id} has {shown(bottom, top / 2)} mm² of bottom steel at the joint face against "
+                            f"{fmt(top)} mm² "
                             f"at the top; the code needs at least half, {fmt(top / 2)} mm²", unit="mm²"))
     return out
 

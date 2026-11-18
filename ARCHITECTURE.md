@@ -96,7 +96,9 @@ A bar's `findings` in `scene` index `report.findings`. The viewer never computes
 - `area_before`, `n_bars_before`, `n_layers_before` are the face as drawn, beside the fix's `area_provided`,
   `n_bars`, `n_layers`.
 - Numbers in engine text (messages, flags, report.md) round half away from zero on the decimal value, as
-  `Intl.NumberFormat` does by default (`rebartwin/numbers.py`): 388.5 mm reads "389 mm" in a flag and on a card.
+  `Intl.NumberFormat` does by default (`rebartwin/numbers.py`): 388.5 mm reads "389 mm" in a flag and on a card. A failing
+  value never rounds onto or across its limit, as in the web's `format.ts`: one more decimal at a time, up to three
+  (24.667 mm against 25 mm reads "24.7 mm"; an overlap of 0.3 mm reads "0.3 mm", never "0 mm").
 - Source (`provenance`, `pages`): `path` is the linking path, `box_2d` the drawing's box on `page`, `page_image`
   the copied image (crop it with `box_2d`). `agreed` values came from both channels; `geometry` values (a beam's
   `frames_into`) were made by code from the plans (`plan.py`): `page`, `box_2d` and `text` are the beam label on the

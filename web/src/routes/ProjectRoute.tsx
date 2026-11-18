@@ -68,6 +68,9 @@ export function ProjectRoute() {
             </div>
             <div className="flex items-center gap-2">
               <StatusPill status="fail" count={6} />
+              <Button variant="outline" size="sm" asChild>
+                <Link to={projectReportPath(id, { joint: "C4xB12" })}>Report</Link>
+              </Button>
               <Button variant="secondary" size="sm" asChild>
                 <Link to={jointPath(id, "C4xB12")}>Inspect joint</Link>
               </Button>
@@ -185,6 +188,9 @@ export function ProjectRoute() {
                               status={j.fail_count > 0 ? "fail" : "pass"}
                               count={j.fail_count > 0 ? j.fail_count : undefined}
                             />
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={projectReportPath(id, { joint: j.id })}>Report</Link>
+                            </Button>
                             <Button variant="secondary" size="sm" asChild>
                               <Link to={jointPath(id, j.id)}>Inspect joint</Link>
                             </Button>

@@ -16,7 +16,17 @@ import { WorkingsTimeline } from "../workings/WorkingsTimeline";
 
 type FindingFilter = "fail" | "pass" | "all";
 
-export function JointInspector({ bundle, bundleUrl }: { bundle: Bundle; bundleUrl?: string }) {
+export function JointInspector({
+  bundle,
+  bundleUrl,
+  reportKey,
+  onOpenReport,
+}: {
+  bundle: Bundle;
+  bundleUrl?: string;
+  reportKey?: string;
+  onOpenReport?: (optionIndex: number) => void;
+}) {
   const [filter, setFilter] = useState<FindingFilter>("fail");
   const cardRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -251,7 +261,7 @@ export function JointInspector({ bundle, bundleUrl }: { bundle: Bundle; bundleUr
           </TabsContent>
 
           <TabsContent value="fix" className="mt-0">
-            <FixPanel bundle={bundle} />
+            <FixPanel bundle={bundle} reportKey={reportKey} onOpenReport={onOpenReport} />
           </TabsContent>
 
           <TabsContent value="workings" className="mt-0">

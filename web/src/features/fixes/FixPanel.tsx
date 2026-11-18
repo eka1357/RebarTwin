@@ -6,14 +6,24 @@ import { useWorkspaceStore } from "../../stores/workspace";
 import type { Bundle } from "../../types/bundle";
 import { FixOptionCard } from "./FixOptionCard";
 
+interface FixPanelProps {
+  bundle: Bundle;
+  reportKey?: string;
+  onOpenReport?: (optionIndex: number) => void;
+}
+
 /** Ranked fix options panel driving Before / After morph and report choice. */
-export function FixPanel({ bundle }: { bundle: Bundle }) {
+export function FixPanel({ bundle, reportKey, onOpenReport }: FixPanelProps) {
   const mode = useWorkspaceStore((s) => s.mode);
   const optionIndex = useWorkspaceStore((s) => s.optionIndex);
   const chosenOptionIndex = useWorkspaceStore((s) => s.chosenOptionIndex);
+  const chosenOptionByKey = useWorkspaceStore((s) => s.chosenOptionByKey);
   const setMode = useWorkspaceStore((s) => s.setMode);
   const setOptionIndex = useWorkspaceStore((s) => s.setOptionIndex);
   const setChosenOptionIndex = useWorkspaceStore((s) => s.setChosenOptionIndex);
+
+  const activeChosen =
+    reportKey !== undefined ? (chosenOptionByKey[reportKey] ?? null) : chosenOptionIndex;
 
   const options = bundle.fix.options;
   const summaryPillStatus =
@@ -62,7 +72,7 @@ export function FixPanel({ bundle }: { bundle: Bundle }) {
           beforeScene={bundle.scene}
           afterScene={bundle.option_scenes[idx]}
           isPreviewing={mode === "after" && optionIndex === idx}
-          isChosen={chosenOptionIndex === idx}
+          isChosen={activeChosen === idx}
           onPreviewAfter={() => {
             setOptionIndex(idx);
             setMode("after");
@@ -70,9 +80,14 @@ export function FixPanel({ bundle }: { bundle: Bundle }) {
           }}
           onShowBefore={() => setMode("before")}
           onUseInReport={() => {
-            setChosenOptionIndex(idx);
-            toast.success(`Option #${idx + 1} marked for report`);
+            setChosenOptionIndex(idx, reportKey);
+            toast.success(`Option #${idx + 1} marked for report`, {
+              action: onOpenReport
+                ? { label: "Open report", onClick: () => onOpenReport(idx) }
+                : undefined,
+            });
           }}
+          onOpenReport={onOpenReport ? () => onOpenReport(idx) : undefined}
         />
       ))}
     </div>

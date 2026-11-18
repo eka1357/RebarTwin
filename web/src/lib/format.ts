@@ -224,3 +224,39 @@ export function formatFixToastSummary(
   if (!f0) return "Previewing repaired joint in 3D";
   return `${formatNumber(f0.area_before)} → ${formatArea(f0.area_provided)} · ${f0.n_bars_before} ${f0.n_bars_before === 1 ? "bar" : "bars"} → ${f0.n_bars}`;
 }
+
+/** Format a report date in Indian English ("18 Nov 2026"). */
+export function formatReportDate(iso?: string | null): string {
+  const parsed = iso ? new Date(iso) : new Date();
+  const safe = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(safe);
+}
+
+/**
+ * Return one plain sentence for a finding with measured value, limit, and clause,
+ * derived strictly from the engine's message and clause fields.
+ */
+export function formatFindingReportSentence(f: {
+  rule: string;
+  clause: string;
+  measured: number;
+  limit: number;
+  compare: ">=" | "<=";
+  unit: string;
+  status: "fail" | "pass";
+  message: string;
+}): string {
+  const base = f.message.trim().replace(/\.+$/, "");
+  const clauseShort = formatClause(f.clause);
+  if (f.rule === "GEOM-CLASH") {
+    return `${base} (0${NBSP}mm overlap allowed; ${clauseShort}).`;
+  }
+  if (base.toLowerCase().includes(clauseShort.toLowerCase())) {
+    return `${base}.`;
+  }
+  return `${base} (${clauseShort}).`;
+}

@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Eye, RotateCcw } from "lucide-react";
+import { AlertTriangle, Check, Eye, FileText, RotateCcw } from "lucide-react";
 import { StatusPill } from "../../components/StatusPill";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -16,6 +16,7 @@ interface FixOptionCardProps {
   onPreviewAfter: () => void;
   onShowBefore: () => void;
   onUseInReport: () => void;
+  onOpenReport?: () => void;
 }
 
 function formatPlainFixTitle(option: FixOption): string {
@@ -35,6 +36,7 @@ export function FixOptionCard({
   onPreviewAfter,
   onShowBefore,
   onUseInReport,
+  onOpenReport,
 }: FixOptionCardProps) {
   const primaryFace = option.faces[0];
   const hasRedesign = Boolean(option.column);
@@ -144,6 +146,12 @@ export function FixOptionCard({
           {isChosen && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
           <span>{isChosen ? "Used in report" : "Use in report"}</span>
         </Button>
+        {isChosen && onOpenReport && (
+          <Button variant="outline" size="sm" onClick={onOpenReport}>
+            <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Open report</span>
+          </Button>
+        )}
       </div>
     </article>
   );

@@ -118,6 +118,15 @@ export function jointIfcUrl(projectId: string, jointId: string): string {
   return `${apiBase()}/projects/${encodeURIComponent(projectId)}/joints/${encodeURIComponent(jointId)}/joint.ifc`;
 }
 
+export function jointFixedIfcUrl(projectId: string, jointId: string, option = 0): string {
+  const base = `${apiBase()}/projects/${encodeURIComponent(projectId)}/joints/${encodeURIComponent(jointId)}/fixed.ifc`;
+  return option > 0 ? `${base}?option=${option}` : base;
+}
+
+export function jointIssuesBcfUrl(projectId: string, jointId: string): string {
+  return `${apiBase()}/projects/${encodeURIComponent(projectId)}/joints/${encodeURIComponent(jointId)}/issues.bcf`;
+}
+
 export function pageCropUrl(
   projectId: string,
   page: number,

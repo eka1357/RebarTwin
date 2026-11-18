@@ -11,7 +11,7 @@ before it is called final.
 | IS456-26.3.2-V | IS 456:2000 cl. 26.3.2 | Clear gap between rows at least 15 mm, two-thirds of the aggregate size and the larger bar size | as above |
 | IS456-26.3.2-L | IS 456:2000 cl. 26.3.2 | Rows of bars vertically in line (within 1 mm) | as above |
 | IS456-26.4.2 | IS 456:2000 cl. 26.4.2, Table 16 | Cover to ties and stirrups: mild 20, moderate 30, severe 45, very severe 50, extreme 75 mm; 5 mm less in mild exposure with main bars up to 12 mm | civilengineeringweb.com reproducing Table 16 |
-| IS456-26.4.2.1 | IS 456:2000 cl. 26.4.2.1 | Cover to a column's main bars at least 40 mm and the bar size; 25 mm for columns up to 200 mm with bars up to 12 mm | brainkart.com reproducing the clause |
+| IS456-26.4.2.1 | IS 456:2000 cl. 26.4.2.1 | Cover to a column's main bars at least 40 mm and the bar size; 25 mm for columns up to 200 mm with bars up to 12 mm. With corner and face bars of two sizes every bar has the same cover, so the larger size sets the limit | brainkart.com reproducing the clause |
 | GEOM-CLASH | none | Two main bars of different members overlap (touching is allowed) | geometry; cross-checked by IfcOpenShell's kernel |
 | IS13920-7.1.1 | IS 13920:2016 cl. 7.1.1 | Column at least 300 mm, and along each beam at least 20 times that beam's largest bar | IITGN/NICEE "Examples on IS 13920:2016", Example 3a, pp. 22 and 28 |
 | IS13920-6.2.3 | IS 13920:2016 cl. 6.2.3 | Bottom steel at the joint face at least half the top steel | same document, Example 1, p. 5 |
@@ -33,3 +33,7 @@ dimension the viewer should draw passes it as `span` (two points, mm) with `at` 
 does. Numbers in messages go through `numbers.fmt` (half away from zero), never `:.0f`.
 A rule that a different element must change to satisfy (a column size, the other face of a beam) sets
 `knock_on=True`, so the fix loop knows to make that change in round 2.
+
+Column bars of two sizes (`face_dia`, a schedule's "4-16 + 4-12"): every rule takes each bar at its own size. Clear
+gaps between column bars on a face are measured centre to centre less the two radii, against the larger of the two
+bars or aggregate + 5 mm; nominal cover counts the larger size; clashes use each bar's own radius.

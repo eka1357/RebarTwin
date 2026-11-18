@@ -190,6 +190,15 @@ def _tied(member: str, value: Match, members: list[Match], line_of: dict[int, in
                 name = next(iter(names))
                 return (True, None, None) if name == member else (False, name, None)
             return False, None, f"labels {', '.join(sorted(names))} are on the beam band this value sits on"
+    if value.kind == "section" and _member_kind(member) == "column":
+        # On a column layout, a size beside a column's outline belongs to the column labelled at that outline.
+        from .plan import outline_tie
+        found = outline_tie(page, box)
+        if found and found[0]:
+            name = next(iter(found[0])) if len(found[0]) == 1 else None
+            if name:
+                return (True, None, None) if name == member else (False, name, None)
+            return False, None, f"columns {', '.join(sorted(found[0]))} are as near this value"
     if _member_kind(member) == "beam":
         # On a detail sheet, a callout belongs to the beam elevation whose title is below it (plan.py).
         from .plan import elevation_tie
@@ -334,7 +343,9 @@ def _level_problem(c, page: Page, box: Box) -> tuple[str | None, str, str | None
     return None, "", c.level
 
 
-def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreement:
+def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: dict | None = None) -> Agreement:
+    """`supports`: each beam mark's supports along it from the plans (plan.support_map), for placing extra top
+    bars."""
     by_page = {p.number: p for p in pages}
     line_of = {id(w): (p.number, k) for p in pages for k, line in enumerate(visual_lines(p)) for w in line}
     result = Agreement()
@@ -344,9 +355,13 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
         nonlocal n_tc
         n_tc += 1
         c = r.callout
+        level = c.level
+        if level is None and _member_kind(c.member) == "column" and c.field in COLUMN_FIELDS                 and c.member not in GLOBAL_MEMBERS:
+            # the storey header the value sits under on the sheet, so the item blocks only joints of that storey
+            level = _storey_header(by_page[c.page], r.box)
         result.to_check.append(ToCheck(
             f"tc_{n_tc:04d}", c.member, c.field, c.page, r.box, {"value": c.value},
-            {"value": parser_value} if parser_value is not None else None, reason, detail, c.layer, level=c.level))
+            {"value": parser_value} if parser_value is not None else None, reason, detail, c.layer, level=level))
 
     claimed: set[int] = set()
     for r in reads:
@@ -391,6 +406,11 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
             flag(r, "ambiguous", f"the text layer has different {kind} values here: {', '.join(sorted(values))}",
                  ", ".join(sorted(values)))
             continue
+        scopes = {m.scope for m in here if m.scope}
+        if scopes and c.member not in scopes:
+            flag(r, "disagree", f"Gemini says {c.member}; this value is in the {', '.join(sorted(scopes))} row of its "
+                 "table", value)
+            continue
         if c.member not in GLOBAL_MEMBERS:
             tied, other, crowded = _tied(c.member, here[0], members, line_of, by_page[c.page])
             if not tied:
@@ -416,8 +436,9 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
         joined = [t for w in m.words for t in (w.joined or ())] or None
         support = None
         if c.field == "top_extra":                       # extra top bars belong to a support (plan.py)
-            from .plan import support_at
-            support = support_at(by_page[c.page], m.box)
+            from .plan import elevation_support_at, support_at
+            support = support_at(by_page[c.page], m.box) or (
+                elevation_support_at(by_page[c.page], m.box, supports) if supports else None)
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
                                         r.box, r.call, level, raw, joined, at=support))
 
@@ -461,6 +482,32 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
     for i, a in enumerate(sorted(keep, key=lambda a: (a.page, a.member, a.field, a.layer, a.level or "")), 1):
         a.id = f"f{i:04d}"
     result.accepted = sorted(keep, key=lambda a: a.id)
+
+    # General notes repeat on every sheet and are read once per tile: keep one project-level item per field, scope and
+    # value, listing the other places; none when that same scope and value is accepted elsewhere (nothing to decide).
+    agreed = {(a.member, a.field, a.value) for a in result.accepted}
+    first: dict[tuple, ToCheck] = {}
+    also: dict[tuple, list[int]] = {}
+    kept = []
+    for t in result.to_check:
+        if t.member not in GLOBAL_MEMBERS:
+            kept.append(t)
+            continue
+        raw = (t.gemini or {}).get("value") or ""
+        value = normalise(FIELD_KIND[t.field], raw) if t.field in FIELD_KIND else None
+        if t.reason == "missing" and value is not None and (t.member, t.field, value) in agreed:
+            continue
+        key = (t.field, t.member, value or raw, t.reason)
+        if key in first:
+            also.setdefault(key, []).append(t.page)
+            continue
+        first[key] = t
+        kept.append(t)
+    for key, t in first.items():
+        pages = sorted(set(also.get(key, [])) - {t.page})
+        if pages:
+            t.detail += f" (the same reading on page{'s' if len(pages) > 1 else ''} {', '.join(map(str, pages))})"
+    result.to_check = kept
 
     for m in matches:
         if m.kind in ("bars", "section", "links") and id(m) not in claimed:

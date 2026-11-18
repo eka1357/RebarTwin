@@ -73,6 +73,7 @@ class Match:
     page: int
     box: Box
     words: tuple[Word, ...] = ()
+    scope: str | None = None      # a table value's row: "ALL_COLUMNS" for the COLUMNS row of a cover table
 
 
 def _bars(m: re.Match) -> str | None:
@@ -223,6 +224,41 @@ def visual_lines(page: Page, tokens: bool = True) -> list[list[Word]]:
     return in_cells + lines
 
 
+_SCOPES = {"COLUMN": "ALL_COLUMNS", "COLUMNS": "ALL_COLUMNS", "BEAM": "ALL_BEAMS", "BEAMS": "ALL_BEAMS",
+           "SLAB": "SLABS", "SLABS": "SLABS", "FOOTING": "FOOTINGS", "FOOTINGS": "FOOTINGS"}
+_TABLE_COVER = re.compile(r"(\d{2})\s*(?:mm)?")
+
+
+def cover_table(page: Page) -> list[Match]:
+    """Cover values read from a ruled table whose header cell says COVER ("CLEAR COVER"): each cell below the header
+    in its column holding a number ("40 mm") is a cover value, scoped by the member word in its row's label cell
+    (COLUMNS gives ALL_COLUMNS, BEAMS ALL_BEAMS; SLABS and FOOTINGS are kept so a claim on them disagrees). A row
+    with no single member word gives nothing. The cells carry no word "cover", so the line grammar cannot read them.
+    `page` is the parser's token view."""
+    from .cells import assign
+    cells = assign(page)
+    lines = [ln for ln in visual_lines(page, tokens=False) if ln and id(ln[0]) in cells]
+    out: list[Match] = []
+    for head in lines:
+        text = " ".join(w.text for w in head).upper()
+        if "COVER" not in text.split() or len(head) > 3:
+            continue
+        hc = cells[id(head[0])]
+        for ln in lines:
+            c = cells[id(ln[0])]
+            vtext = " ".join(w.text for w in ln)
+            m = _TABLE_COVER.fullmatch(vtext.strip())
+            if not m or c[0] < hc[2] - 0.5 or not (hc[1] - 0.5 <= (c[1] + c[3]) / 2 <= hc[3] + 0.5):
+                continue
+            value = _cover(m)
+            row = {_SCOPES[w.text.strip(".:").upper()] for r in lines for w in r
+                   if w.text.strip(".:").upper() in _SCOPES and cells[id(r[0])][3] <= c[1] + 0.5
+                   and cells[id(r[0])][0] < c[2] and c[0] < cells[id(r[0])][2]}
+            if value and len(row) == 1:
+                out.append(Match("cover", value, vtext, page.number, union([w.box for w in ln]), tuple(ln), row.pop()))
+    return out
+
+
 def parse_page(page: Page) -> list[Match]:
     """Every notation match on a page, each mapped to the words it covers. A grid bubble is never a member id: bubble
     "C1" names grid line C1, not column C1 (plan.py)."""
@@ -243,4 +279,5 @@ def parse_page(page: Page) -> list[Match]:
             if kind == "member" and all((w.text, w.box) in in_bubble for w in covered):
                 continue
             out.append(Match(kind, value, text[start:end], page.number, union([w.box for w in covered]), covered))
-    return out
+    from .tokens import token_page
+    return out + cover_table(token_page(page))

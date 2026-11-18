@@ -191,7 +191,14 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    level. Everything else becomes a To
    check item with a reason. Ties use geometry before distance where the sheet has it: on a plan, a beam size on a
    beam band belongs to the XB or YB label tied to that band; on a detail sheet, a beam callout belongs to the
-   elevation whose title ("XB1(200x600-inv)") is the nearest below it across its span (`plan.py`).
+   elevation whose title ("XB1(200x600-inv)") is the nearest below it across its span; on a column layout, a size
+   belongs to the column whose outline is nearest (`plan.py`). A ruled table whose header cell says COVER gives
+   cover values scoped by their row (COLUMNS: ALL_COLUMNS, BEAMS: ALL_BEAMS); a Gemini cover for another scope
+   disagrees. General notes read on many sheets give one project-level item per field, scope and value (the other
+   pages listed), and none when that scope and value is accepted elsewhere. A column value's To check item carries
+   the storey header it sits under, so it blocks only joints of that storey. Greek and Cyrillic look-alike capitals
+   from OCR ("ΤΟ") read as Latin in storeys and floors. In OCR words, a hollow bar marker fused into the group after
+   a "+" ("04012" for "○ 4Ø12") is dropped when the rest is exactly one callout.
 4a. **Joints from geometry** (`plan.py`; item 4). Grid bubbles are short labels in drawn circles; each names the
    line that leaves its circle (directly, or through a short, possibly dashed, leader); bubble text is never a member
    id. A beam layout (grid plus XB/YB labels tied to bands of two parallel edges, dashes merged) is fitted onto the
@@ -216,7 +223,15 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    safe as Windows file names and URL path segments: "/" becomes "+", spaces "_", other characters outside
    letters, digits, `_ + . -` become "_". In a joint with a place, a beam's `top_extra` counts only if its `at` (the
    grid bubble under it on the detail sheet) is the beam's support line there (the number for a beam along X, the
-   letter along Y); an extra with no `at` is an `ambiguous` item on `beams[i].top`, never a guess. A joint's floor is the floor of the plans its beams were read on; its column values must be
+   letter along Y); an extra with no `at` is an `ambiguous` item on `beams[i].top`, never a guess. An extra's `at`
+   comes from a grid bubble under it on the detail sheet, else from mapping its elevation's supports (break marks
+   under the beam) onto the plan's supports along that beam (columns plus beam-on-beam ends), left to right, only
+   when the counts are equal and each span's share of the length matches within 3% in exactly one direction (or in
+   both, when both give the same support for that callout). A joint the model cannot give every required number
+   for (a number left at 0) is written as a draft, `joints/<id>.draft.json`: id, place, floor, storey, column and
+   beams with, for each value, the accepted fields that give it or null, and the To check items blocking it, one of
+   them naming the null paths. Never a placeholder number. The API lists drafts as blocked joints (`draft: true`)
+   and never checks them; a wrong structure (two beams one way) is still "link it by hand". A joint's floor is the floor of the plans its beams were read on; its column values must be
    from the storey that ends there and its beam values from that floor, and that choice is a note. Without a floor,
    a column with values for several storeys goes to To check. Prompt `link_v3` (adds `at`: one joint per place, top
    extras by support).

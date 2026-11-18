@@ -17,6 +17,13 @@ _FLOOR_WORD = re.compile(
     r"\b(FOUNDATION|FOOTING|PLINTH|GROUND|STILT|BASEMENT|CELLAR|FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|TERRACE|ROOF|"
     r"LMR|OHT|MUMTY|HEADROOM|\d+(?:ST|ND|RD|TH))\b")
 _TO = re.compile(r"\s+(?:TO|UPTO|UP TO)\s+")
+# OCR reads some Latin capitals as their Greek or Cyrillic look-alikes ("FOUNDATION ΤΟ GROUND ROOF" with Tau and
+# Omicron); levels compare in Latin.
+_LATIN = str.maketrans("ΑΒΕΗΙΚΜΝΟΡΤΥΧΖАВЕКМНОРСТХ", "ABEHIKMNOPTYXZABEKMHOPCTX")
+
+
+def _latin(text: str) -> str:
+    return text.translate(_LATIN)
 
 
 def floor(text: str | None) -> str | None:
@@ -26,6 +33,7 @@ def floor(text: str | None) -> str | None:
     ('FIRST FLOOR ▪OR') do not change the floor; otherwise the words left after dropping FLOOR, LVL and the like."""
     if not text:
         return None
+    text = _latin(text)
     words = re.sub(r"[^A-Z0-9 ]+", " ", text.upper().replace("/", " ")).split()
     named = [w for w in words if _FLOOR_WORD.fullmatch(w)]
     kept = named or [w for w in words if w not in _FILLER]
@@ -36,6 +44,7 @@ def storey(text: str | None) -> tuple[str, str] | None:
     """'FOUNDATION TO FIRST FLOOR' -> ('FOUNDATION', 'FIRST'); text without a 'TO' -> None."""
     if not text:
         return None
+    text = _latin(text)
     parts = _TO.split(" ".join(text.upper().split()), maxsplit=1)
     if len(parts) != 2:
         return None
@@ -54,7 +63,7 @@ def same_level(a: str | None, b: str | None) -> bool:
 def is_storey_header(text: str) -> bool:
     """Text that reads as a storey range: a floor word on each side of TO ('FOUNDATION TO FIRST FLOOR'), so
     'SECTION DETAIL TO PLINTH BEAM' is not one."""
-    parts = _TO.split(" ".join(text.upper().split()), maxsplit=1)
+    parts = _TO.split(" ".join(_latin(text).upper().split()), maxsplit=1)
     return len(parts) == 2 and all(_FLOOR_WORD.search(part) for part in parts)
 
 

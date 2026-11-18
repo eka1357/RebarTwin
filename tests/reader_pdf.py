@@ -264,7 +264,7 @@ def make_plan_pdf(path: Path) -> Path:
     return path
 
 
-def make_elevation_pdf(path: Path, supports: bool = False) -> Path:
+def make_elevation_pdf(path: Path, supports: bool = False, breaks: bool = False) -> Path:
     """Two beam elevations, one above the other, each titled below its dimension line. XB6: edges at y = 100 and
     130, x 100 to 400, dimension line at 145, title "XB6(230x450)" at baseline 160, top callout "2Ø20" at baseline 95.
     XB5: edges at 200 and 230, dimension line at 245, title "XB5(230x450)" at baseline 260, top callout "2Ø16" at
@@ -285,6 +285,15 @@ def make_elevation_pdf(path: Path, supports: bool = False) -> Path:
         for x, y, text in callouts:
             tw.append((x, y), text, font=font, fontsize=6)
     tw.append((600, 195), "2Ø25", font=font, fontsize=6)
+    if breaks:
+        # XB5's supports drawn as break marks (two parallel slanted strokes, 1 pt across and 2 pt down, 2 pt apart)
+        # at x = 97, 266.5 and 400 pt, at the title's level (y 256 to 262); extra top bar callouts at baseline 195
+        # over each: "1Ø16" at x 102, "2Ø12" at x 258, "1Ø20" at x 386.
+        for x in (97, 266.5, 400):
+            page.draw_line((x - 0.5, 258), (x + 0.5, 256))
+            page.draw_line((x - 0.5, 262), (x + 0.5, 260))
+        for x, text in ((102, "1Ø16"), (258, "2Ø12"), (386, "1Ø20")):
+            tw.append((x, 195), text, font=font, fontsize=6)
     if supports:
         # Grid bubbles "2" and "3" under XB5's supports at x = 115 and 385 pt (y = 268), and three extra top bar
         # callouts at baseline 195: "1Ø16" at x 120 (over 2), "1Ø20" at x 360 (over 3), "2Ø10" at x 240 (centre
@@ -295,6 +304,30 @@ def make_elevation_pdf(path: Path, supports: bool = False) -> Path:
         for x, text in ((120, "1Ø16"), (360, "1Ø20"), (240, "2Ø10")):
             tw.append((x, 195), text, font=font, fontsize=6)
     tw.write_text(page)
+    doc.save(path)
+    doc.close()
+    return path
+
+
+def make_cover_table_pdf(path: Path, pages: int = 2) -> Path:
+    """A ruled clear-cover table, repeated on each page as title blocks are: rules at x = 40, 120, 200 and y = 80,
+    100, 120, 140; header "ITEM" | "CLEAR COVER", rows "COLUMNS" | "40 mm" and "BEAMS" | "25 mm". The cells never
+    say "cover", so only the table reading gives these values."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    font = pymupdf.Font("cjk")
+    for _ in range(pages):
+        page = doc.new_page(width=842, height=595)
+        for y in (80, 100, 120, 140):
+            page.draw_line((40, y), (200, y))
+        for x in (40, 120, 200):
+            page.draw_line((x, 80), (x, 140))
+        tw = pymupdf.TextWriter(page.rect)
+        for x, y, text in ((45, 94, "ITEM"), (125, 94, "CLEAR COVER"), (45, 114, "COLUMNS"), (125, 114, "40 mm"),
+                           (45, 134, "BEAMS"), (125, 134, "25 mm")):
+            tw.append((x, y), text, font=font, fontsize=7)
+        tw.write_text(page)
     doc.save(path)
     doc.close()
     return path

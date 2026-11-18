@@ -137,6 +137,7 @@ def words_from(body: dict, tile: Tile, page_number: int) -> list[Word]:
 # repaired value is accepted only if Gemini, reading the image alone, gives the same value at the same place.
 
 MISREAD = "0OQ•θΘ"
+MARKER = "0Oo○"                          # a bar group's hollow marker symbol as OCR reads it
 REPAIR_BAR_DIAS = {8, 10, 12, 16, 20, 25, 28, 32, 36, 40}
 REPAIR_LINK_DIAS = {6, 8, 10, 12}
 _LINK = re.compile(rf"[{MISREAD}](\d{{1,2}})(?:@(\d{{2,3}})(.*))?")
@@ -167,6 +168,10 @@ def repair(words: list[Word]) -> list[Word]:
     out = list(words)
     for i, w in enumerate(out):
         fixed = bar_reading(w.text)
+        if fixed is None and i and out[i - 1].text == "+" and w.text[:1] in MARKER:
+            # Schedules mark each bar group with a symbol ("• 4Ø16 + ○ 4Ø12"); OCR fuses the hollow marker into the
+            # next group as a leading 0 or O ("04012"). Inside a "+" callout, drop it if the rest is one callout.
+            fixed = bar_reading(w.text[1:])
         if fixed is None:
             m = _LINK.fullmatch(w.text)
             if m and int(m.group(1)) in REPAIR_LINK_DIAS and m.group(1)[0] != "0":

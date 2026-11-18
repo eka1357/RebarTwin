@@ -140,6 +140,13 @@ detail sheet, else To check (sheets 17, 18 and 20 have no such bubbles); slab ma
 7 to 9 and 15 to 21 (7 live calls): 286 agreed, 5 joints linked, 48 of the model's joints rejected (column bar size
 0 where the column's bars are still To check), 18 project-level items (cover table, zone, exposure). 276 tests.
 
+Then, on Eka's decisions: drafts for incomplete joints (no placeholder numbers); elevation supports mapped to plan
+supports with the count and span-share guard; the clear-cover table read as a table with one project item per
+reading; C1's "• 4Ø16 + ○ 4Ø12" (OCR fused the hollow marker); column items carry their storey; Greek "ΤΟ" read
+as TO (sheet 9 is the servant quarters, FOUNDATION TO GROUND ROOF); column-layout sizes tie by outline. Replay
+(no API): 301 accepted, no project-level items left but zone and exposure, and C1xXB17@FIRST@L1+M+M1-28 has no
+blocking item of its own. 282 tests.
+
 ## Next: built in Google Antigravity
 
 The API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

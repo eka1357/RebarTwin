@@ -176,7 +176,10 @@ def read_command(args) -> int:
         if not args.no_check:
             status = max(status, run_check(v.joint, args.out / "joints" / jid, args.no_ifc))
             attach_sources(args.out / "joints" / jid / "bundle.json", v, fields, args.out)
-    if not result.linked.joints:
+    if result.linked.drafts:
+        print(f"{len(result.linked.drafts)} draft joint(s) (incomplete, not checked): joints/<id>.draft.json")
+        status = max(status, 2)
+    if not result.linked.joints and not result.linked.drafts:
         print("No joints linked.")
         status = 2
     print(f"Wrote joints/, provenance.json, to_check.json, reading.json and pages/ to {args.out}")

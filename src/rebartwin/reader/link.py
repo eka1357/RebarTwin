@@ -249,7 +249,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                                         unplaced))
                     continue
                 line = support_line(place, direction_of(beam.id) or beam.direction)
-                expected = of(beam.id, "top") + [a for a in extras if a.at in line]
+                expected = of(beam.id, "top") + [a for a in extras if set(a.at.split("/")) & line]
             use(f"{p}.{face}", expected, (face, f"{face}_extra"), face_check)
 
         use(f"{p}.stirrups", of(beam.id, "links"), ("links",),
@@ -337,6 +337,86 @@ class Linked:
     to_check: list[ToCheck]
     model: str | None
     link_notes: dict[str, list[str]]
+    drafts: list[dict] = field(default_factory=list)
+
+
+# Validation errors that mean a number is missing, not that the structure is wrong.
+INCOMPLETE = {"missing", "greater_than", "greater_than_equal", "int_type", "float_type", "int_parsing",
+              "float_parsing", "none_required"}
+
+
+def draft(item, fields: dict[str, Accepted], place: str | None = None) -> dict | None:
+    """An incomplete joint, written from accepted fields only: its id, place, floor and storey, the column and beams
+    the linking model named, and for each value the accepted fields that give it (canonical text, field id, page),
+    or null where none does. Never a number from the model, never a placeholder. None when the model named no column.
+    A draft is validated as a Joint only once a person has filled every null (To check)."""
+    j = item.get("joint") if isinstance(item, dict) else None
+    if not isinstance(j, dict) or not isinstance(j.get("column"), dict) or not j["column"].get("id"):
+        return None
+    col = str(j["column"]["id"])
+    beams = [(str(b["id"]), b.get("direction") if b.get("direction") in ("x", "y") else direction_of(str(b["id"])))
+             for b in j.get("beams") or [] if isinstance(b, dict) and b.get("id")]
+    accepted = list(fields.values())
+    meets = [a for a in accepted if a.field == "frames_into" and a.value == col and a.member in {b for b, _ in beams}]
+    # The place: the cited frames_into fields' place, else the one place every beam meets the column at.
+    cited = [fields[i] for s in item.get("sources") or [] if isinstance(s, dict)
+             and str(s.get("path", "")).endswith(".frames_into") for i in s.get("field_ids") or [] if i in fields]
+    common = None
+    for b, _ in beams:
+        mine = {a.at for a in meets if a.member == b and a.at}
+        common = mine if common is None else common & mine
+    places = [place] if place else sorted({a.at for a in cited if a.at and a.value == col}) or sorted(common or [])
+    floors = sorted({floor(a.level) for a in meets if floor(a.level)})
+    place = places[0] if len(places) == 1 else None
+    at_floor = floors[0] if len(floors) == 1 else None
+
+    def fits(a: Accepted, column: bool) -> bool:
+        if a.level is None or at_floor is None:
+            return True
+        return ends_at(a.level, at_floor) if (column and storey(a.level)) else floor(a.level) == at_floor
+
+    def vals(member: str, names: tuple[str, ...], column: bool, scope: tuple[str, ...] = (),
+             keep=lambda a: True) -> list[dict] | None:
+        own = [a for a in accepted if a.member == member and a.field in names and fits(a, column) and keep(a)]
+        got = own or [a for a in accepted if a.member in scope and a.field in names and fits(a, column)]
+        return [{"value": a.value, "field": a.field, "layer": a.layer, "field_id": a.id, "page": a.page,
+                 "level": a.level, "at": a.at} for a in got] or None
+
+    column = {"id": col, "section": vals(col, ("section",), True), "main": vals(col, ("main",), True),
+              "ties": vals(col, ("links",), True), "cover": vals(col, ("cover",), True, ("ALL", "ALL_COLUMNS"))}
+    out_beams = []
+    for bid, way in beams:
+        line = support_line(place, way or "x") if place else None
+        top = vals(bid, ("top",), False)
+        extras = [a for a in accepted if a.member == bid and a.field == "top_extra" and fits(a, False)]
+        here = vals(bid, ("top_extra",), False, keep=lambda a: bool(line and a.at and set(a.at.split("/")) & line))
+        out_beams.append({
+            "id": bid, "direction": way, "section": vals(bid, ("section",), False),
+            "top": (top or []) + (here or []) or None,
+            "top_extra_unplaced": bool(place and any(not a.at for a in extras)),
+            "bottom": vals(bid, ("bottom", "bottom_extra"), False), "stirrups": vals(bid, ("links",), False),
+            "cover": vals(bid, ("cover",), False, ("ALL", "ALL_BEAMS")),
+            "frames_into": vals(bid, ("frames_into",), False, keep=lambda a: a.value == col and
+                                (place is None or a.at in (None, place)))})
+    storeys = sorted({x["level"] for k in ("section", "main", "ties") for x in column[k] or [] if x["level"]})
+    jid = "x".join([col, *(b for b, _ in beams)])
+    if at_floor:
+        jid += f"@{safe_id(at_floor)}"
+    if place:
+        jid += f"@{safe_id(place)}"
+    return {"id": jid, "draft": True, "place": place, "floor": at_floor, "storey": storeys[0] if len(storeys) == 1
+            else None, "column": column, "beams": out_beams}
+
+
+def _nulls(d: dict) -> list[str]:
+    """The required paths of a draft that no accepted field gives. Ties, stirrups and cover are not among them: with
+    no field they take the noted default, as in `verify`."""
+    paths = [f"column.{k}" for k in ("section", "main") if d["column"][k] is None]
+    for i, b in enumerate(d["beams"]):
+        paths += [f"beams[{i}].{k}" for k in ("section", "top", "bottom", "frames_into") if b[k] is None]
+        if b["top_extra_unplaced"]:
+            paths.append(f"beams[{i}].top")
+    return paths
 
 
 def _inputs(agreement: Agreement) -> str:
@@ -391,6 +471,7 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
 
     fields = {a.id: a for a in agreement.accepted}
     joints: list[Verified] = []
+    drafts: list[dict] = []
     notes: dict[str, list[str]] = {}
     n = len(to_check) + len(agreement.unassigned)
 
@@ -403,10 +484,23 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
         try:
             v = verify(LinkedJoint.model_validate(item), fields)
         except (ValidationError, ValueError, KeyError, AttributeError, TypeError) as e:
-            to_check.append(new_item(member=None, field=f"joints[{k}]", page=0, box_2d=None, gemini=None,
-                                     parser=None, reason="ambiguous",
-                                     detail=f"the linking model's joint {k + 1} is not a valid joint "
-                                            f"({type(e).__name__}); link it by hand"))
+            # Only a joint short of numbers is incomplete; a wrong structure (two beams one way) is not a draft.
+            short = isinstance(e, ValidationError) and all(
+                err["type"] in INCOMPLETE for err in e.errors())
+            d = draft(item, fields) if short else None
+            if d is None or any(d["id"] == x["id"] for x in drafts) or any(d["id"] == v.joint.id for v in joints):
+                to_check.append(new_item(member=None, field=f"joints[{k}]", page=0, box_2d=None, gemini=None,
+                                         parser=None, reason="ambiguous",
+                                         detail=f"the linking model's joint {k + 1} is not a valid joint "
+                                                f"({type(e).__name__}); link it by hand"))
+                continue
+            # Incomplete: a draft, from accepted fields only, with one item naming what no field gives.
+            drafts.append(d)
+            missing = _nulls(d)
+            to_check.append(new_item(member=d["column"]["id"], field="joint", page=0, box_2d=None, gemini=None,
+                                     parser=None, reason="missing", joint=d["id"],
+                                     detail=f"{d['id']} is a draft: no accepted value gives "
+                                            f"{', '.join(missing) if missing else 'a value the joint needs'}"))
             continue
         if any(v.joint.id == other.joint.id for other in joints):
             to_check.append(new_item(member=v.joint.column.id, field="joint", page=0, box_2d=None, gemini=None,
@@ -429,6 +523,8 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
         if t.joint is None and t.field in USED_FIELDS and not project_level(t):
             hits = [v.joint.id for v in joints if t.member in _members(v.joint) and (
                 not t.level or v.floor is None or ends_at(t.level, v.floor) or floor(t.level) == v.floor)]
+            hits += [d["id"] for d in drafts if t.member in {d["column"]["id"], *(b["id"] for b in d["beams"])} and (
+                not t.level or d["floor"] is None or ends_at(t.level, d["floor"]) or floor(t.level) == d["floor"])]
             if len(hits) == 1:
                 t.joint = hits[0]
             elif hits:                                   # a beam in two joints: one item per joint
@@ -446,4 +542,4 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
                 to_check.append(new_item(member="ALL", field=name, page=0, box_2d=None, gemini=None, parser=None,
                                          reason="missing", detail=f"the drawing does not state {what}; give it"))
     tied = to_check
-    return Linked(joints, tied, used, notes)
+    return Linked(joints, tied, used, notes, drafts)

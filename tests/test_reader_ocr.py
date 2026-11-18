@@ -138,3 +138,19 @@ def test_vision_key_goes_in_a_header_not_the_url(monkeypatch):
     monkeypatch.delenv("VISION_API_KEY", raising=False)
     with pytest.raises(ReadError, match="VISION_API_KEY"):
         VisionTransport()
+
+
+def test_a_bar_marker_fused_into_the_next_group_is_dropped():
+    """Sheet 7, C1 main bars: the drawing reads "• 4Ø16 + ○ 4Ø12" (a filled and a hollow bar marker); Vision returned
+    "•", "4016", "+", "04012". "4016" repairs to 4Ø16 as before; "04012" after "+" is the hollow marker read as 0
+    plus "4012", one split: 4Ø12. So the cell is 4-16 + 4-12: 4 x 201.1 + 4 x 113.1 = 1,256.6 mm2. Without the "+"
+    before it, "04012" is left alone."""
+    from rebartwin.reader.ingest import Word
+    from rebartwin.reader.ocr import repair
+    from rebartwin.reader.parser import scan
+    ws = [Word(t, (0.0, 10.0 * k, 5.0, 10.0 * k + 8), 7, (0, 0), "ocr") for k, t in enumerate(["•", "4016", "+", "04012"])]
+    fixed = repair(ws)
+    assert [w.text for w in fixed] == ["•", "4Ø16", "+", "4Ø12"] and fixed[3].raw == "04012"
+    assert [v for k, v, _, _ in scan(" ".join(w.text for w in fixed)) if k == "bars"] == ["4-16 + 4-12"]
+    alone = repair([Word("04012", (0.0, 0.0, 5.0, 8.0), 7, (0, 0), "ocr")])
+    assert alone[0].text == "04012" and alone[0].raw is None

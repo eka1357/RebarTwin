@@ -315,3 +315,29 @@ def test_extra_top_bars_count_only_at_their_own_support(agreement):
     items = blocking(run(placed(agreement, places, [loose]), body(["f0011", "f0103"], "5-20 + 2-16")), jid)
     assert [(t.field, t.reason) for t in items] == [("beams[0].top", "ambiguous")]
     assert "does not mark which support" in items[0].detail
+
+
+def test_a_joint_short_of_numbers_is_a_draft_from_accepted_values_only(agreement):
+    """The model writes C4's bar size as 0 (it had no value): no Joint can be made, so the joint is a draft. The draft
+    holds only accepted values (C4 main "8-16" and B12 top "5-20", as the schedule gives them), no number from the model
+    (no n_bars, bar_dia, b or D anywhere), and one To check item names what no field gives. Here every value has a
+    field, so the item lists none; with C4's main field taken away, it names column.main and the draft's main is
+    null."""
+    def zero(item):
+        item["joint"]["column"]["bar_dia"] = 0
+    result = run(agreement, body_with(zero))
+    assert result.joints == [] and len(result.drafts) == 1
+    d = result.drafts[0]
+    assert d["id"] == "C4xB12xB13" and d["draft"] is True
+    assert [x["value"] for x in d["column"]["main"]] == ["8-16"]
+    assert [x["value"] for x in d["beams"][0]["top"]] == ["5-20"]
+    text = json.dumps(d)
+    assert not any(k in text for k in ('"n_bars"', '"bar_dia"', '"b":', '"D":'))
+    [item] = [t for t in result.to_check if t.field == "joint"]
+    assert item.joint == d["id"] and item.reason == "missing"
+
+    no_main = Agreement([a for a in agreement.accepted if (a.member, a.field) != ("C4", "main")],
+                        list(agreement.to_check), [])
+    d2 = run(no_main, body_with(zero)).drafts[0]
+    assert d2["column"]["main"] is None
+    assert "column.main" in next(t for t in run(no_main, body_with(zero)).to_check if t.field == "joint").detail

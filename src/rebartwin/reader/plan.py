@@ -162,7 +162,17 @@ def grid(page: Page) -> Grid:
     perpendicular to that row: its end at the circle's edge, within half a radius, and its position within half a
     radius of the centre; or, for a bubble moved aside to make room, a short leader from the circle's edge to the
     end of such a line. The line's position is the grid's. A bubble with no such line, or a label given twice on one
-    axis, places nothing."""
+    axis, places nothing. Cached on the page."""
+    cache = getattr(page, "_plan_cache", None)
+    if cache is None:
+        cache = {}
+        object.__setattr__(page, "_plan_cache", cache)
+    if "grid" not in cache:
+        cache["grid"] = _grid(page)
+    return cache["grid"]
+
+
+def _grid(page: Page) -> Grid:
     g = Grid(page.number, bubbles=bubbles(page))
     if not g.bubbles or page.shapes is None:
         return g
@@ -571,6 +581,9 @@ class Plans:
     junctions: list[dict] = field(default_factory=list)     # beam on beam, or beam off the grid: no joint
     problems: list[Problem] = field(default_factory=list)
     alignment: dict = field(default_factory=dict)
+    # per beam mark, per band: (grid lines it lies on, supports along it: (position on the beam layout, support
+    # grid line(s) such as "25" or "26/27", "column" or "beam"))
+    bands: dict[str, list[tuple[tuple[str, ...], list[tuple[float, str, str]]]]] = field(default_factory=dict)
 
 
 def plan_title(page: Page) -> str | None:
@@ -637,7 +650,11 @@ def meet(beam_page: Page, column_page: Page) -> Plans:
                 hits.append(c)
                 found.append((Meet(b.id, c.id, c.name(), beam_page.number, b.label, column_page.number, c.label,
                                    level), c, "x" if horizontal else "y"))
+        back = (lambda v, f=f: (v - f.offset) / f.scale)     # column layout to beam layout, along the band
+        sup = [(back((c.area[1] + c.area[3]) / 2 if horizontal else (c.area[0] + c.area[2]) / 2),
+                "/".join(c.xs if horizontal else c.ys), "column") for c in hits]
         if not b.grid:
+            out.bands.setdefault(b.id, []).append((tuple(b.grid), sorted(sup)))
             if not hits:
                 out.junctions.append({"beam": b.id, "page": beam_page.number, "kind": "off grid",
                                       "detail": f"{b.id} is on no named grid line and meets no column; it frames "
@@ -649,10 +666,12 @@ def meet(beam_page: Page, column_page: Page) -> Plans:
             near = [k for k, v in cross.items() if abs(v - end) <= ext]
             covered = [c for c in hits if set(c.xs if horizontal else c.ys) & set(near)]
             if near and not covered:
+                sup.append((back(sum(cross[k] for k in near) / len(near)), "/".join(near), "beam"))
                 names = [f"{'/'.join(b.grid)}-{k}" if horizontal else f"{k}-{'/'.join(b.grid)}" for k in near]
                 out.junctions.append({"beam": b.id, "page": beam_page.number, "kind": "beam on beam",
                                       "at": names, "detail": f"{b.id} ends at {' or '.join(names)}, where no "
                                       "column is on the column layout"})
+        out.bands.setdefault(b.id, []).append((tuple(b.grid), sorted(sup)))
     # one beam per direction at each column
     by_col: dict[tuple[int, str], list[Meet]] = {}
     for m, c, way in found:
@@ -686,6 +705,18 @@ def roles(pages: list[Page]) -> tuple[list[Page], list[Page]]:
         elif len(columns(p, g)[0]) >= 3:
             column_pages.append(p)
     return beam_pages, column_pages
+
+
+def support_map(pages: list[Page]) -> dict:
+    """Every beam mark's supports along it, from the beam layouts among `pages` and the column layout each fits
+    (`plan_supports`); empty when there are none. Agreement uses it to place extra top bars."""
+    beam_pages, column_pages = roles(pages)
+    found = []
+    for bp in beam_pages:
+        fits = [cp for cp in column_pages if all(align(grid(bp), grid(cp))[:2])]
+        if len(fits) == 1:
+            found.append(meet(bp, fits[0]))
+    return plan_supports(found)
 
 
 def read_plans(pages: list[Page], agreement) -> dict:
@@ -825,3 +856,118 @@ def support_at(page: Page, box: Box) -> str | None:
     if not under or (len(under) > 1 and under[1][0] < 2 * under[0][0]):
         return None
     return under[0][1]
+
+
+# --- elevation supports to plan supports -----------------------------------------------------------------------------
+
+BREAK_LEN = (0.22, 0.45)  # title heights: one stroke of a support's break mark (dimension ticks are about 0.19)
+SPAN_MATCH = 0.03         # each span's share of the beam's length, elevation against plan, within this
+
+
+def plan_supports(plans: list[Plans]) -> dict[str, list[tuple[float, str, str]] | str]:
+    """Each beam mark's supports in order along it, from every beam layout read: its bands' columns and beam-on-beam
+    ends, merged when the mark's bands lie on one grid line (a beam drawn in pieces between columns); the reason
+    instead when the mark is drawn on different grid lines (XB11 on J and on K: which one an elevation shows is not
+    known)."""
+    out: dict[str, list[tuple[float, str, str]] | str] = {}
+    for r in plans:
+        for mark, bands_ in r.bands.items():
+            lines_ = {g for g, _ in bands_}
+            if mark in out or len(lines_) != 1:
+                out[mark] = f"{mark} is drawn on more than one grid line or layout"
+                continue
+            merged: dict[str, tuple[float, str, str]] = {}
+            for _, sup in bands_:
+                for s_ in sup:
+                    merged.setdefault(s_[1], s_)
+            out[mark] = sorted(merged.values())
+    return out
+
+
+def elevation_supports(page: Page, e: Elevation) -> list[float]:
+    """x of each support drawn under an elevation: a break mark (two parallel slanted strokes BREAK_LEN title heights
+    long, the cut-off column below the beam) near the title's level, within the elevation's span, not inside any
+    word's box (titles drawn as strokes have slanted strokes too). Marks closer than two title heights are one
+    support."""
+    h = e.title[2] - e.title[0]
+    segs = [s for s in (page.shapes.segments if page.shapes else [])
+            if abs(s[0] - s[2]) > AXIS_TOL and abs(s[1] - s[3]) > AXIS_TOL
+            and BREAK_LEN[0] * h <= ((s[0] - s[2]) ** 2 + (s[1] - s[3]) ** 2) ** 0.5 <= BREAK_LEN[1] * h
+            and e.title[0] - 2 * h <= min(s[1], s[3]) <= e.title[2] + h and e.lo - h <= min(s[0], s[2]) <= e.hi + h]
+    words = [w.box for w in page.words if w.box[0] > e.title[0] - 3 * h]
+    segs = [s for s in segs if not any(_inside(((s[1] + s[3]) / 2, (s[0] + s[2]) / 2), b) for b in words)]
+    xs = []
+    for i, a in enumerate(segs):
+        da = ((a[2] - a[0]), (a[3] - a[1]))
+        for b in segs[i + 1:]:
+            db = ((b[2] - b[0]), (b[3] - b[1]))
+            parallel = abs(da[0] * db[1] - da[1] * db[0]) <= 0.1 * (da[0] ** 2 + da[1] ** 2)
+            near = abs(min(a[0], a[2]) - min(b[0], b[2])) <= 0.3 * h and abs(min(a[1], a[3]) - min(b[1], b[3])) <= h
+            if parallel and near and (a[:2] != b[:2]):
+                xs.append((a[0] + a[2] + b[0] + b[2]) / 4)
+    xs.sort()
+    out: list[float] = []
+    for x in xs:
+        if out and x - out[-1] <= 2 * h:
+            continue
+        out.append(x)
+    return out
+
+
+def _shares(ps: list[float]) -> list[float]:
+    total = ps[-1] - ps[0]
+    return [(b - a) / total for a, b in pairwise(ps)] if total > 0 else []
+
+
+def elevation_support_at(page: Page, box: Box, supports: dict) -> str | None:
+    """The support an extra top bar callout belongs to, by mapping its elevation's supports onto the plan's, left to
+    right. Only when the counts are equal and the spans' shares of the length match (within SPAN_MATCH) in exactly
+    one direction, or in both directions with the same answer for this callout; and the callout's nearest support
+    is clear (the next at least twice as far). Returns the plan support's grid line(s), else None (To check)."""
+    found = elevation_tie(page, box)
+    if not found or len(found[0]) != 1:
+        return None
+    member = next(iter(found[0]))
+    plan = supports.get(member)
+    cx = _centre(box)[1]
+    els = [e for e in elevations(page) if e.member == member and e.lo <= cx <= e.hi and e.title[0] >= box[2]]
+    if not isinstance(plan, list) or len(els) != 1:
+        return None
+    es = elevation_supports(page, els[0])
+    if len(es) != len(plan) or len(es) < 2:
+        return None
+    ps = [p_[0] for p_ in plan]
+    want = _shares(es)
+    fwd = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares(ps)))
+    rev = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares([-v for v in reversed(ps)])))
+    near = sorted((abs(x - cx), i) for i, x in enumerate(es))
+    if len(near) > 1 and near[1][0] < 2 * near[0][0]:
+        return None
+    i = near[0][1]
+    labels = {plan[i][1]} if fwd else set()
+    if rev:
+        labels.add(plan[len(plan) - 1 - i][1])
+    return labels.pop() if len(labels) == 1 else None
+
+
+def outline_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
+    """On a column layout, the column a size label belongs to by geometry: the column outline nearest the label,
+    within NEAR text heights, provided the next nearest is at least twice as far; its column label names it. Returns
+    ({id}, "") or (the ids as near, why); None on a sheet with no placed columns or no outline near."""
+    g = grid(page)
+    if len(g.xs) < 2 or len(g.ys) < 2:
+        return None
+    cache = getattr(page, "_plan_cache")              # set by grid()
+    if "columns" not in cache:
+        cache["columns"] = columns(page, g)[0]
+    cols = [c for c in cache["columns"] if c.outline]
+    if len(cols) < 3:
+        return None
+    h = _height_pt(page, box)
+    near = sorted((_gap(page, c.outline, box), c.id) for c in cols)
+    near = [(d, i) for d, i in near if d <= NEAR * h]
+    if not near:
+        return None
+    if len(near) > 1 and near[1][0] < 2 * near[0][0]:
+        return {i for d, i in near if d < 2 * near[0][0] + 1e-9}, "two columns are as near"
+    return {near[0][1]}, ""

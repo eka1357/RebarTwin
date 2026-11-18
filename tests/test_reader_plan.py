@@ -177,3 +177,24 @@ def test_an_extra_top_bar_belongs_to_the_support_whose_bubble_is_under_it(tmp_pa
     assert at == {"1Ø16": "2", "1Ø20": "3", "2Ø10": None}
     plain = ingest(make_elevation_pdf(tmp_path / "p.pdf"))[0]
     assert all(plan.support_at(plain, w.box) is None for w in plain.words if "Ø" in w.text)
+
+
+def test_elevation_supports_map_to_plan_supports_only_when_spans_fix_the_direction(tmp_path):
+    """XB5's break marks are at x = 97, 266.5 and 400 pt: spans 169.5 and 133.5, shares 0.559 and 0.441 of 303.
+    Plan supports on lines 1, 2, 3 at 0, 55.9 and 100 give the same shares left to right (0.559, 0.441) and not right
+    to left (0.441, 0.559; 0.118 off, over the 0.03 limit), so "1Ø16" (nearest the first mark) is at line 1, "2Ø12" at
+    2 and "1Ø20" at 3. Plan supports at 0, 50, 100 (shares 0.5, 0.5, each 0.059 off) match neither way: nothing is
+    placed. Four plan supports against three marks: nothing."""
+    page = ingest(make_elevation_pdf(tmp_path / "b.pdf", breaks=True))[0]
+    e = next(e for e in plan.elevations(page) if e.member == "XB5")
+    marks = plan.elevation_supports(page, e)
+    assert [round(x * 842 / 1000, 1) for x in marks] == [97.0, 266.5, 400.0]
+    box = {w.text: w.box for w in page.words if w.text in ("1Ø16", "2Ø12", "1Ø20")}
+
+    def at(sup):
+        return {t: plan.elevation_support_at(page, b, {"XB5": sup}) for t, b in box.items()}
+    three = [(0.0, "1", "column"), (55.9, "2", "column"), (100.0, "3", "column")]
+    assert at(three) == {"1Ø16": "1", "2Ø12": "2", "1Ø20": "3"}
+    assert at([(0.0, "1", "column"), (50.0, "2", "column"), (100.0, "3", "column")]) == {
+        "1Ø16": None, "2Ø12": None, "1Ø20": None}
+    assert at(three + [(120.0, "4", "beam")]) == {"1Ø16": None, "2Ø12": None, "1Ø20": None}

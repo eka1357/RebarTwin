@@ -24,7 +24,7 @@ from rebartwin.reader.gemini import CachingTransport, read_pages
 from rebartwin.reader.ingest import ingest
 from rebartwin.reader.ocr import CachingOcr, ocr_pages
 from rebartwin.reader.parser import parse_page
-from rebartwin.reader.plan import read_plans
+from rebartwin.reader.plan import read_plans, support_map
 
 FIELDS = ["section", "main", "links", "top", "top_extra", "bottom", "bottom_extra", "cover", "concrete_grade",
           "steel_grade", "seismic_zone", "exposure", "frames_into"]
@@ -57,8 +57,8 @@ def main() -> None:
     ocr_pages(sheets, CachingOcr(None, args.out / "replies", cache.ledger), args.tile)
     matches = [m for p in sheets for m in parse_page(p)]
     reads = read_pages(sheets, cache, tile_px=args.tile)
-    result = agree(reads, matches, sheets)
     extra = ingest(args.pdf, pages=pages_arg(args.plans)) if args.plans else []
+    result = agree(reads, matches, sheets, support_map(sheets + extra))
     plans = read_plans(sheets + extra, result)
     assert all(c.cached for c in cache.ledger), "a live call was made"
     print(f"replayed {len(cache.ledger)} saved replies, 0 live calls; {len(reads)} callouts")

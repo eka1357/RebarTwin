@@ -31,8 +31,8 @@ from .reader.ingest import box_2d, ingest
 from .reader.link import LINK_PROMPT, USED_FIELDS, blocks as item_blocks_joint, link, project_level as model_project_level
 from .reader.ocr import CachingOcr, VisionTransport, ocr_pages
 from .reader.parser import parse_page
-from .reader.plan import read_plans
-from .reader.pipeline import attach_sources
+from .reader.plan import read_plans, support_map
+from .reader.pipeline import attach_sources, write_drafts
 from .report import bundle as build_bundle
 
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9._@-]+$")
@@ -637,7 +637,7 @@ def _execute_read_job(
                 },
             )
 
-        agreement = agree(all_reads, all_matches, sheets)
+        agreement = agree(all_reads, all_matches, sheets, support_map(sheets))
         plans = read_plans(sheets, agreement)    # joints from geometry: code-made frames_into (reader/plan.py)
         linked = link(agreement, cache)
 
@@ -645,6 +645,7 @@ def _execute_read_job(
         joints_dir.mkdir(exist_ok=True)
         for v in linked.joints:
             (joints_dir / f"{v.joint.id}.json").write_text(v.joint.model_dump_json(indent=1), encoding="utf-8")
+        write_drafts(joints_dir, linked)
 
         provenance = [
             {
@@ -695,6 +696,7 @@ def _execute_read_job(
                 "to_check": len(linked.to_check),
                 "unassigned": len(agreement.unassigned),
                 "joints": len(linked.joints),
+                "drafts": len(linked.drafts),
                 "ocr_repairs": sum(p.ocr_repairs for p in sheets),
             },
             "tokens": {
@@ -734,6 +736,7 @@ def _execute_read_job(
             {
                 "pages": len(sheets),
                 "joints": len(linked.joints),
+                "drafts": len(linked.drafts),
                 "ready": ready_ids,
                 "to_check": len(linked.to_check),
             },
@@ -884,12 +887,13 @@ def create_app(
         joints_dir = p_dir / "joints"
         if joints_dir.is_dir():
             for jf in sorted(joints_dir.glob("*.json")):
-                jid = jf.stem
+                is_draft = jf.name.endswith(".draft.json")      # incomplete joint: shown as blocked, never checked
+                jid = jf.name[: -len(".draft.json")] if is_draft else jf.stem
                 j_data = _read_json(jf, {})
                 b_dir = joints_dir / jid
                 b_data = _read_json(b_dir / "bundle.json") if (b_dir / "bundle.json").is_file() else None
                 blocked_n = sum(1 for t in tc_items if _dict_blocks_joint(t, jid))
-                if b_data and blocked_n == 0:
+                if b_data and blocked_n == 0 and not is_draft:
                     findings = b_data.get("report", {}).get("findings", [])
                     fail_n = sum(1 for f in findings if f.get("status") == "fail")
                     fix_status = b_data.get("fix", {}).get("status")
@@ -908,7 +912,8 @@ def create_app(
                     "fix_status": fix_status,
                     "fail_count": fail_n,
                     "blocked_count": blocked_n,
-                    "bundle_ready": bool(b_data and blocked_n == 0),
+                    "bundle_ready": bool(b_data and blocked_n == 0 and not is_draft),
+                    "draft": is_draft,
                 })
 
         # Failures first, then to_check, then pass
@@ -989,6 +994,8 @@ def create_app(
         if joints_dir.is_dir():
             joint_models: dict[str, Joint] = {}
             for jf in sorted(joints_dir.glob("*.json")):
+                if jf.name.endswith(".draft.json"):             # drafts are not Joints until complete
+                    continue
                 jid = jf.stem
                 j_model = Joint.model_validate_json(jf.read_text(encoding="utf-8"))
                 members = {j_model.column.id, *(b.id for b in j_model.beams)}

@@ -180,3 +180,14 @@ def test_without_a_plan_floor_every_storey_is_ambiguous(sheet):
     assert v.joint.id == "C4xB12"
     items = {(t.field, t.reason) for t in linked.to_check if t.joint == "C4xB12"}
     assert {("column.section", "ambiguous"), ("column.main", "ambiguous")} <= items
+
+
+def test_greek_look_alike_capitals_from_ocr_read_as_latin():
+    """Sheet 9 (servant quarters) has the header "FOUNDATION TO GROUND ROOF"; OCR returned "TO" as Greek Tau and
+    Omicron. It is still a storey header, from FOUNDATION to GROUND ROOF, and it does not end at FIRST, so its
+    columns' items do not block first-floor joints."""
+    from rebartwin.reader.levels import ends_at, is_storey_header, storey
+    text = "FOUNDATION ΤΟ GROUND ROOF"
+    assert is_storey_header(text)
+    assert storey(text) == ("FOUNDATION", "GROUND ROOF")
+    assert not ends_at(text, "FIRST")

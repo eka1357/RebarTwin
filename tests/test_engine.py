@@ -300,3 +300,21 @@ def test_face_bar_positions_must_be_symmetric_and_fit_the_face():
     for bad in ([-40.0, 45.0], [-40.0]):
         with pytest.raises(ValueError):
             c.model_validate({**c.model_dump(), "face_along_y": bad})
+
+
+def test_a_redesign_passing_early_does_not_stop_the_search_for_a_re_detail():
+    """In the app a model proposer offered "C1 200 x 550" in round 1 and it passed, so the loop stopped with only a
+    redesign. Now the loop goes on while only redesigns pass: round 2 finds XB17's re-arranged top with C1's face bars
+    at +-40, which ranks first; the redesign stays listed below it only if kept, never ahead of it."""
+    from rebartwin.fixes import Candidate, Enumerator, ResizeColumn, resolve
+
+    class Grower:
+        name = "grower"
+
+        def propose(self, joint, report, history, round):
+            return [Candidate(title="C1 200 x 550", edits=[ResizeColumn(b=200, h=550)], source="grower")] \
+                if round == 1 else []
+    r = resolve(c1_xb17(), [Grower(), Enumerator()])
+    assert r.status == "fixed"
+    assert r.options[0].candidate.title == "XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm"
+    assert not r.options[0].candidate.redesign

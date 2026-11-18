@@ -417,7 +417,9 @@ def resolve(joint: Joint, proposers: list[Proposer] | None = None, max_rounds: i
                 history.append(Attempt(round=rnd, candidate=cand, passed=ok, failures=_failure_dicts(rep)))
                 if ok:
                     passing.append(cand)
-        if passing:
+        # Stop once something passes without a redesign; while only redesigns pass, the next round may still find a
+        # re-detail (a beam change with the column's face bars placed comes in round 2).
+        if any(not c.redesign for c in passing):
             break
     options = sorted((_option(joint, c, base_cage.effective_depth) for c in passing), key=lambda o: _rank(o, joint))
     blocking = Counter(f["rule"] for a in history if not a.passed for f in {x["rule"]: x for x in a.failures}.values())

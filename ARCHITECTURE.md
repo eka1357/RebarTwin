@@ -76,7 +76,8 @@ fix              { status: clean|fixed|redesign|no_fix, summary, options[], atte
                    along_y?}; an option with place_face_bars has `column` "C1 face bars at y = -40, 40 mm" and a flag
                    saying the 5 mm clearance to beam bars is a placing tolerance, not a code rule. Options rank: beam
                    changes only, then face bar placements (smallest move first, alone or with a beam change), then
-                   redesigns.
+                   redesigns. The loop stops after a round only when something passes without a redesign; while only
+                   redesigns pass it runs the next round (up to two), where beam changes with placed face bars come.
   option         { candidate{title, edits[], source}, faces[{beam, face, before, after, area_before,
                    area_required, area_provided, overshoot_pct, depth_before, depth_after, n_bars_before,
                    n_layers_before, n_bars, n_layers}], column, flags[] }

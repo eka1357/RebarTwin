@@ -417,3 +417,133 @@ def test_draft_joints_and_shared_rebartwin_replies_dir(tmp_path: Path, monkeypat
     assert mixed_bundle["joint"]["column"]["face_dia"] == 12
     col_dias = sorted({round(b["dia"]) for b in mixed_bundle["scene"]["bars"] if b["member"] == "C1"})
     assert col_dias == [12, 16]
+
+
+def test_demo_only_blocks_writes_and_model_calls_and_reports_health(tmp_path: Path, monkeypatch):
+    from rebartwin.api import _safe_run_check
+    from rebartwin.model import Joint
+
+    monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path / "projects"))
+    monkeypatch.setenv("REBARTWIN_REPLIES_DIR", str(tmp_path / "replies"))
+    monkeypatch.setenv("DEMO_ONLY", "true")
+    monkeypatch.setenv("GEMINI_API_KEY", "should-not-be-used")
+
+    def boom():
+        raise AssertionError("Gemini/Vision must never be constructed when DEMO_ONLY=true")
+
+    app = create_app(transport_factory=boom, ocr_factory=boom)
+    client = TestClient(app)
+
+    proj_dir = tmp_path / "projects" / "existing-demo"
+    proj_dir.mkdir(parents=True)
+    (proj_dir / "project.json").write_text(
+        json.dumps({"id": "existing-demo", "name": "Existing", "status": "done"}),
+        encoding="utf-8",
+    )
+    tc_payload = [
+        {
+            "id": "tc_1",
+            "member": None,
+            "field": "settings.seismic_zone",
+            "page": 0,
+            "box_2d": None,
+            "gemini": None,
+            "parser": None,
+            "reason": "missing",
+            "detail": "Select seismic zone",
+            "layer": 1,
+            "joint": None,
+            "resolution": None,
+            "level": None,
+        }
+    ]
+    (proj_dir / "to_check.json").write_text(json.dumps(tc_payload), encoding="utf-8")
+
+    for url in ("/health", "/api/health"):
+        hr = client.get(url)
+        assert hr.status_code == 200
+        assert hr.json() == {"status": "ok", "demo_only": True}
+
+    for url in ("/projects", "/api/projects"):
+        cr = client.post(url, json={"name": "Blocked"})
+        assert cr.status_code == 403
+        assert cr.headers["content-type"].startswith("application/problem+json")
+        assert cr.json()["title"] == "Disabled in public demo"
+
+    up = client.post(
+        "/api/projects/existing-demo/drawings",
+        files={"file": ("plan.pdf", b"%PDF-1.4\n", "application/pdf")},
+        data={"sync": "true"},
+    )
+    assert up.status_code == 403
+    assert up.json()["title"] == "Disabled in public demo"
+
+    res = client.post("/api/projects/existing-demo/to-check/tc_1/resolve", json={"value": "III"})
+    assert res.status_code == 403
+    assert json.loads((proj_dir / "to_check.json").read_text(encoding="utf-8"))[0]["resolution"] is None
+
+    # Read-only project listing and deterministic stateless check remain enabled without hitting model factories.
+    assert [p["id"] for p in client.get("/api/projects").json()] == ["existing-demo"]
+    joint_payload = json.loads(EXAMPLE_JOINT.read_text(encoding="utf-8"))
+    chk = client.post("/api/joints/check", json=joint_payload)
+    assert chk.status_code == 200
+    assert chk.json()["fix"]["status"] == "fixed"
+
+    # Even if _safe_run_check is called directly in demo mode, transport_factory is skipped.
+    out_dir = tmp_path / "direct_check"
+    rc = _safe_run_check(app, proj_dir, Joint.model_validate(joint_payload), out_dir, no_ifc=True)
+    assert rc in (0, 1)
+
+
+def test_single_service_serves_spa_and_static_assets(tmp_path: Path, monkeypatch):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "wasm").mkdir(parents=True)
+    (dist / "live" / "iit-demo").mkdir(parents=True)
+    (dist / "demo").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><html><body>RebarTwin SPA</body></html>", encoding="utf-8")
+    (dist / "assets" / "app.js").write_text("console.log('ok');", encoding="utf-8")
+    (dist / "wasm" / "web-ifc.wasm").write_bytes(b"\x00asm\x01\x00\x00\x00")
+    (dist / "live" / "iit-demo" / "bundle.json").write_text('{"joint":{"id":"C1"}}', encoding="utf-8")
+    (dist / "live" / "iit-demo" / "joint.ifc").write_text("ISO-10303-21;", encoding="utf-8")
+
+    monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path / "projects"))
+    monkeypatch.setenv("REBARTWIN_WEB_DIST", str(dist))
+    monkeypatch.delenv("DEMO_ONLY", raising=False)
+
+    client = TestClient(create_app())
+
+    for route in ("/", "/demo", "/demo/iit", "/demo/iit/report", "/projects/iit-demo", "/upload"):
+        r = client.get(route, headers={"Accept": "text/html,application/xhtml+xml"})
+        assert r.status_code == 200
+        assert "RebarTwin SPA" in r.text
+        assert r.headers["content-type"].startswith("text/html")
+
+    # API GET endpoints remain JSON when requested cleanly without HTML browser Accept.
+    api_list = client.get("/projects", headers={"Accept": "application/json"})
+    assert api_list.status_code == 200
+    assert api_list.json() == []
+
+    h_browser = client.get("/api/health", headers={"Accept": "text/html"})
+    assert h_browser.status_code == 200
+    assert h_browser.json()["status"] == "ok"
+
+    wasm_resp = client.get("/wasm/web-ifc.wasm")
+    assert wasm_resp.status_code == 200
+    assert wasm_resp.headers["content-type"].startswith("application/wasm")
+
+    ifc_resp = client.get("/live/iit-demo/joint.ifc")
+    assert ifc_resp.status_code == 200
+    assert ifc_resp.headers["content-type"].startswith("application/x-step")
+
+    bundle_resp = client.get("/live/iit-demo/bundle.json")
+    assert bundle_resp.status_code == 200
+    assert bundle_resp.json()["joint"]["id"] == "C1"
+
+    missing_api = client.get("/api/no-such-endpoint")
+    assert missing_api.status_code == 404
+    assert missing_api.headers["content-type"].startswith("application/problem+json")
+
+    missing_asset = client.get("/assets/missing.js")
+    assert missing_asset.status_code == 404
+    assert missing_asset.headers["content-type"].startswith("application/problem+json")

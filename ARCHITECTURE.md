@@ -270,21 +270,22 @@ Keys: an AI Studio key in `GEMINI_API_KEY` locally; Vertex AI on Cloud Run (`GOO
 API reply caches (`CachingTransport`, `CachingOcr`, `GeminiProposer`) use `REBARTWIN_REPLIES_DIR` (default
 `out/_replies`) with no per-project `replies` folder so saved readings replay across uploads.
 
-## API (built, `src/rebartwin/api.py`; Vite proxies `/api/*` -> `http://127.0.0.1:8000/*`)
+## API (built, `src/rebartwin/api.py`; mounted at both `/api/*` and `/*`, plus static SPA serving of `web/dist`)
 
 | Method and path | Does |
 |---|---|
+| `GET /health` | Service status and `demo_only` flag (`{"status": "ok", "demo_only": bool}`) |
 | `POST /joints/check` | Joint JSON in, bundle out. Stateless; used by demo mode and tests |
-| `POST /projects` | Create a project |
-| `POST /projects/{id}/drawings` | Upload a PDF; starts reading |
+| `POST /projects` | Create a project (returns `403 application/problem+json` when `DEMO_ONLY=true`) |
+| `POST /projects/{id}/drawings` | Upload a PDF; starts reading (blocked with `403` when `DEMO_ONLY=true`) |
 | `GET /projects/{id}/events` | Server-sent events: `page_started`, `page_read` (agreed, to_check), `joint_ready`, `done`, `error` |
 | `GET /projects/{id}` | Sheets, overview counts, failures by rule, beam-on-beam junctions, joints (including `draft: true` blocked drafts) with explicit `place`/`floor` and blocking items |
-| `GET /projects/{id}/to-check` and `POST .../to-check/{item}/resolve` | The review queue |
+| `GET /projects/{id}/to-check` and `POST .../to-check/{item}/resolve` | The review queue (`POST .../resolve` returns `403` when `DEMO_ONLY=true`) |
 | `GET /projects/{id}/joints/{joint}/bundle` | The bundle |
 | `GET .../joint.ifc`, `.../fixed.ifc?option=n`, `.../issues.bcf`, `.../report.md` | Exports |
 | `GET /projects/{id}/pages/{n}.png?crop=ymin,xmin,ymax,xmax` | A drawing crop for the Source panel |
 
-Errors use `application/problem+json`. Long work runs as Cloud Tasks; the API streams progress.
+When `DEMO_ONLY=true` (or running in Cloud Run `K_SERVICE` without `DEMO_ONLY=false`), uploads, To check edits, and every Gemini/Vision call are disabled while `/demo` and `/demo/iit` load statically from `web/dist` (`REBARTWIN_WEB_DIST`). Errors use `application/problem+json`. Long work runs asynchronously; the API streams progress.
 
 ## Web app
 

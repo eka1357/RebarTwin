@@ -102,3 +102,41 @@ Open [http://127.0.0.1:4173/demo](http://127.0.0.1:4173/demo):
   4. **Workings** replay across every tried arrangement (`Gemini` proposer + `Enumerator`, rejecting clauses, `Failed only` filter).
   5. Switch to **Zone III** (`IS 13920 on`): shows all 7 failures including the `300 mm · needs 400 · IS 13920 cl. 7.1.1` column depth check and why bar edits alone cannot pass (`Redesign`: `325 × 300`, `4-16 over 4-16`).
 - Click **Report** (or **Use in report** -> **Open report**) to demonstrate the single-page A4 print output and download `joint.ifc`, `fixed.ifc`, or `issues.bcf`.
+
+## 5. Public Cloud Run Deployment (`asia-south1`, `DEMO_ONLY=true`)
+
+RebarTwin deploys as a single Cloud Run service (`Dockerfile`) where FastAPI serves both the built `web/dist` web app and `/api/*`. Public mode (`DEMO_ONLY=true`) is enabled by default with zero API keys in the container: `/demo` and `/demo/iit` work interactively, while uploads, `To check` edits, and all Gemini/Vision calls are blocked (`403 application/problem+json`).
+
+**Live URL:** `<pending Cloud Run deploy>`
+
+### Local single-service check (`DEMO_ONLY=true`)
+
+```powershell
+cd web && npm run build && cd ..
+$env:DEMO_ONLY="true"
+uv run uvicorn rebartwin.api:app --host 127.0.0.1 --port 8080
+```
+
+### Enable APIs and deploy / redeploy
+
+`.gcloudignore` includes `web/public/live/iit-demo/` (for `/demo/iit`) and excludes `.env`, `uploads/`, `.venv/`, `out/`, and every other `web/public/live/*` folder.
+
+```powershell
+gcloud auth login
+gcloud config unset billing/quota_project
+gcloud config set project <PROJECT_ID>
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+gcloud run deploy rebartwin --source . --region asia-south1 --allow-unauthenticated --set-env-vars DEMO_ONLY=true --memory 1Gi
+```
+
+Run the same `gcloud run deploy rebartwin --source . ...` command to redeploy after code or data changes. Verify `/api/health` returns `{"status":"ok","demo_only":true}`.
+
+### Turn it off after judging
+
+Revoke public unauthenticated access or delete the service:
+
+```powershell
+gcloud run services remove-iam-policy-binding rebartwin --region asia-south1 --member="allUsers" --role="roles/run.invoker"
+# Or remove the Cloud Run service completely:
+gcloud run services delete rebartwin --region asia-south1
+```

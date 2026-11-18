@@ -269,6 +269,16 @@ export async function uploadDrawing(
   return handleJsonResponse(res);
 }
 
+export interface HealthResponse {
+  status: string;
+  demo_only?: boolean;
+}
+
+export async function getHealth(): Promise<HealthResponse> {
+  const res = await fetch(`${apiBase()}/health`);
+  return handleJsonResponse<HealthResponse>(res);
+}
+
 export async function getProject(projectId: string): Promise<ProjectDetail> {
   const res = await fetch(`${apiBase()}/projects/${encodeURIComponent(projectId)}`);
   return handleJsonResponse<ProjectDetail>(res);

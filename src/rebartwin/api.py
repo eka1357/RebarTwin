@@ -4,6 +4,7 @@ bundle/export serving, and normalized drawing crops (`application/problem+json` 
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -15,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
@@ -72,6 +73,68 @@ def _utc_now() -> str:
 
 def _projects_root() -> Path:
     return Path(os.environ.get("REBARTWIN_PROJECTS_DIR", "web/public/live"))
+
+
+_EXTRA_MEDIA_TYPES = {
+    ".wasm": "application/wasm",
+    ".ifc": "application/x-step",
+    ".bcf": "application/zip",
+    ".md": "text/markdown; charset=utf-8",
+}
+
+
+def _web_dist_dir() -> Path:
+    env_dist = os.environ.get("REBARTWIN_WEB_DIST")
+    if env_dist:
+        return Path(env_dist)
+    repo_dist = Path(__file__).resolve().parents[2] / "web" / "dist"
+    if repo_dist.is_dir():
+        return repo_dist
+    return Path.cwd() / "web" / "dist"
+
+
+def _static_file_response(path: Path) -> FileResponse:
+    media = _EXTRA_MEDIA_TYPES.get(path.suffix.lower())
+    if not media:
+        media, _ = mimetypes.guess_type(str(path))
+    return FileResponse(path, media_type=media)
+
+
+def _serve_spa_path(full_path: str) -> FileResponse:
+    rel = full_path.lstrip("/")
+    if rel == "api" or rel.startswith("api/"):
+        raise ProblemError(404, "Endpoint not found", f"API endpoint /{rel} was not found.")
+    dist_root = _web_dist_dir().resolve()
+    if rel:
+        candidate = (dist_root / rel).resolve()
+        if not candidate.is_relative_to(dist_root):
+            raise ProblemError(400, "Invalid path", "Path escapes web bundle root.")
+        if candidate.is_file():
+            return _static_file_response(candidate)
+        if rel.startswith(("assets/", "wasm/")):
+            raise ProblemError(404, "Asset not found", f"Static asset /{rel} was not found.")
+    index_file = dist_root / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file, media_type="text/html; charset=utf-8")
+    raise ProblemError(404, "Not found", f"Path /{rel} was not found.")
+
+
+def _is_demo_only() -> bool:
+    """Public demo lock: defaults on when running under Cloud Run (`K_SERVICE`),
+    disabling uploads, To check writes, and every Gemini/Vision call."""
+    raw = os.environ.get("DEMO_ONLY")
+    if raw is not None and raw.strip() != "":
+        return raw.strip().lower() in ("1", "true", "yes", "on")
+    return bool(os.environ.get("K_SERVICE"))
+
+
+def _require_writable(action: str) -> None:
+    if _is_demo_only():
+        raise ProblemError(
+            403,
+            "Disabled in public demo",
+            f"{action} is disabled in public demo mode (DEMO_ONLY=true).",
+        )
 
 
 def _replies_dir() -> Path:
@@ -632,15 +695,16 @@ def _safe_run_check(
     falling back deterministically to Enumerator alone if no model access or replay miss occurs."""
     del project_dir  # Reply caches live in shared REBARTWIN_REPLIES_DIR, not per-project folders.
     proposers: list[Proposer] | None = None
-    transport_factory: Callable[[], Any] | None = getattr(app.state, "transport_factory", None)
-    if cache is not None:
-        proposers = [GeminiProposer(cache), Enumerator()]
-    elif transport_factory is not None or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true", "yes"):
-        try:
-            tr = transport_factory() if transport_factory else GenAITransport()
-            proposers = [GeminiProposer(CachingTransport(tr, _replies_dir())), Enumerator()]
-        except ReadError:
-            proposers = None
+    if not _is_demo_only():
+        transport_factory: Callable[[], Any] | None = getattr(app.state, "transport_factory", None)
+        if cache is not None:
+            proposers = [GeminiProposer(cache), Enumerator()]
+        elif transport_factory is not None or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true", "yes"):
+            try:
+                tr = transport_factory() if transport_factory else GenAITransport()
+                proposers = [GeminiProposer(CachingTransport(tr, _replies_dir())), Enumerator()]
+            except ReadError:
+                proposers = None
 
     if proposers is not None:
         try:
@@ -758,6 +822,8 @@ def _execute_read_job(
         _write_json(meta_path, meta)
 
     try:
+        if _is_demo_only():
+            raise ReadError("Reading PDF drawings and model calls are disabled in public demo mode.")
         load_env()
         t0 = time.perf_counter()
         parsed_pages = _parse_pages_arg(pages_spec)
@@ -965,6 +1031,19 @@ def create_app(
     crop_bytes_cache: OrderedDict[tuple[str, int, str], bytes] = OrderedDict()
     page_pixmap_cache: OrderedDict[tuple[str, int], Any] = OrderedDict()
 
+    @app.middleware("http")
+    async def spa_navigation_fallback(request: Request, call_next: Any) -> Response:
+        if request.method == "GET":
+            path = request.url.path
+            accept = request.headers.get("accept", "")
+            if "text/html" in accept and not path.startswith("/api") and path != "/health":
+                if (_web_dist_dir() / "index.html").is_file():
+                    try:
+                        return _serve_spa_path(path)
+                    except ProblemError:
+                        pass
+        return await call_next(request)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -984,7 +1063,13 @@ def create_app(
     async def handle_validation(request: Request, exc: RequestValidationError) -> JSONResponse:
         return _problem_response(422, "Validation failed", json.dumps(exc.errors(), default=str), str(request.url.path))
 
-    @app.post("/joints/check")
+    api = APIRouter()
+
+    @api.get("/health")
+    async def health() -> dict[str, Any]:
+        return {"status": "ok", "demo_only": _is_demo_only()}
+
+    @api.post("/joints/check")
     async def check_joint_stateless(joint: Joint, zone: Zone | None = None) -> dict[str, Any]:
         target = joint.model_copy(deep=True)
         if zone:
@@ -993,7 +1078,7 @@ def create_app(
         fix = resolve_fixes(target)
         return build_bundle(target, rep, fix, cage)
 
-    @app.get("/projects")
+    @api.get("/projects")
     async def list_projects() -> list[dict[str, Any]]:
         root = _projects_root()
         if not root.is_dir():
@@ -1005,8 +1090,9 @@ def create_app(
                 out.append(meta)
         return out
 
-    @app.post("/projects", status_code=201)
+    @api.post("/projects", status_code=201)
     async def create_project(body: ProjectCreate | None = None) -> dict[str, Any]:
+        _require_writable("Creating projects")
         raw_id = body.id if body and body.id else (
             _slugify(body.name) if body and body.name else f"proj-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         )
@@ -1025,7 +1111,7 @@ def create_app(
         _write_json(p_dir / "project.json", meta)
         return meta
 
-    @app.post("/projects/{project_id}/drawings", status_code=202)
+    @api.post("/projects/{project_id}/drawings", status_code=202)
     async def upload_drawing(
         project_id: str,
         file: UploadFile = File(...),
@@ -1035,6 +1121,7 @@ def create_app(
         sync: bool = Form(False),
         no_ifc: bool = Form(False),
     ) -> dict[str, Any]:
+        _require_writable("Uploading drawings")
         p_dir = _project_dir(project_id)
         safe_name = Path(file.filename or "drawing.pdf").name
         if not safe_name.lower().endswith(".pdf"):
@@ -1067,7 +1154,7 @@ def create_app(
             ).start()
         return {"project_id": project_id, "pdf": safe_name, "status": "reading"}
 
-    @app.get("/projects/{project_id}/events")
+    @api.get("/projects/{project_id}/events")
     async def stream_events(project_id: str):
         p_dir = _project_dir(project_id)
         return StreamingResponse(
@@ -1076,7 +1163,7 @@ def create_app(
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    @app.get("/projects/{project_id}")
+    @api.get("/projects/{project_id}")
     def get_project(project_id: str) -> dict[str, Any]:
         p_dir = _project_dir(project_id)
         meta = _read_json(p_dir / "project.json", {})
@@ -1259,7 +1346,7 @@ def create_app(
             },
         }
 
-    @app.get("/projects/{project_id}/to-check")
+    @api.get("/projects/{project_id}/to-check")
     def get_to_check(project_id: str) -> list[dict[str, Any]]:
         p_dir = _project_dir(project_id)
         items: list[dict[str, Any]] = _read_json(p_dir / "to_check.json", [])
@@ -1285,13 +1372,14 @@ def create_app(
             row.pop("_order", None)
         return enriched
 
-    @app.post("/projects/{project_id}/to-check/{item_id}/resolve")
+    @api.post("/projects/{project_id}/to-check/{item_id}/resolve")
     def resolve_to_check_item(
         project_id: str,
         item_id: str,
         body: ResolveRequest,
         no_ifc: bool = False,
     ) -> dict[str, Any]:
+        _require_writable("Resolving To check items")
         p_dir = _project_dir(project_id)
         tc_path = p_dir / "to_check.json"
         items: list[dict[str, Any]] = _read_json(tc_path, [])
@@ -1370,7 +1458,7 @@ def create_app(
             raise ProblemError(404, "Joint bundle not found", f"Bundle for joint {safe_joint!r} is not built.")
         return j_dir
 
-    @app.get("/projects/{project_id}/joints/{joint}/bundle")
+    @api.get("/projects/{project_id}/joints/{joint}/bundle")
     def get_joint_bundle(project_id: str, joint: str) -> dict[str, Any]:
         p_dir = _project_dir(project_id)
         j_dir = _joint_folder(project_id, joint)
@@ -1393,7 +1481,7 @@ def create_app(
                         entry["level"] = match["level"]
         return data
 
-    @app.get("/projects/{project_id}/joints/{joint}/joint.ifc")
+    @api.get("/projects/{project_id}/joints/{joint}/joint.ifc")
     def get_joint_ifc(project_id: str, joint: str):
         j_dir = _joint_folder(project_id, joint)
         path = j_dir / "joint.ifc"
@@ -1401,7 +1489,7 @@ def create_app(
             raise ProblemError(404, "IFC file not found", "joint.ifc was not generated for this joint.")
         return FileResponse(path, media_type="application/x-step", filename=f"{joint}.ifc")
 
-    @app.get("/projects/{project_id}/joints/{joint}/fixed.ifc")
+    @api.get("/projects/{project_id}/joints/{joint}/fixed.ifc")
     def get_fixed_ifc(project_id: str, joint: str, option: int = Query(0, ge=0)):
         j_dir = _joint_folder(project_id, joint)
         if option == 0:
@@ -1427,7 +1515,7 @@ def create_app(
                 raise ProblemError(501, "IFC export unavailable", str(exc)) from exc
         return FileResponse(target_path, media_type="application/x-step", filename=f"{joint}-fixed-{option}.ifc")
 
-    @app.get("/projects/{project_id}/joints/{joint}/issues.bcf")
+    @api.get("/projects/{project_id}/joints/{joint}/issues.bcf")
     def get_issues_bcf(project_id: str, joint: str):
         j_dir = _joint_folder(project_id, joint)
         path = j_dir / "issues.bcf"
@@ -1435,7 +1523,7 @@ def create_app(
             raise ProblemError(404, "BCF file not found", "issues.bcf was not found for this joint.")
         return FileResponse(path, media_type="application/zip", filename=f"{joint}.bcf")
 
-    @app.get("/projects/{project_id}/joints/{joint}/report.md")
+    @api.get("/projects/{project_id}/joints/{joint}/report.md")
     def get_report_md(project_id: str, joint: str):
         j_dir = _joint_folder(project_id, joint)
         path = j_dir / "report.md"
@@ -1443,7 +1531,7 @@ def create_app(
             raise ProblemError(404, "Report not found", "report.md was not found for this joint.")
         return FileResponse(path, media_type="text/markdown; charset=utf-8", filename=f"{joint}-report.md")
 
-    @app.get("/projects/{project_id}/joints/{joint}/pages/{filename}")
+    @api.get("/projects/{project_id}/joints/{joint}/pages/{filename}")
     def get_joint_page_image(project_id: str, joint: str, filename: str):
         j_dir = _joint_folder(project_id, joint)
         safe_file = _validate_id(filename, "page filename")
@@ -1454,7 +1542,7 @@ def create_app(
             raise ProblemError(404, "Page image not found", f"Page asset {safe_file!r} was not found.")
         return FileResponse(path, media_type="image/png")
 
-    @app.get("/projects/{project_id}/pages/{page_num}.png")
+    @api.get("/projects/{project_id}/pages/{page_num}.png")
     def get_page_png(project_id: str, page_num: int, crop: str | None = None):
         p_dir = _project_dir(project_id)
         png_path = p_dir / "pages" / f"page-{page_num}.png"
@@ -1510,6 +1598,17 @@ def create_app(
             media_type="image/png",
             headers={"Cache-Control": "private, max-age=300"},
         )
+
+    app.include_router(api, prefix="/api")
+    app.include_router(api)
+
+    @app.get("/", include_in_schema=False)
+    def serve_root():
+        return _serve_spa_path("")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str):
+        return _serve_spa_path(full_path)
 
     return app
 

@@ -174,8 +174,7 @@ Extended `GET /projects/{id}` and `GET /projects/{id}/to-check` in `src/rebartwi
 
 ## Next: built in Google Antigravity
 
-The API on Cloud Run, from `prompts/antigravity-build-prompt.md`.
-Record each piece here when it lands.
+- **18 November 2026: Single-service Cloud Run packaging and `DEMO_ONLY` lock (A3 prep, `feature/a3-cloud-run`)**: Added `Dockerfile` (multi-stage Node 22 + Python 3.12 serving `web/dist` and FastAPI on `$PORT` with `DEMO_ONLY=true` and zero API keys), `.gcloudignore` (shipping git-ignored `web/public/live/iit-demo/` while excluding `.env`, `uploads/`, `out/`, and other `web/public/live/*` projects), `/api/health` + dual `/api/*` & root router mounting with static SPA fallback in `src/rebartwin/api.py`, public-demo guards blocking PDF reading / `To check` writes / Gemini / Vision calls (`403 application/problem+json`), `UploadRoute` public-demo banner in `web/src/routes/UploadRoute.tsx`, API/SPA pytest & Vitest coverage, single-service documentation in [ARCHITECTURE.md](ARCHITECTURE.md), and Cloud Run deploy/teardown runbook in [docs/DEMO.md](docs/DEMO.md). Pending Google Cloud sign-in/project selection for live `asia-south1` deploy.
 
 ## Data
 

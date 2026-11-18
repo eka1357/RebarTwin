@@ -1,0 +1,8 @@
+#!include:.gitignore
+
+!web/public/live/
+web/public/live/*
+!web/public/live/iit-demo/
+.git/
+tests/
+tmp/

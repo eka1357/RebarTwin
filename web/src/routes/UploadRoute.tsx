@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -9,6 +10,7 @@ import { ReadingLog, type ReadingLogEntry } from "../features/reading/ReadingLog
 import {
   checkJointJson,
   createProject,
+  getHealth,
   projectEventsUrl,
   uploadDrawing,
 } from "../lib/api";
@@ -40,6 +42,14 @@ export function UploadRoute() {
     to_check: number;
   } | null>(null);
   const [pastedBundle, setPastedBundle] = useState<Bundle | null>(null);
+
+  const healthQuery = useQuery({
+    queryKey: ["api-health"],
+    queryFn: getHealth,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const demoOnly = Boolean(healthQuery.data?.demo_only);
 
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -217,8 +227,30 @@ export function UploadRoute() {
         )}
       </div>
 
+      {demoOnly && (
+        <section
+          role="status"
+          className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 space-y-2"
+        >
+          <p className="text-sm font-medium text-foreground">
+            Public demo mode is active. Drawing uploads, To check edits, and live model calls are switched off here.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Open the verified real-drawing walkthrough or the worked example while the public link is live.
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button variant="default" size="sm" asChild>
+              <Link to="/demo/iit">Open IIT Hyderabad joint</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/demo">Open worked example</Link>
+            </Button>
+          </div>
+        </section>
+      )}
+
       <DropZone
-        disabled={phase === "uploading" || phase === "reading"}
+        disabled={phase === "uploading" || phase === "reading" || demoOnly}
         pagesSpec={pagesSpec}
         onPagesSpecChange={setPagesSpec}
         onSelectPdf={handleSelectPdf}

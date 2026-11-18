@@ -80,7 +80,9 @@ class Column(BaseModel):
     b: float = Field(gt=0, description="size along X, mm")
     h: float = Field(gt=0, description="size along Y, mm")
     n_bars: int = Field(ge=4)
-    bar_dia: float = Field(gt=0)
+    bar_dia: float = Field(gt=0, description="the bars' size; with face_dia, the four corner bars' size")
+    face_dia: float | None = Field(default=None, gt=0, description="the size of the bars between the corners, when "
+                                   "it differs from the corner bars' (a schedule's '4-16 + 4-12')")
     tie_dia: float = Field(default=8, gt=0)
     cover: float = Field(default=40, gt=0)
     cover_to: CoverTo = Field(default="main", description="what the cover is measured to: the ties or the main bars")
@@ -89,6 +91,8 @@ class Column(BaseModel):
 
     @model_validator(mode="after")
     def _share_bars(self):
+        if self.face_dia is not None and self.n_bars <= 4:
+            raise ValueError(f"{self.id}: face_dia needs bars between the corners; {self.n_bars} bars are all corners")
         if self.bars_x is None or self.bars_y is None:
             if self.n_bars % 2:
                 raise ValueError(f"{self.id}: {self.n_bars} bars can't sit symmetrically on four faces; "
@@ -101,6 +105,17 @@ class Column(BaseModel):
             raise ValueError(f"{self.id}: {self.bars_x} and {self.bars_y} bars per face make "
                              f"{2 * (self.bars_x + self.bars_y) - 4} bars, not {self.n_bars}")
         return self
+
+    @property
+    def main_dias(self) -> list[float]:
+        """The main bar sizes: the corner bars' first."""
+        return [self.bar_dia] if self.face_dia is None else [self.bar_dia, self.face_dia]
+
+    @property
+    def area(self) -> float:
+        """Main steel, mm²: four corner bars of bar_dia and the rest of face_dia (or all of bar_dia)."""
+        face = self.face_dia if self.face_dia is not None else self.bar_dia
+        return 4 * bar_area(self.bar_dia) + (self.n_bars - 4) * bar_area(face)
 
     @property
     def main_cover(self) -> float:

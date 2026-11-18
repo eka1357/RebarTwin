@@ -151,6 +151,10 @@ Then: a bottom extra counts at a joint only if its drawn bar reaches that suppor
 not shown); Joint and drafts carry `place` and `floor`; every reply cache uses `REBARTWIN_REPLIES_DIR` when set
 (saved replies moved there); prompt `link_v4`. 285 tests.
 
+Then: mixed column bars in the engine (corner bars `bar_dia`, face bars `face_dia`), each bar placed and checked at
+its own size, the fix loop keeping both; the C4 x B12 demo bundles unchanged (a test compares them); the linking
+model's "unresolved" ignored where code proved or defaulted the value; prompt `link_v5`. 290 tests.
+
 ## Next: built in Google Antigravity
 
 The API on Cloud Run, from `prompts/antigravity-build-prompt.md`.

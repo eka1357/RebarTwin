@@ -16,6 +16,7 @@ A Gemini callout is accepted only when all of these hold; otherwise it becomes a
    its row) on the sheet (`disagree` if Gemini names another, `ambiguous` if Gemini names none, or names one where
    the sheet has no header); a beam value or `frames_into` with a floor must be on a sheet that names that floor.
 7. No other accepted callout gives the same member and field a different value (`ambiguous`, both go to To check).
+   Top extras at different supports (`at`, the grid bubble under them on the detail sheet) are separate.
    `frames_into` is exempt: a beam meets a column at each end. Each level is separate: a column has a value per
    storey. Zone, exposure and grades are project-wide: two
    values under any scopes conflict.
@@ -85,11 +86,15 @@ class Accepted:
     joined_from: list[str] | None = None   # the comments a split Ø callout was joined from (tokens.py)
     status: str = "agreed"        # "agreed" (both channels) or "geometry" (made by code from the drawing's geometry)
     refs: list[dict] | None = None   # further places on the drawing that back it: [{page, box_2d, text, at}]
+    at: str | None = None         # where on the grid: a geometry frames_into's place ("F-14", "C/C1-25"); a top
+                                  # extra's support grid line ("14"), from the bubble under it on the detail sheet
 
     def provenance(self) -> dict:
         p = {"page": self.page, "box_2d": box_2d(self.box), "text": self.text, "gemini": self.gemini,
              "parser": self.value, "status": self.status, "field_id": self.id, "level": self.level,
              "ocr_raw": self.ocr_raw, "joined_from": self.joined_from}
+        if self.at:
+            p["at"] = self.at
         if self.refs:
             p["refs"] = self.refs
         return p
@@ -409,8 +414,12 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
         m = here[0]
         raw = " ".join(w.raw or w.text for w in m.words) if any(w.raw for w in m.words) else None
         joined = [t for w in m.words for t in (w.joined or ())] or None
+        support = None
+        if c.field == "top_extra":                       # extra top bars belong to a support (plan.py)
+            from .plan import support_at
+            support = support_at(by_page[c.page], m.box)
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
-                                        r.box, r.call, level, raw, joined))
+                                        r.box, r.call, level, raw, joined, at=support))
 
     # Rule 8: one value on the drawing backs one field. Two callouts that agree with the same parser value but
     # name different fields (XB16's top and its bottom on one '2Ø12') cannot both be right: neither is accepted.
@@ -433,9 +442,9 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page]) -> Agreeme
     groups: dict[tuple, list[Accepted]] = {}
     for a in result.accepted:
         scope = "*" if a.field in PROJECT_WIDE else a.member
-        groups.setdefault((scope, a.field, a.layer, storey(a.level) or floor(a.level)), []).append(a)
+        groups.setdefault((scope, a.field, a.layer, storey(a.level) or floor(a.level), a.at), []).append(a)
     keep = []
-    for (_scope, fld, layer, _level), group in groups.items():
+    for (_scope, fld, layer, _level, _at), group in groups.items():
         values = {a.value for a in group}
         if len(values) == 1:
             keep.append(group[0])

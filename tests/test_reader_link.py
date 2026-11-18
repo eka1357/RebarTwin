@@ -259,3 +259,59 @@ def test_no_accepted_fields_means_no_call():
     t = Replies(LINK)
     result = link(Agreement(), t)
     assert result.joints == [] and t.models == []
+
+
+def placed(agreement, places: dict[str, str], extras=()) -> Agreement:
+    """The sheet's agreement with frames_into f0008 (B12 meets C4) and f0013 (B13 meets C4) made by geometry at the
+    given grid places, plus extra accepted fields."""
+    acc = [replace(a, at=places[a.id], status="geometry") if a.id in places else a for a in agreement.accepted]
+    return Agreement(acc + list(extras), list(agreement.to_check), [])
+
+
+def test_joint_id_carries_the_grid_place_safe_as_a_file_name(agreement):
+    """C4 with B12 and B13 at "C/C1-25" (a column covering sub-grids C and C1 on line 25): the id is
+    "C4xB12xB13@C+C1-25", "/" written "+" so it is a valid Windows file name. The same members at F-14 and F-33
+    would be two joints, "...@F-14" and "...@F-33", never one."""
+    from rebartwin.reader.link import safe_id
+    [v] = run(placed(agreement, {"f0008": "C/C1-25", "f0013": "C/C1-25"}), LINK).joints
+    assert v.joint.id == "C4xB12xB13@C+C1-25" and v.place == "C/C1-25"
+    assert blocking(run(placed(agreement, {"f0008": "C/C1-25", "f0013": "C/C1-25"}), LINK),
+                    "C4xB12xB13@C+C1-25") == []
+    assert safe_id("LMR OHT") == "LMR_OHT" and safe_id("F-14") == "F-14" and safe_id("a:b|c") == "a_b_c"
+
+
+def test_beams_placed_at_two_grid_places_are_not_one_joint(agreement):
+    """B12 meets C4 at B-2 and B13 meets C4 at B-3 by geometry: those are two columns of one type, so a joint holding
+    both is ambiguous."""
+    result = run(placed(agreement, {"f0008": "B-2", "f0013": "B-3"}), LINK)
+    items = [t for t in result.to_check if t.field == "beams"]
+    assert len(items) == 1 and "different grid places: B-2, B-3" in items[0].detail
+
+
+def test_extra_top_bars_count_only_at_their_own_support(agreement):
+    """The joint is at B-2; B12 runs along X, so its support here is grid line 2. Extras: 2-16 at line 2 (f0101) and
+    2-12 at line 3 (f0102). B12's top at this joint is 5-20 + 2-16: the 2-12 belongs to the support on line 3, and
+    citing it is a disagreement. An extra the detail sheet does not place (f0103, no `at`) blocks the joint as
+    ambiguous: which support it is at needs a person."""
+    top = next(a for a in agreement.accepted if (a.member, a.field) == ("B12", "top"))
+    here = replace(top, id="f0101", field="top_extra", value="2-16", at="2")
+    there = replace(top, id="f0102", field="top_extra", value="2-12", at="3")
+    places = {"f0008": "B-2", "f0013": "B-2"}
+
+    def body(ids, bars):
+        def change(i):
+            for s in i["sources"]:
+                if s["path"] == "beams[0].top":
+                    s["field_ids"] = ids
+            i["joint"]["beams"][0]["top"] = [{"bars": bars}]
+        return body_with(change)
+
+    jid = "C4xB12xB13@B-2"
+    assert blocking(run(placed(agreement, places, [here, there]), body(["f0011", "f0101"], "5-20 + 2-16")), jid) == []
+    wrong = blocking(run(placed(agreement, places, [here, there]),
+                         body(["f0011", "f0101", "f0102"], "5-20 + 2-16 + 2-12")), jid)
+    assert [(t.field, t.reason) for t in wrong] == [("beams[0].top", "disagree")]
+    loose = replace(top, id="f0103", field="top_extra", value="2-16", at=None)
+    items = blocking(run(placed(agreement, places, [loose]), body(["f0011", "f0103"], "5-20 + 2-16")), jid)
+    assert [(t.field, t.reason) for t in items] == [("beams[0].top", "ambiguous")]
+    assert "does not mark which support" in items[0].detail

@@ -28,6 +28,7 @@ from statistics import median
 from .ingest import Box, Page, Seg, Word
 
 GRID_LABEL = re.compile(r"(?:[A-Z]{1,2}\d{0,2}|\d{1,3})")
+SLAB_MARK = re.compile(r"S\d+[A-Z]?")   # S1, S14: slab marks in circles, never grid bubbles
 AXIS_TOL = 0.15          # box units: a segment this close to axis-aligned counts as horizontal or vertical
 COLLINEAR = 0.3          # box units: dashes of one line share their coordinate within this
 JOIN_PT = 0.5            # box units: two segment ends this close are joined (a leader's corner)
@@ -119,14 +120,14 @@ class Grid:
 
 
 def bubbles(page: Page) -> list[Bubble]:
-    """Short labels inside drawn circles. A circle holding more or less than one such word is not a bubble, nor is
+    """Short labels inside drawn circles, slab marks (S1, S14) excepted. A circle holding more or less than one such word is not a bubble, nor is
     one much larger than its text (a detail callout's circle). Cached on the page."""
     cached = getattr(page, "_bubbles", None)
     if cached is not None:
         return cached
     found: list[Bubble] = []
     circles = page.shapes.circles if page.shapes else []
-    words = [w for w in page.words if GRID_LABEL.fullmatch(w.text)]
+    words = [w for w in page.words if GRID_LABEL.fullmatch(w.text) and not SLAB_MARK.fullmatch(w.text)]
     for c in circles:
         inside = [w for w in words if _inside(_centre(w.box), c)]
         if len(inside) != 1:
@@ -706,7 +707,7 @@ def read_plans(pages: list[Page], agreement) -> dict:
         agreement.to_check.append(ToCheck(f"tc_{n_tc:04d}", member, "frames_into", page, box, None, None, reason,
                                           detail))
 
-    have = {(a.member, a.value, a.level) for a in agreement.accepted if a.field == "frames_into"}
+    have = {(a.member, a.value, a.level, a.at) for a in agreement.accepted if a.field == "frames_into"}
     made: list[Accepted] = []
     for bp in beam_pages:
         fits = [cp for cp in column_pages if all(align(grid(bp), grid(cp))[:2])]
@@ -724,13 +725,14 @@ def read_plans(pages: list[Page], agreement) -> dict:
         for m in r.meets:
             info["joints"].append({"beam": m.beam, "column": m.column, "at": m.at, "level": m.level,
                                    "beam_page": m.beam_page, "column_page": m.column_page})
-            if (m.beam, m.column, m.level) in have:
+            if (m.beam, m.column, m.level, m.at) in have:     # one field per place: C5 is at F-14 and F-33
                 continue
-            have.add((m.beam, m.column, m.level))
+            have.add((m.beam, m.column, m.level, m.at))
             made.append(Accepted(
                 "", m.beam, "frames_into", 1, m.column, m.beam_page, m.beam_box, f"{m.beam} / {m.column} at {m.at}",
                 "", (0.0, 0.0, 0.0, 0.0), "geometry", m.level, status="geometry",
-                refs=[{"page": m.column_page, "box_2d": box_2d(m.column_box), "text": m.column, "at": m.at}]))
+                refs=[{"page": m.column_page, "box_2d": box_2d(m.column_box), "text": m.column, "at": m.at}],
+                at=m.at))
     start = len(agreement.accepted)
     for i, a in enumerate(made, start + 1):
         a.id = f"f{i:04d}"
@@ -801,3 +803,25 @@ def elevation_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
     if len(names) > 1:
         return set(), f"elevations {', '.join(sorted(names))} both lie below this callout"
     return names, ""
+
+
+def support_at(page: Page, box: Box) -> str | None:
+    """The support an extra top bar callout on a beam elevation belongs to, by the grid bubble under it: the grid
+    bubbles below the callout within its elevation's span (down to two title heights under the title), the nearest
+    to the callout's centre in x, provided the next nearest is at least twice as far. None when the sheet marks no
+    support there or it is not clear: then the extra's support needs a person, never a guess."""
+    found = elevation_tie(page, box)
+    if not found or len(found[0]) != 1:
+        return None
+    member = next(iter(found[0]))
+    cx = _centre(box)[1]
+    els = [e for e in elevations(page) if e.member == member and e.lo <= cx <= e.hi and e.title[0] >= box[2]]
+    if not els:
+        return None
+    e = min(els, key=lambda e: e.title[0])
+    depth = 2 * (e.title[2] - e.title[0])
+    under = sorted((abs(_centre(b.circle)[1] - cx), b.label) for b in bubbles(page)
+                   if box[2] <= _centre(b.circle)[0] <= e.title[2] + depth and e.lo <= _centre(b.circle)[1] <= e.hi)
+    if not under or (len(under) > 1 and under[1][0] < 2 * under[0][0]):
+        return None
+    return under[0][1]

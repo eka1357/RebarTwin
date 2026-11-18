@@ -25,11 +25,12 @@ from .cli import run_check
 from .fixes import apply, resolve as resolve_fixes
 from .model import Exposure, Joint, Zone, format_bars, parse_bars
 from .reader.agree import Accepted, ToCheck, agree
-from .reader.gemini import GenAITransport, CachingTransport, ReadError, load_env, read_pages
+from .reader.gemini import READ_PROMPT, GenAITransport, CachingTransport, ReadError, load_env, read_pages
 from .reader.ingest import box_2d, ingest
-from .reader.link import USED_FIELDS, blocks as item_blocks_joint, link, project_level as model_project_level
+from .reader.link import LINK_PROMPT, USED_FIELDS, blocks as item_blocks_joint, link, project_level as model_project_level
 from .reader.ocr import CachingOcr, VisionTransport, ocr_pages
 from .reader.parser import parse_page
+from .reader.plan import read_plans
 from .reader.pipeline import attach_sources
 from .report import bundle as build_bundle
 
@@ -606,6 +607,7 @@ def _execute_read_job(
             )
 
         agreement = agree(all_reads, all_matches, sheets)
+        plans = read_plans(sheets, agreement)    # joints from geometry: code-made frames_into (reader/plan.py)
         linked = link(agreement, cache)
 
         joints_dir = project_dir / "joints"
@@ -639,7 +641,7 @@ def _execute_read_job(
             "pages": [p.number for p in sheets],
             "dpi": 200,
             "tile_px": 3000,
-            "prompts": {"read": "read_v2", "link": "link_v2"},
+            "prompts": {"read": READ_PROMPT, "link": LINK_PROMPT},
             "link_model": linked.model,
             "seconds": round(time.perf_counter() - t0, 1),
             "text_layer": [
@@ -670,6 +672,7 @@ def _execute_read_job(
             },
             "calls": calls,
             "accepted": [{**asdict(a), "box": box_2d(a.box), "gemini_box": box_2d(a.gemini_box)} for a in agreement.accepted],
+            "plans": plans,
             "unassigned": [t.to_json() for t in agreement.unassigned],
         }
         _write_json(project_dir / "reading.json", reading)

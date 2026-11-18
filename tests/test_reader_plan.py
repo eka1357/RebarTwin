@@ -122,6 +122,7 @@ def test_read_plans_adds_geometry_fields_and_to_check_items(sheets):
     assert info["beam_layouts"] == [1] and info["column_layouts"] == [2] and len(info["joints"]) == 8
     made = agreement.accepted
     assert len(made) == 8 and {a.status for a in made} == {"geometry"} and {a.field for a in made} == {"frames_into"}
+    assert {(a.member, a.value, a.at) for a in made} >= {("XB1", "C3", "A-2"), ("XB2", "C5", "B-1")}
     xb2 = next(a for a in made if a.member == "XB2")
     assert xb2.value == "C5" and xb2.page == 1 and xb2.level == "FIRST FLOOR BEAM LAYOUT"
     prov = xb2.provenance()
@@ -156,3 +157,23 @@ def test_no_grid_no_joints(tmp_path: Path):
     from reader_pdf import make_pdf
     page = ingest(make_pdf(tmp_path / "plain.pdf"))[0]
     assert plan.grid(page).xs == {} and plan.roles([page]) == ([], [])
+
+
+def test_slab_marks_are_never_grid_bubbles(sheets):
+    """"S1" in a circle in line with the grid bubbles 1, 2, 3 (y = 100 pt) is a slab mark: no bubble, no grid line,
+    not even an unplaced one."""
+    beam, _, _ = sheets
+    assert "S1" not in {b.label for b in plan.bubbles(beam)}
+    g = plan.grid(beam)
+    assert set(g.xs) == {"1", "2", "3"} and "S1" not in g.unplaced
+
+
+def test_an_extra_top_bar_belongs_to_the_support_whose_bubble_is_under_it(tmp_path):
+    """Under XB5 are bubbles 2 (x = 115 pt) and 3 (x = 385 pt). "1Ø16" (centre about 126 pt) is 11 pt from 2 and 259
+    from 3: support 2. "1Ø20" (centre about 366 pt) is 19 pt from 3 and 251 from 2: support 3. "2Ø10" is centred
+    near 250 pt, about 135 pt from each: not clear, so no support. On the sheet without bubbles nothing is placed."""
+    page = ingest(make_elevation_pdf(tmp_path / "e.pdf", supports=True))[0]
+    at = {w.text: plan.support_at(page, w.box) for w in page.words if w.text in ("1Ø16", "1Ø20", "2Ø10")}
+    assert at == {"1Ø16": "2", "1Ø20": "3", "2Ø10": None}
+    plain = ingest(make_elevation_pdf(tmp_path / "p.pdf"))[0]
+    assert all(plan.support_at(plain, w.box) is None for w in plain.words if "Ø" in w.text)

@@ -26,7 +26,7 @@ from .agree import Accepted, Agreement, ToCheck
 from .gemini import GLOBAL_MEMBERS, PROMPTS, ModelNotFound, Transport, call
 from .levels import ends_at, floor, storey
 
-LINK_PROMPT = "link_v2"
+LINK_PROMPT = "link_v3"
 DEFAULT_LINK_MODEL = "gemini-4-argon"
 DEFAULT_FALLBACK = "gemini-3.8-flash"
 
@@ -66,6 +66,7 @@ class Verified:
     issues: list[Issue]
     defaults: dict[str, str] = field(default_factory=dict)     # path -> the default used, e.g. "8 mm"
     floor: str | None = None       # the beams' floor, from the plans they were read on ("FIRST")
+    place: str | None = None       # the column's grid place, from geometry frames_into fields ("F-14")
 
 
 def _bars(value: str) -> Counter:
@@ -111,6 +112,13 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     plan_floors = sorted({floor(a.level) for k, got in cited.items() if k.endswith(".frames_into") for a in got
                           if floor(a.level)})
     at_floor = plan_floors[0] if len(plan_floors) == 1 else None
+    # The joint's place on the grid: the place of the geometry frames_into fields it cites. C5 with XB8 stands at
+    # F-14 and at F-33; each place is its own joint, with its own extra top bars.
+    places = sorted({a.at for k, got in cited.items() if k.endswith(".frames_into") for a in got if a.at})
+    place = places[0] if len(places) == 1 else None
+    if len(places) > 1:
+        issues.append(Issue("beams", "ambiguous", f"the beams meet {linked.joint.column.id} at different grid places: "
+                            f"{', '.join(places)}"))
     if len(plan_floors) > 1:
         issues.append(Issue("beams", "ambiguous", f"the beams were read on plans of different floors: "
                             f"{', '.join(plan_floors)}"))
@@ -228,7 +236,21 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                     notes.append(f"{beam.id} {face} bars arranged as "
                                  f"{'; '.join(f'layer {n}: {x.bars}' for n, x in enumerate(layers, 1))} from "
                                  f"{', '.join(a.value for a in got)} (the linking model's arrangement).")
-            use(f"{p}.{face}", of(beam.id, face, f"{face}_extra"), (face, f"{face}_extra"), face_check)
+            expected = of(beam.id, face, f"{face}_extra")
+            if face == "top" and place:
+                # Extra top bars belong to a support: only those under this joint's grid line count here, and an
+                # extra the detail sheet does not place needs a person.
+                extras = of(beam.id, "top_extra")
+                unplaced = [a for a in extras if not a.at]
+                if unplaced:
+                    issues.append(Issue(f"{p}.top", "ambiguous", f"{beam.id} extra top bars "
+                                        f"{', '.join(a.value for a in unplaced)}: the detail sheet does not mark which "
+                                        f"support they are at, so which apply at {col.id} {place} needs a person",
+                                        unplaced))
+                    continue
+                line = support_line(place, direction_of(beam.id) or beam.direction)
+                expected = of(beam.id, "top") + [a for a in extras if a.at in line]
+            use(f"{p}.{face}", expected, (face, f"{face}_extra"), face_check)
 
         use(f"{p}.stirrups", of(beam.id, "links"), ("links",),
             lambda got, beam=beam: None if beam.stirrup_dia == _link_dia(got[0].value) else
@@ -240,7 +262,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
             label=f"{beam.id} cover")
         notes.append(f"{beam.id} cover measured to the {'main bars' if beam.cover_to == 'main' else 'stirrups'} "
                      "(the linking model's reading of the notes).")
-        meets = [a for a in of(beam.id, "frames_into") if a.value == col.id]
+        meets = [a for a in of(beam.id, "frames_into") if a.value == col.id and (place is None or a.at in (None, place))]
         stated = direction_of(beam.id)
         if stated and beam.direction != stated:
             issues.append(Issue(f"{p}.direction", "disagree", f"{beam.id} runs along {stated.upper()} by its prefix "
@@ -276,13 +298,28 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     for u in linked.unresolved:
         issues.append(Issue(u.path, "ambiguous", f"Linking model: {u.reason}"))
     if at_floor:
-        j.id = f"{j.id}@{at_floor.replace(' ', '_')}"
+        j.id = f"{j.id}@{safe_id(at_floor)}"
+    if place:
+        j.id = f"{j.id}@{safe_id(place)}"
     j.notes = list(dict.fromkeys(notes))
     for key in [k for k in provenance if re.fullmatch(r"beams\[\d+\]\.(top|bottom)", k)]:
         face = j.beams[int(key[6:key.index("]")])].face(key.rsplit(".", 1)[1])
         if len(face) == 1 and isinstance(provenance[key], dict):
             provenance[f"{key}[0].bars"] = provenance.pop(key)
-    return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults, at_floor)
+    return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults, at_floor, place)
+
+
+def safe_id(text: str) -> str:
+    """A joint id part safe as a Windows file name and in a URL path: "/" becomes "+" ("C/C1-25" to "C+C1-25"),
+    spaces "_", and anything else outside letters, digits and _ + . - becomes "_"."""
+    return re.sub(r"[^A-Za-z0-9_+.-]", "_", text.replace("/", "+").replace(" ", "_"))
+
+
+def support_line(place: str, direction: str) -> set[str]:
+    """The grid line(s) a beam's support is on at a column's place: "F-14" is row F and line 14; a beam along X is
+    supported on line 14, one along Y on row F. Sub-grids both covered ("C/C1-26/27") give each."""
+    rows, _, cols = place.partition("-")
+    return set((cols if direction == "x" else rows).split("/"))
 
 
 def direction_of(beam_id: str) -> str | None:
@@ -304,7 +341,7 @@ class Linked:
 
 def _inputs(agreement: Agreement) -> str:
     accepted = [{"id": a.id, "member": a.member, "field": a.field, "layer": a.layer, "level": a.level,
-                 "value": a.value, "page": a.page} for a in agreement.accepted]
+                 "value": a.value, "page": a.page, **({"at": a.at} if a.at else {})} for a in agreement.accepted]
     pending = [{"member": t.member, "field": t.field, "reason": t.reason} for t in agreement.to_check]
     template = (PROMPTS / f"{LINK_PROMPT}.md").read_text(encoding="utf-8")
     return (template.replace("{accepted}", json.dumps(accepted, ensure_ascii=False, indent=0))

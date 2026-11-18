@@ -225,6 +225,8 @@ def make_plan_pdf(path: Path) -> Path:
     tw = pymupdf.TextWriter(beam.rect)
     _grid(beam, tw, font, PLAN_X, PLAN_Y)
     tw.append((560, 560), "FIRST FLOOR BEAM LAYOUT", font=font, fontsize=8)
+    beam.draw_circle((650, 100), 8)                       # a slab mark in line with the bubbles: not a grid line
+    tw.append((650 - 3.4, 102), "S1", font=font, fontsize=6)
 
     def xb(label: str, y: float, x0: float, x1: float, size: str | None = None) -> None:
         _dashed(beam, (x0 + 5, y - 2), (x1 - 5, y - 2))
@@ -262,7 +264,7 @@ def make_plan_pdf(path: Path) -> Path:
     return path
 
 
-def make_elevation_pdf(path: Path) -> Path:
+def make_elevation_pdf(path: Path, supports: bool = False) -> Path:
     """Two beam elevations, one above the other, each titled below its dimension line. XB6: edges at y = 100 and
     130, x 100 to 400, dimension line at 145, title "XB6(230x450)" at baseline 160, top callout "2Ø20" at baseline 95.
     XB5: edges at 200 and 230, dimension line at 245, title "XB5(230x450)" at baseline 260, top callout "2Ø16" at
@@ -283,6 +285,15 @@ def make_elevation_pdf(path: Path) -> Path:
         for x, y, text in callouts:
             tw.append((x, y), text, font=font, fontsize=6)
     tw.append((600, 195), "2Ø25", font=font, fontsize=6)
+    if supports:
+        # Grid bubbles "2" and "3" under XB5's supports at x = 115 and 385 pt (y = 268), and three extra top bar
+        # callouts at baseline 195: "1Ø16" at x 120 (over 2), "1Ø20" at x 360 (over 3), "2Ø10" at x 240 (centre
+        # 250, exactly between them).
+        for x, label in ((115, "2"), (385, "3")):
+            page.draw_circle((x, 268), 5)
+            tw.append((x - 1.7, 270), label, font=font, fontsize=6)
+        for x, text in ((120, "1Ø16"), (360, "1Ø20"), (240, "2Ø10")):
+            tw.append((x, 195), text, font=font, fontsize=6)
     tw.write_text(page)
     doc.save(path)
     doc.close()

@@ -213,6 +213,11 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     if storeys and at_floor:
         notes.append(f"{col.id} takes the storey {', '.join(storeys)}, which ends at the beams' floor, {at_floor} "
                      "(chosen by code from the plan's floor).")
+    tabled = sorted({k.split(".")[1] for k in ("column.section", "column.main", "column.ties")
+                     for a in cited.get(k, []) if a.level_by})
+    if tabled:
+        notes.append(f"{col.id} {', '.join(tabled)}: the storey is the schedule's header above the value, read from "
+                     "the table by code (Gemini gave none).")
 
     use("column.ties", of(col.id, "links"), ("links",),
         lambda got: None if col.tie_dia == _link_dia(got[0].value) else

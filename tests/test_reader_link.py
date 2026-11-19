@@ -422,3 +422,18 @@ def test_an_item_about_a_column_off_the_grid_blocks_only_joints_at_its_place(agr
     assert off.joint is None and off.place == "N1-4" and off.to_json()["place"] == "N1-4"
     assert [t.joint for t in with_item("B-2")] == [jid]
     assert [t.joint for t in with_item(None)] == [jid]
+
+
+def test_a_storey_from_the_table_is_a_note_and_in_provenance(agreement):
+    """Fix B. C4's section field marked as having its storey from the schedule's table (Gemini gave none): the joint
+    still checks, provenance for column.section carries level_by, and one note says the storey was read by code."""
+    from rebartwin.reader.agree import TABLE_STOREY
+    sec = next(a for a in agreement.accepted if (a.member, a.field) == ("C4", "section"))
+    a2 = Agreement([replace(a, level_by=TABLE_STOREY) if a is sec else a for a in agreement.accepted],
+                   list(agreement.to_check), [])
+    [v] = run(a2, LINK).joints
+    assert v.provenance["column.section"]["level_by"] == "storey from the schedule's table"
+    assert [n for n in v.joint.notes if "read from the table by code" in n] == [
+        "C4 section: the storey is the schedule's header above the value, read from the table by code (Gemini gave "
+        "none)."]
+    assert blocking(run(a2, LINK)) == blocking(run(agreement, LINK))

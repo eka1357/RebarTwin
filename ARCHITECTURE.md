@@ -114,7 +114,9 @@ A bar's `findings` in `scene` index `report.findings`. The viewer never computes
   beam layout, `refs` the column label on the column layout with its grid place (`at`, "F-14"), `gemini` empty;
   `default` values (`parser`
   holds the default, e.g. "20 mm") have no page, box or image; `resolved` marks a value a person gave in To check,
-  written when the API re-checks a resolved joint.
+  written when the API re-checks a resolved joint. `level_by: "storey from the schedule's table"` marks a column
+  value whose storey Gemini did not give: code took the header of the one ruled storey group the value sits in
+  (agreement rule 6), and the joint's notes say so.
 
 ### provenance.json (reader)
 
@@ -125,6 +127,7 @@ A list, one entry per linked joint:
    "fields": { "beams[0].top[0].bars": { "page": 3, "box_2d": [ymin, xmin, ymax, xmax], "text": "5-20",
                "gemini": "5-20", "parser": "5-20", "status": "agreed", "field_id": "f0012",
                "level": "FIRST FLOOR" | "FOUNDATION TO FIRST FLOOR" | null,
+               "level_by": "storey from the schedule's table" (only when code gave the level),
                "ocr_raw": "4016" | null },
                "beams[0].top": [ {...}, {...} ] },
    "link_notes": ["what the linking model said, kept for a person; never copied into the joint"] }]
@@ -209,7 +212,9 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    order (nearest same-kind id to its left in the row, else above in the column), a top or bottom label does not
    contradict the face, a column value's storey is the storey header above it (or beside it in its row) and a beam's
    or plan's floor is named on its sheet, and no other accepted callout gives the field another value at that
-   level. Everything else becomes a To
+   level. When Gemini gives a column value no storey, the header is its level only if the value sits inside exactly
+   one ruled storey group and that header names exactly one storey (one TO, two different floors); provenance then
+   says `level_by: "storey from the schedule's table"`. A different storey from Gemini still disagrees. Everything else becomes a To
    check item with a reason. Ties use geometry before distance where the sheet has it: on a plan, a beam size on a
    beam band belongs to the XB or YB label tied to that band; on a detail sheet, a beam callout belongs to the
    elevation whose title ("XB1(200x600-inv)") is the nearest below it across its span; on a column layout, a size

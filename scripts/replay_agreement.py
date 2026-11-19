@@ -104,7 +104,8 @@ def main() -> None:
         near = sorted((w for w in by_page[a.page].words if b[0] - 8 <= (w.box[0] + w.box[2]) / 2 <= b[2] + 8
                        and b[1] - 30 <= (w.box[1] + w.box[3]) / 2 <= b[3] + 30), key=lambda w: (w.box[0], w.box[1]))
         extra = (f" joined_from={a.joined_from}" if a.joined_from else "") + \
-                (f" ocr_raw={a.ocr_raw!r}" if a.ocr_raw else "")
+                (f" ocr_raw={a.ocr_raw!r}" if a.ocr_raw else "") + (f" level={a.level!r}" if a.level else "") + \
+                (f" ({a.level_by})" if a.level_by else "") + (f" at={a.at!r}" if a.at else "")
         print(f"p{a.page} {a.member:6s} {a.field:12s} value={a.value:12s} gemini={a.gemini!r:22s} text={a.text!r}"
               f"{extra}\n      nearby on the sheet: {[w.text for w in near][:8]}  box_2d={[round(v) for v in b]}")
 

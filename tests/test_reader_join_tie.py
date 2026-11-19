@@ -212,3 +212,79 @@ def test_column_mark_ties_by_row_and_group_not_distance():
     assert (b.member, b.value) == ("C1B", "4-12")
     [c] = agree([col_read("C1A", bars_at(p, "8-20"), "FOUNDATION TO FIRST FLOOR")], parse_page(p), [p]).accepted
     assert c.level == "FOUNDATION TO FIRST FLOOR"
+
+
+# --- fix B: the storey from the schedule's table ------------------------------------------------------------------
+
+def test_no_storey_from_gemini_takes_the_ruled_group_s_header_marked_as_code_made():
+    """Fix B. Gemini gives C1A's 8Ø16 no storey. It sits at x 240 to 250, inside group 2 only (x 230 to 360; group 1
+    is 100 to 230), whose header "FIRST FLOOR TO TERRACE FLOOR" names one storey, (FIRST, TERRACE): accepted with
+    that level, and provenance says the storey came from the table, not from Gemini."""
+    from rebartwin.reader.agree import TABLE_STOREY
+    p = storey_table()
+    [a] = agree([col_read("C1A", bars_at(p, "8-16"), None)], parse_page(p), [p]).accepted
+    assert (a.member, a.value, a.level, a.level_by) == ("C1A", "8-16", "FIRST FLOOR TO TERRACE FLOOR", TABLE_STOREY)
+    assert a.provenance()["level_by"] == "storey from the schedule's table"
+    [b] = agree([col_read("C1A", bars_at(p, "8-16"), "FIRST FLOOR TO TERRACE FLOOR")], parse_page(p), [p]).accepted
+    assert b.level_by is None and "level_by" not in b.provenance()      # Gemini gave it: nothing code-made
+
+
+def test_a_different_storey_from_gemini_still_disagrees():
+    """Gemini names FOUNDATION TO FIRST FLOOR for 8Ø16 in group 2 (FIRST FLOOR TO TERRACE FLOOR): disagree, as
+    before fix B; the table never overrides Gemini."""
+    p = storey_table()
+    result = agree([col_read("C1A", bars_at(p, "8-16"), "FOUNDATION TO FIRST FLOOR")], parse_page(p), [p])
+    assert result.accepted == [] and result.to_check[0].reason == "disagree"
+
+
+def test_a_header_naming_no_single_storey_is_still_to_check():
+    """Group 2's header read as "FIRST FLOOR TO TERRACE FLOOR TO LMR" (two ranges run together, "TO LMR" at
+    x 352 to 359 on the header's second line): it splits into three on TO, so it names no single storey; with no
+    storey from Gemini, 8Ø16 stays ambiguous."""
+    p = storey_table()
+    p.words += [Word("TO", (40, 351, 48, 354), 1, (0, 0), "ocr"), Word("LMR", (40, 355, 48, 359), 1, (0, 0), "ocr")]
+    m = bars_at(p, "8-16")
+    from rebartwin.reader.agree import _storey_header
+    assert _storey_header(p, m.box) == "FIRST FLOOR TO TERRACE FLOOR TO LMR"
+    result = agree([col_read("C1A", m, None)], parse_page(p), [p])
+    assert result.accepted == [] and result.to_check[0].reason == "ambiguous"
+    assert "Gemini gave no storey" in result.to_check[0].detail
+
+
+def test_an_unruled_header_never_gives_the_storey():
+    """The same words with no ruling lines: the header above 8Ø16 is found by the unruled fallback (nearest header
+    above in its column), which fix B does not trust: To check, ambiguous."""
+    p = storey_table()
+    bare = Page(1, p.width, p.height, list(p.words))
+    result = agree([col_read("C1A", bars_at(bare, "8-16"), None)], parse_page(bare), [bare])
+    assert result.accepted == [] and result.to_check[0].reason == "ambiguous"
+
+
+def test_a_value_inside_two_stacked_groups_is_still_to_check():
+    """A second table below the first on the same rules: header "FOUNDATION TO FIRST FLOOR" at y 300 to 308 in
+    group 1's span (x 100 to 230). 8Ø12 at y 330 to 360, x 111 to 119, is below both group 1 headers (y 30 to 48
+    and y 300 to 308), so it is inside two ruled groups, not exactly one: To check even with Gemini silent."""
+    p = storey_table()
+    p.words += [Word("FOUNDATION", (300, 140, 308, 200), 1, (0, 0), "ocr"),
+                Word("TO", (300, 202, 308, 210), 1, (0, 0), "ocr"),
+                Word("FIRST", (300, 212, 308, 220), 1, (0, 0), "ocr"),
+                Word("FLOOR", (300, 221, 308, 228), 1, (0, 0), "ocr"),
+                Word("8Ø12", (330, 111, 360, 119), 1, (0, 0), "ocr"), Word("C2", (340, 170, 350, 190), 1, (0, 0), "ocr")]
+    p.h_rules.append((290.0, 100.0, 360.0))
+    from rebartwin.reader.agree import _groups_around
+    m = bars_at(p, "8-12")
+    assert len(_groups_around(p, m.box)) == 2
+    result = agree([col_read("C2", m, None)], parse_page(p), [p])
+    assert result.accepted == [] and "Gemini gave no storey" in result.to_check[0].detail
+
+
+def test_one_storey_needs_one_to_and_two_different_floors():
+    """levels.one_storey: the OCR'd header with fragments, 'FOUNDATION ON TO FIRST FLOOR ▪OR', is (FOUNDATION,
+    FIRST) (only floor words count on each side); two ranges run together, a header with no TO, and FIRST TO FIRST
+    name none."""
+    from rebartwin.reader.levels import one_storey
+    assert one_storey("FOUNDATION ON TO FIRST FLOOR ▪OR") == ("FOUNDATION", "FIRST")
+    assert one_storey("TERRACE FLOOR TO LMR/OHT LVL") == ("TERRACE", "LMR OHT")
+    assert one_storey("FOUNDATION TO FIRST FLOOR FIRST FLOOR TO TERRACE") is None
+    assert one_storey("FIRST FLOOR") is None
+    assert one_storey("FIRST FLOOR TO FIRST FLOOR") is None

@@ -399,3 +399,62 @@ def test_mixed_column_main_is_corner_and_face_bars_and_code_settles_what_it_prov
     assert [t.field for t in blocking(run(with_main("4-16 + 4-12"), col(None)))] == ["column.main"]
     odd = blocking(run(with_main("2-16 + 6-12"), col(12, unresolved=["column.main"])))
     assert sorted((t.field, t.reason) for t in odd) == [("column.main", "ambiguous"), ("column.main", "disagree")]
+
+
+def test_an_item_about_a_column_off_the_grid_blocks_only_joints_at_its_place(agreement):
+    """Fix E. C4 with B12 and B13 stands at B-2 (both frames_into fields placed there). A second C4 drawn off the grid
+    near N1-4 is a To check item on frames_into for C4 with place "N1-4": it is about that place, where no joint is,
+    so it blocks 0 joints and stays in to_check.json with joint null. The same item at "B-2" blocks the one joint;
+    an item with no place (any other agreement item on C4) still blocks every joint that uses C4: 1 here."""
+    from rebartwin.reader.agree import ToCheck
+    jid = "C4xB12xB13@B-2"
+
+    def with_item(place):
+        a2 = placed(agreement, {"f0008": "B-2", "f0013": "B-2"})
+        a2.to_check.append(ToCheck("tc_0097", "C4", "frames_into", 2, (0, 0, 1, 1), None, None, "ambiguous",
+                                   "C4 is near N1-4 but its outline is not on that grid intersection", place=place))
+        result = run(a2, LINK)
+        assert [v.joint.id for v in result.joints] == [jid]
+        return [t for t in result.to_check if t.id == "tc_0097" or t.detail == "C4 is near N1-4 but its outline is "
+                "not on that grid intersection"]
+
+    [off] = with_item("N1-4")
+    assert off.joint is None and off.place == "N1-4" and off.to_json()["place"] == "N1-4"
+    assert [t.joint for t in with_item("B-2")] == [jid]
+    assert [t.joint for t in with_item(None)] == [jid]
+
+
+def test_a_storey_from_the_table_is_a_note_and_in_provenance(agreement):
+    """Fix B. C4's section field marked as having its storey from the schedule's table (Gemini gave none): the joint
+    still checks, provenance for column.section carries level_by, and one note says the storey was read by code."""
+    from rebartwin.reader.agree import TABLE_STOREY
+    sec = next(a for a in agreement.accepted if (a.member, a.field) == ("C4", "section"))
+    a2 = Agreement([replace(a, level_by=TABLE_STOREY) if a is sec else a for a in agreement.accepted],
+                   list(agreement.to_check), [])
+    [v] = run(a2, LINK).joints
+    assert v.provenance["column.section"]["level_by"] == "storey from the schedule's table"
+    assert [n for n in v.joint.notes if "read from the table by code" in n] == [
+        "C4 section: the storey is the schedule's header above the value, read from the table by code (Gemini gave "
+        "none)."]
+    assert blocking(run(a2, LINK)) == blocking(run(agreement, LINK))
+
+
+def test_beam_values_count_only_on_the_spans_meeting_the_joint(agreement):
+    """Fix A. The joint is at B-2; B12 runs along X, so its support line here is 2. B12's section 230x450 (f0010) is
+    placed over span 1/2 and a second 230x450 over span 2/3 (f0201): both end on line 2 and are equal, so they are one
+    value and the joint checks with the model citing either. A 230x600 over span 3/4 (f0202) does not reach line 2
+    and is left out. If span 2/3 were 230x600 instead (f0203), B12 is 230x450 on one side of C4 and 230x600 on the
+    other: the beam changes at the column, one ambiguous item on beams[0].section and nothing proved there."""
+    sec = next(a for a in agreement.accepted if a.id == "f0010")
+    places = {"f0008": "B-2", "f0013": "B-2"}
+    left = replace(sec, at="1/2")
+    acc = [left if a is sec else a for a in placed(agreement, places).accepted]
+    jid = "C4xB12xB13@B-2"
+    same = replace(sec, id="f0201", at="2/3")
+    far = replace(sec, id="f0202", value="230x600", at="3/4")
+    ok = run(Agreement(acc + [same, far], list(agreement.to_check), []), LINK)
+    assert blocking(ok, jid) == [] and ok.joints[0].provenance["beams[0].section"]["field_id"] == "f0010"
+    other = replace(sec, id="f0203", value="230x600", at="2/3")
+    changed = blocking(run(Agreement(acc + [other], list(agreement.to_check), []), LINK), jid)
+    assert [(t.field, t.reason) for t in changed] == [("beams[0].section", "ambiguous")]
+    assert "B12 section is 230x450 and 230x600 at C4 B-2 (spans 1/2, 2/3): the beam changes" in changed[0].detail

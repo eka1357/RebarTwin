@@ -52,6 +52,16 @@ def storey(text: str | None) -> tuple[str, str] | None:
     return (a, b) if a and b else None
 
 
+def one_storey(text: str | None) -> tuple[str, str] | None:
+    """The storey a header names when it names exactly one: one TO, a floor on each side, two different floors.
+    'FOUNDATION ON TO FIRST FLOOR ▪OR' (OCR fragments) is ('FOUNDATION', 'FIRST'); two headers run together
+    ('FOUNDATION TO FIRST FLOOR FIRST FLOOR TO TERRACE') or 'FIRST TO FIRST' name none."""
+    if not text or len(_TO.split(" ".join(_latin(text).upper().split()))) != 2:
+        return None
+    s = storey(text)
+    return s if s and s[0] != s[1] else None
+
+
 def same_level(a: str | None, b: str | None) -> bool:
     """Two level texts name the same storey (both ends) or the same floor."""
     sa, sb = storey(a), storey(b)

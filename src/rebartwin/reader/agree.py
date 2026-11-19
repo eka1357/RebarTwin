@@ -15,8 +15,12 @@ A Gemini callout is accepted only when all of these hold; otherwise it becomes a
 6. Levels: a column value in a schedule laid out by storey must name the storey header above it (or beside it in
    its row) on the sheet (`disagree` if Gemini names another, `ambiguous` if Gemini names none, or names one where
    the sheet has no header); a beam value or `frames_into` with a floor must be on a sheet that names that floor.
+   Where Gemini names no storey, the sheet's header is the level only when the value sits inside exactly one ruled
+   storey group and the header names exactly one storey (`levels.one_storey`); the level is then marked as made by
+   code (`level_by`, "storey from the schedule's table").
 7. No other accepted callout gives the same member and field a different value (`ambiguous`, both go to To check).
-   Top extras at different supports (`at`, the grid bubble under them on the detail sheet) are separate.
+   Top extras at different supports (`at`, the grid bubble under them on the detail sheet) are separate, and so are
+   beam values over different spans (`at` "14/18", the span's two supports).
    `frames_into` is exempt: a beam meets a column at each end. Each level is separate: a column has a value per
    storey. Zone, exposure and grades are project-wide: two
    values under any scopes conflict.
@@ -32,7 +36,7 @@ from dataclasses import asdict, dataclass, field
 
 from .gemini import FIELD_KIND, GLOBAL_MEMBERS, Read
 from .ingest import Box, Page, box_2d
-from .levels import floor, is_storey_header, same_level, storey
+from .levels import floor, is_storey_header, one_storey, same_level, storey
 from .cells import rule_right_of, strip, table_left
 from .parser import Match, normalise, union, visual_lines
 
@@ -88,6 +92,7 @@ class Accepted:
     refs: list[dict] | None = None   # further places on the drawing that back it: [{page, box_2d, text, at}]
     at: str | None = None         # where on the grid: a geometry frames_into's place ("F-14", "C/C1-25"); a top
                                   # extra's support grid line ("14"), from the bubble under it on the detail sheet
+    level_by: str | None = None   # who gave the level when Gemini did not: "storey from the schedule's table"
 
     def provenance(self) -> dict:
         p = {"page": self.page, "box_2d": box_2d(self.box), "text": self.text, "gemini": self.gemini,
@@ -95,6 +100,8 @@ class Accepted:
              "ocr_raw": self.ocr_raw, "joined_from": self.joined_from}
         if self.at:
             p["at"] = self.at
+        if self.level_by:
+            p["level_by"] = self.level_by
         if self.refs:
             p["refs"] = self.refs
         return p
@@ -115,6 +122,7 @@ class ToCheck:
     joint: str | None = None
     resolution: dict | None = None
     level: str | None = None
+    place: str | None = None      # a grid place ("N1-4"): the item blocks only joints at that place
 
     def to_json(self) -> dict:
         d = asdict(self)
@@ -290,11 +298,19 @@ def _storey_groups(page: Page) -> list[tuple[str, Box, float, float]]:
     return groups
 
 
-def _group_of(page: Page, box: Box) -> tuple[str, Box, float, float] | None:
-    """The storey group a value sits in: its centre inside the group's span, below the group's header."""
+def _groups_around(page: Page, box: Box) -> list[tuple[str, Box, float, float]]:
+    """Every ruled storey group a value is inside: its centre inside the group's span, below the group's header."""
     cx = (box[1] + box[3]) / 2
-    inside = [g for g in _storey_groups(page) if g[2] < cx <= g[3] and box[0] >= g[1][2] - 2]
+    return [g for g in _storey_groups(page) if g[2] < cx <= g[3] and box[0] >= g[1][2] - 2]
+
+
+def _group_of(page: Page, box: Box) -> tuple[str, Box, float, float] | None:
+    """The storey group a value sits in: of those it is inside, the one whose header is nearest above it."""
+    inside = _groups_around(page, box)
     return min(inside, key=lambda g: box[0] - g[1][2]) if inside else None
+
+
+TABLE_STOREY = "storey from the schedule's table"
 
 
 def _storey_header(page: Page, box: Box) -> str | None:
@@ -326,21 +342,30 @@ def _names_floor(page: Page, level: str) -> bool:
     return False
 
 
-def _level_problem(c, page: Page, box: Box) -> tuple[str | None, str, str | None]:
-    """(reason, detail, level to keep). `reason` None means the level holds; the level kept is the sheet's own text
-    for a storey header, else Gemini's."""
+def _level_problem(c, page: Page, box: Box) -> tuple[str | None, str, str | None, str | None]:
+    """(reason, detail, level to keep, who gave it). `reason` None means the level holds; the level kept is the
+    sheet's own text for a storey header, else Gemini's.
+
+    Gemini naming no storey for a column value under a header is not a disagreement when the table itself settles
+    it: the value sits inside exactly one ruled storey group, and that group's header names exactly one storey. The
+    level is then the header, marked TABLE_STOREY. The unruled fallback (a header above or to the left) never
+    settles it, nor does a header that names no single storey (OCR runs two together)."""
     if _member_kind(c.member) == "column" and c.member not in GLOBAL_MEMBERS and c.field in COLUMN_FIELDS:
         header = _storey_header(page, box)
         if header and not c.level:
-            return "ambiguous", f"this value sits under the storey header {header!r}; Gemini gave no storey", header
+            groups = _groups_around(page, box)
+            if len(groups) == 1 and groups[0][0] == header and one_storey(header):
+                return None, "", header, TABLE_STOREY
+            return ("ambiguous", f"this value sits under the storey header {header!r}; Gemini gave no storey",
+                    header, None)
         if header and not same_level(c.level, header):
-            return "disagree", f"Gemini says storey {c.level!r}; the header above says {header!r}", header
+            return "disagree", f"Gemini says storey {c.level!r}; the header above says {header!r}", header, None
         if not header and c.level and storey(c.level):
-            return "ambiguous", f"Gemini says storey {c.level!r}; no storey header is above or beside it", None
-        return None, "", header or c.level
+            return "ambiguous", f"Gemini says storey {c.level!r}; no storey header is above or beside it", None, None
+        return None, "", header or c.level, None
     if c.level and not _names_floor(page, c.level):
-        return "ambiguous", f"Gemini says floor {c.level!r}; nothing on this sheet names it", None
-    return None, "", c.level
+        return "ambiguous", f"Gemini says floor {c.level!r}; nothing on this sheet names it", None, None
+    return None, "", c.level, None
 
 
 def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: dict | None = None) -> Agreement:
@@ -428,7 +453,7 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
             if label and label != said:
                 flag(r, "disagree", f"Gemini says {said} bars; the drawing labels this value {label}", value)
                 continue
-        reason, detail, level = _level_problem(c, by_page[c.page], here[0].box)
+        reason, detail, level, level_by = _level_problem(c, by_page[c.page], here[0].box)
         if reason:
             flag(r, reason, detail, value)
             continue
@@ -437,14 +462,21 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
         joined = [t for w in m.words for t in (w.joined or ())] or None
         support = None
         if c.field == "top_extra":                       # extra top bars belong to a support (plan.py)
-            from .plan import elevation_support_at, support_at
+            from .plan import elevation_support_at, support_at, top_extra_reach
             support = support_at(by_page[c.page], m.box) or (
-                elevation_support_at(by_page[c.page], m.box, supports) if supports else None)
+                elevation_support_at(by_page[c.page], m.box, supports) if supports else None) or (
+                top_extra_reach(by_page[c.page], m.box, supports) if supports else None)
         elif c.field == "bottom_extra" and supports:     # the supports its bar reaches, "-" for none (plan.py)
             from .plan import bar_reach
             support = bar_reach(by_page[c.page], m.box, supports)
+        elif c.field in ("top", "bottom") and supports:  # a bar callout on an elevation: its span (fix A)
+            from .plan import elevation_span_at
+            support = elevation_span_at(by_page[c.page], m.box, supports)
+        elif c.field == "section" and supports and _member_kind(c.member) == "beam":
+            from .plan import span_on_plan                # a size on a plan band: the span it sits over (fix A)
+            support = span_on_plan(by_page[c.page], m.box, supports)
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
-                                        r.box, r.call, level, raw, joined, at=support))
+                                        r.box, r.call, level, raw, joined, at=support, level_by=level_by))
 
     # Rule 8: one value on the drawing backs one field. Two callouts that agree with the same parser value but
     # name different fields (XB16's top and its bottom on one '2Ø12') cannot both be right: neither is accepted.

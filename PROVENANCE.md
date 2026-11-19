@@ -168,6 +168,37 @@ unchanged. 297 tests.
 
 City-round offline resilience: added `/demo/iit` (`JointRoute preset="iit"`, `/demo/iit/report`, `/projects/iit-demo`, `TopBar` and `CommandPalette` links, plus `OfflineBundleKey = "zone2" | "zone3" | "iit"` in `demoData.ts`) loading `C1xXB17@FIRST@L1+M+M1-28`'s checked bundle, option scenes, `.ifc`/`.bcf` exports, and CAD page crops from git-ignored `web/public/live/iit-demo/` completely offline with the API down, and documented `/demo/iit` as the first fallback in [docs/DEMO.md](docs/DEMO.md).
 
+## 19 November 2026: fixes E, B and A (`feature/R-ocr`)
+
+Claude Code, from docs/handoff/fixes-E-B-A.md. E: a To check item about a column drawn off the grid carries the
+place it is near (`place`, "N1-4") and blocks only joints at that place, so none; it stays in to_check.json. Replay
+of the first-floor read (no API): 1340 to 1308 items, the six off-grid items (C5, C6, C12) tied to no joint,
+C1xXB17@FIRST@L1+M+M1-28 still 9 fails with the same best fix. 301 tests. `scripts/replay_agreement.py` gains
+`--save` and `--base` to compare one change's agreement with the state before it.
+
+B: a column value Gemini gave no storey takes the schedule's header as its level only when it sits inside exactly
+one ruled storey group and the header names exactly one storey (`levels.one_storey`: one TO, two different floors);
+provenance marks it `level_by: "storey from the schedule's table"` and the joint notes say so. A different storey
+from Gemini still disagrees. Replay (no API): 287 to 336 accepted (section 41 to 61, main 6 to 20, links 7 to 22),
+all 57 "Gemini gave no storey" items settled. 308 tests.
+Live linking run after B (`out/iith-B`, one call, 40,478 in and 32,707 out tokens): 53 joints;
+C1xXB17@FIRST@L1+M+M1-28 still 9 fails with the same best fix, but blocked this run by the linking model citing
+one of two equal fields (C1 200x450 on sheets 7 and 21; the two covers) and writing zone III and moderate exposure
+from no field: model variance, flagged by code as before.
+
+A (time-boxed): beam values by span. A size on a plan band and a top or bottom callout on an elevation carry `at`,
+the span's two supports ("14/18"); rule 7 keeps spans apart; at a joint only spans ending on the beam's support
+line count, equal values either side are one, different values are "the beam changes at the column" (To check).
+Elevation supports whose count differs from the plan's are matched at the sheet's scale (median of the sheet's
+unambiguous 3+ support matches, at least two agreeing within 2%), a unique fit only. Two-size elevation titles are
+not split (drawn depths not read): still To check. Replay (no API): 336 to 383 accepted (section 61 to 103, top 30
+to 33, bottom 32 to 34; 43 sections, 13 tops and 13 bottoms now placed by span). A top extra with no clear
+nearest support is placed by its drawn bar only when the bar reaches one support or the two ends of one span
+(YB14's 2-12 at H1/J; XB12's 2-20 and YB11's 3-16 reach three supports, most likely the continuous bar: still To
+check); top extras placed 8 to 9 of 37. Live linking run (`out/iith-A`, before that last step; 43,633 in, 30,192
+out tokens): 53 joints (17 drafts), To check 1579 to 983, C1xXB17@FIRST@L1+M+M1-28 checkable with 9 fails and the
+same best fix; no other joint checkable (unplaced top extras block most). 313 tests.
+
 ## 18 November 2026: Project overview dashboard, draft joints, mixed column UI, and demo runbook (W10, `feature/w10-overview`)
 
 Extended `GET /projects/{id}` and `GET /projects/{id}/to-check` in `src/rebartwin/api.py` with overview `counts` (`found`, `checked`, `failing`, `blocked`, `passing`), `failures_by_rule`, `beam_junctions` (including `reading.plans.junctions`), `blocking_items`, explicit `place` / `floor` / `storey` fields (never splitting ids), `worst_failure`, `failing_rules`, `draft` handling (`*.draft.json`), and separate `blocking_unresolved` vs `non_blocking_unresolved` counts (`blocks_joint` sorted first before non-blocking other readings); routed every reply cache in `api.py` (`CachingTransport`, `CachingOcr`, `_safe_run_check`) through `replies_dir()` (`REBARTWIN_REPLIES_DIR`, default `out/_replies`, no per-project `replies` directory), moved sync blocking API routes off the async event loop with thread-safe PyMuPDF crop caching, deduped cascaded resolved provenance + ambiguous linking cascades, allowed mixed column `main` resolutions (`"4-16 + 4-12"`) writing corner `bar_dia` and `face_dia`, and permitted `+` in `_SAFE_ID_RE`. Built W10 `web/src/features/project/` components showing joint-blocking vs non-blocking counts (`"N block joints · M other readings, none blocking"`), fixed `TopBar.tsx`, `ReviewRoute.tsx`, `StatusIsland.tsx`, and `Geometry` provenance badges, rendered mixed column bars (`"4-16 corners + 4-12 faces"` and per-bar `dia` cross-sections via `formatColumnMainSummary` and `formatAfterColumnSize`) across `JointInspector.tsx`, `SectionGlyph.tsx`, `FixOptionCard.tsx`, `PrePourReport.tsx`, `ReportChosenFix.tsx`, `ProjectJointRow.tsx`, and `calloutGrammar.ts`, handled `place_face_bars` edits alongside `resize_column` without mislabeling face-bar placements as redesigns, updated `DESIGN_SYSTEM.md`, and updated [docs/DEMO.md](docs/DEMO.md) for pre-staging 15 minutes before a 3-minute pitch under `link_v5`.

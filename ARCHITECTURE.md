@@ -114,7 +114,9 @@ A bar's `findings` in `scene` index `report.findings`. The viewer never computes
   beam layout, `refs` the column label on the column layout with its grid place (`at`, "F-14"), `gemini` empty;
   `default` values (`parser`
   holds the default, e.g. "20 mm") have no page, box or image; `resolved` marks a value a person gave in To check,
-  written when the API re-checks a resolved joint.
+  written when the API re-checks a resolved joint. `level_by: "storey from the schedule's table"` marks a column
+  value whose storey Gemini did not give: code took the header of the one ruled storey group the value sits in
+  (agreement rule 6), and the joint's notes say so.
 
 ### provenance.json (reader)
 
@@ -125,6 +127,7 @@ A list, one entry per linked joint:
    "fields": { "beams[0].top[0].bars": { "page": 3, "box_2d": [ymin, xmin, ymax, xmax], "text": "5-20",
                "gemini": "5-20", "parser": "5-20", "status": "agreed", "field_id": "f0012",
                "level": "FIRST FLOOR" | "FOUNDATION TO FIRST FLOOR" | null,
+               "level_by": "storey from the schedule's table" (only when code gave the level),
                "ocr_raw": "4016" | null },
                "beams[0].top": [ {...}, {...} ] },
    "link_notes": ["what the linking model said, kept for a person; never copied into the joint"] }]
@@ -143,6 +146,7 @@ from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face
    "layer": 1, "level": "FOUNDATION TO FIRST FLOOR" | null, "page": 3, "box_2d": [...] | null,
    "gemini": {"value": "5-20"} | null,
    "parser": {"value": "5-16"} | null, "reason": "disagree|missing|ambiguous", "detail": "a sentence for a person",
+   "place": "N1-4" | null,
    "resolution": null | {"value": "5-20", "by": "person", "at": "2026-11-19T10:02:00Z"} }]
 ```
 
@@ -151,7 +155,9 @@ from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face
 path for items from linking. `joint` null with member ALL, ALL_BEAMS or ALL_COLUMNS, or field `seismic_zone` or
 `exposure`, is a project-level item: it blocks every joint until resolved. A drawing that does not state the zone
 or exposure gets one such item each (reason `missing`), never a silent zone II or mild: zone II would turn IS 13920
-off. Otherwise `joint` null means the item blocks nothing (a member in no joint, a grade).
+off. Otherwise `joint` null means the item blocks nothing (a member in no joint, a grade). `place` is the grid place
+an item is about (a column drawn off the grid "near N1-4"): it blocks only joints at that place, so a column on no
+grid intersection blocks none and its item stays with `joint` null.
 
 A joint with unresolved items is shown as "To check" and is not checked until they are resolved.
 
@@ -206,7 +212,9 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    order (nearest same-kind id to its left in the row, else above in the column), a top or bottom label does not
    contradict the face, a column value's storey is the storey header above it (or beside it in its row) and a beam's
    or plan's floor is named on its sheet, and no other accepted callout gives the field another value at that
-   level. Everything else becomes a To
+   level. When Gemini gives a column value no storey, the header is its level only if the value sits inside exactly
+   one ruled storey group and that header names exactly one storey (one TO, two different floors); provenance then
+   says `level_by: "storey from the schedule's table"`. A different storey from Gemini still disagrees. Everything else becomes a To
    check item with a reason. Ties use geometry before distance where the sheet has it: on a plan, a beam size on a
    beam band belongs to the XB or YB label tied to that band; on a detail sheet, a beam callout belongs to the
    elevation whose title ("XB1(200x600-inv)") is the nearest below it across its span; on a column layout, a size
@@ -222,7 +230,8 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    id. A beam layout (grid plus XB/YB labels tied to bands of two parallel edges, dashes merged) is fitted onto the
    column layout per axis by shared grid labels (at least 2, worst residual under 0.5% of the span; else one To check
    item and no joints). Columns are labels tied to their filled outlines, covering the grid lines that cross them
-   (close sub-grids such as B and B1 can both cross one column); a column off the grid is To check. A band meets a
+   (close sub-grids such as B and B1 can both cross one column); a column off the grid is To check, with the place
+   it is near as the item's `place`, so it blocks no joint of that column type elsewhere. A band meets a
    column when, mapped onto the column layout, it overlaps the outline across and reaches it along (one text height
    of slack, since edges stop at column faces): that is a `frames_into` field with status `geometry`, level the
    layout's title ("FIRST FLOOR BEAM LAYOUT") and `at` its place ("F-14"); one field per place. Slab marks in
@@ -245,7 +254,18 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    comes from a grid bubble under it on the detail sheet, else from mapping its elevation's supports (break marks
    under the beam) onto the plan's supports along that beam (columns plus beam-on-beam ends), left to right, only
    when the counts are equal and each span's share of the length matches within 3% in exactly one direction (or in
-   both, when both give the same support for that callout). A joint the model cannot give every required number
+   both, when both give the same support for that callout). When the counts differ (a break mark missed or drawn
+   twice, an elevation showing part of the beam), the marks are matched at the sheet's scale instead: the scale is
+   the median of the elevations on that sheet, of the same prefix (XB or YB), whose 3 or more supports map in exactly
+   one way, used only when there are at least two and they agree within 2%; then a run of consecutive plan supports
+   fits a subset of the marks when every gap equals the plan gap times the scale within 1.5 title heights or 3%, and
+   the answer must be the same under every run and direction that fits (fix A). Beam values by span (fix A): a size
+   on a plan band, and a top or bottom bar callout on an elevation, carry `at` = the span they sit over, its two
+   supports' grid lines joined by "/" ("14/18"), when the label is clearly between two supports; rule 7 then keeps
+   values over different spans apart. At a joint, a beam's section, top and bottom are the values over spans ending
+   on its support line there plus unplaced ones; equal values either side are one value; different values mean the
+   beam changes at the column, an `ambiguous` item (the engine takes one beam per direction). A two-size elevation
+   title ("200x450/200x600-inv") is not split by span: it stays To check. A joint the model cannot give every required number
    for (a number left at 0) is written as a draft, `joints/<id>.draft.json`: id, place, floor, storey, column and
    beams with, for each value, the accepted fields that give it or null, and the To check items blocking it, one of
    them naming the null paths. Never a placeholder number. The API lists drafts as blocked joints (`draft: true`)

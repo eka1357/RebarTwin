@@ -213,6 +213,11 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     if storeys and at_floor:
         notes.append(f"{col.id} takes the storey {', '.join(storeys)}, which ends at the beams' floor, {at_floor} "
                      "(chosen by code from the plan's floor).")
+    tabled = sorted({k.split(".")[1] for k in ("column.section", "column.main", "column.ties")
+                     for a in cited.get(k, []) if a.level_by})
+    if tabled:
+        notes.append(f"{col.id} {', '.join(tabled)}: the storey is the schedule's header above the value, read from "
+                     "the table by code (Gemini gave none).")
 
     use("column.ties", of(col.id, "links"), ("links",),
         lambda got: None if col.tie_dia == _link_dia(got[0].value) else
@@ -227,13 +232,39 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     notes.append(f"{col.id} cover measured to the {'main bars' if col.cover_to == 'main' else 'ties'} "
                  "(the linking model's reading of the notes).")
 
+    def at_joint(beam: Beam, path: str, name: str) -> list[Accepted] | None:
+        """Fix A. A beam's values of one field at this joint: at a grid place, those over a span that ends on the
+        beam's support line here (`at` "14/18") plus those placed on no span; elsewhere all of them. Equal values
+        either side are one value (the one the model cites, else the first). Different values mean the beam changes
+        at the column: the engine takes one beam per direction, so that is an ambiguous item and None."""
+        got = of(beam.id, name)
+        if not place:
+            return got
+        line = support_line(place, direction_of(beam.id) or beam.direction)
+        got = [a for a in got if not a.at or set(a.at.split("/")) & line]
+        values = sorted({a.value for a in got})
+        if len(values) > 1:
+            spans = sorted({a.at for a in got if a.at})
+            issues.append(Issue(path, "ambiguous", f"{beam.id} {name} is {' and '.join(values)} at {col.id} {place}"
+                                + (f" (spans {', '.join(spans)})" if spans else "") + ": the beam changes at the "
+                                "column, and the engine takes one beam per direction, so this joint needs a person",
+                                got))
+            return None
+        if len(got) > 1:
+            chosen = [a for a in cited.get(path, []) if a in got and a.field == name][:1] or got[:1]
+            cited[path] = [a for a in cited.get(path, []) if a not in got or a in chosen]
+            got = chosen
+        return got
+
     for i, beam in enumerate(j.beams):
         p = f"beams[{i}]"
 
         def sec_beam(got, beam=beam):
             if (beam.b, beam.D) != _section(got[0].value):
                 return f"{beam.id} is {beam.b:g} x {beam.D:g} in the joint, {got[0].value} on the drawing"
-        use(f"{p}.section", of(beam.id, "section"), ("section",), sec_beam)
+        sections = at_joint(beam, f"{p}.section", "section")
+        if sections is not None:
+            use(f"{p}.section", sections, ("section",), sec_beam)
 
         for face in ("top", "bottom"):
             def face_check(got, beam=beam, face=face):
@@ -250,7 +281,10 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                     notes.append(f"{beam.id} {face} bars arranged as "
                                  f"{'; '.join(f'layer {n}: {x.bars}' for n, x in enumerate(layers, 1))} from "
                                  f"{', '.join(a.value for a in got)} (the linking model's arrangement).")
-            expected = of(beam.id, face, f"{face}_extra")
+            base = at_joint(beam, f"{p}.{face}", face)
+            if base is None:
+                continue
+            expected = base + of(beam.id, f"{face}_extra")
             if face == "top" and place:
                 # Extra top bars belong to a support: only those under this joint's grid line count here, and an
                 # extra the detail sheet does not place needs a person.
@@ -263,7 +297,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                                         unplaced))
                     continue
                 line = support_line(place, direction_of(beam.id) or beam.direction)
-                expected = of(beam.id, "top") + [a for a in extras if set(a.at.split("/")) & line]
+                expected = base + [a for a in extras if set(a.at.split("/")) & line]
             if face == "bottom" and place:
                 # A bottom extra counts at a joint only if its bar reaches that support on the elevation; a bar
                 # that stops short is noted and left out; one whose end the drawing does not show needs a person.
@@ -280,7 +314,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                     if a not in reach:
                         notes.append(f"{beam.id} {a.value} bottom extra stops short of {col.id} at "
                                      f"{'/'.join(sorted(line))} on the elevation: not at the joint.")
-                expected = of(beam.id, "bottom") + reach
+                expected = base + reach
             use(f"{p}.{face}", expected, (face, f"{face}_extra"), face_check)
 
         use(f"{p}.stirrups", of(beam.id, "links"), ("links",),
@@ -424,15 +458,18 @@ def draft(item, fields: dict[str, Accepted], place: str | None = None) -> dict |
     out_beams = []
     for bid, way in beams:
         line = support_line(place, way or "x") if place else None
-        top = vals(bid, ("top",), False)
+
+        def on_span(a: Accepted, line=line) -> bool:          # fix A: a value over a span ending here, or unplaced
+            return not (line and a.at) or bool(set(a.at.split("/")) & line)
+        top = vals(bid, ("top",), False, keep=on_span)
         extras = [a for a in accepted if a.member == bid and a.field == "top_extra" and fits(a, False)]
         def at_support(a: Accepted, line=line) -> bool:
             return bool(line and a.at and a.at != "-" and set(a.at.split("/")) & line)
         here = vals(bid, ("top_extra",), False, keep=at_support)
-        bottom = vals(bid, ("bottom",), False)
+        bottom = vals(bid, ("bottom",), False, keep=on_span)
         reach = vals(bid, ("bottom_extra",), False, keep=lambda a, s=at_support: not place or s(a))
         out_beams.append({
-            "id": bid, "direction": way, "section": vals(bid, ("section",), False),
+            "id": bid, "direction": way, "section": vals(bid, ("section",), False, keep=on_span),
             "top": (top or []) + (here or []) or None,
             "top_extra_unplaced": bool(place and any(not a.at for a in extras)),
             "bottom": bottom and bottom + (reach or []),
@@ -564,13 +601,17 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
                 reason=issue.reason, detail=issue.detail, joint=v.joint.id))
 
     # Items from agreement block every joint that uses their member. Items on general notes and project-wide
-    # settings stay as one project-level item (joint null), which blocks every joint (see `blocks`).
+    # settings stay as one project-level item (joint null), which blocks every joint (see `blocks`). An item about
+    # one grid place (a column off the grid near N1-4) blocks only joints at that place: none, for a column on no
+    # grid intersection, so it stays in to_check.json with joint null.
     for t in to_check:
         if t.joint is None and t.field in USED_FIELDS and not project_level(t):
             hits = [v.joint.id for v in joints if t.member in _members(v.joint) and (
-                not t.level or v.floor is None or ends_at(t.level, v.floor) or floor(t.level) == v.floor)]
+                not t.level or v.floor is None or ends_at(t.level, v.floor) or floor(t.level) == v.floor)
+                and (t.place is None or v.place == t.place)]
             hits += [d["id"] for d in drafts if t.member in {d["column"]["id"], *(b["id"] for b in d["beams"])} and (
-                not t.level or d["floor"] is None or ends_at(t.level, d["floor"]) or floor(t.level) == d["floor"])]
+                not t.level or d["floor"] is None or ends_at(t.level, d["floor"]) or floor(t.level) == d["floor"])
+                and (t.place is None or d["place"] == t.place)]
             if len(hits) == 1:
                 t.joint = hits[0]
             elif hits:                                   # a beam in two joints: one item per joint

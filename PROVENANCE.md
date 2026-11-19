@@ -181,6 +181,23 @@ one ruled storey group and the header names exactly one storey (`levels.one_stor
 provenance marks it `level_by: "storey from the schedule's table"` and the joint notes say so. A different storey
 from Gemini still disagrees. Replay (no API): 287 to 336 accepted (section 41 to 61, main 6 to 20, links 7 to 22),
 all 57 "Gemini gave no storey" items settled. 308 tests.
+Live linking run after B (`out/iith-B`, one call, 40,478 in and 32,707 out tokens): 53 joints;
+C1xXB17@FIRST@L1+M+M1-28 still 9 fails with the same best fix, but blocked this run by the linking model citing
+one of two equal fields (C1 200x450 on sheets 7 and 21; the two covers) and writing zone III and moderate exposure
+from no field: model variance, flagged by code as before.
+
+A (time-boxed): beam values by span. A size on a plan band and a top or bottom callout on an elevation carry `at`,
+the span's two supports ("14/18"); rule 7 keeps spans apart; at a joint only spans ending on the beam's support
+line count, equal values either side are one, different values are "the beam changes at the column" (To check).
+Elevation supports whose count differs from the plan's are matched at the sheet's scale (median of the sheet's
+unambiguous 3+ support matches, at least two agreeing within 2%), a unique fit only. Two-size elevation titles are
+not split (drawn depths not read): still To check. Replay (no API): 336 to 383 accepted (section 61 to 103, top 30
+to 33, bottom 32 to 34; 43 sections, 13 tops and 13 bottoms now placed by span). A top extra with no clear
+nearest support is placed by its drawn bar only when the bar reaches one support or the two ends of one span
+(YB14's 2-12 at H1/J; XB12's 2-20 and YB11's 3-16 reach three supports, most likely the continuous bar: still To
+check); top extras placed 8 to 9 of 37. Live linking run (`out/iith-A`, before that last step; 43,633 in, 30,192
+out tokens): 53 joints (17 drafts), To check 1579 to 983, C1xXB17@FIRST@L1+M+M1-28 checkable with 9 fails and the
+same best fix; no other joint checkable (unplaced top extras block most). 313 tests.
 
 ## 18 November 2026: Project overview dashboard, draft joints, mixed column UI, and demo runbook (W10, `feature/w10-overview`)
 

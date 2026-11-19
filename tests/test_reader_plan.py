@@ -210,3 +210,73 @@ def test_a_bottom_bar_reaches_the_supports_its_drawn_bar_reaches(tmp_path):
     sup = {"XB5": [(0.0, "1", "column"), (55.9, "2", "column"), (100.0, "3", "column")]}
     reach = {w.text: plan.bar_reach(page, w.box, sup) for w in page.words if w.text in ("3Ø16", "4Ø10")}
     assert reach == {"3Ø16": "1/2/3", "4Ø10": "-"}
+
+
+def test_a_size_on_a_plan_band_takes_the_span_it_sits_over(sheets):
+    """Fix A. "230x450" starts at x = 150 + 90 = 240 pt on XB2's band along B, 2 pt above it. XB2's band meets C5 at
+    B-1 (x = 150 pt) and reaches C6 at B-2 (x = 350 pt), so its supports along it are lines 1 and 2, 178.1 and 415.7
+    units. The label's centre is about 252 pt, 299 units: more than one text height from both, so it is over span
+    1/2. On the column layout the same label says nothing (no tied bands there)."""
+    beam, column, _ = sheets
+    supports = plan.support_map([beam, column])
+    assert [s[1] for s in supports["XB2"]] == ["1", "2"] and supports.pages["XB2"] == 1
+    size = next(w for w in beam.words if w.text == "230x450")
+    assert plan.span_on_plan(beam, size.box, supports) == "1/2"
+    assert plan.span_on_plan(column, size.box, supports) is None
+    # The same label moved over support 2 (x = 350 pt, 415.7 units): which side it belongs to is not known.
+    over = (size.box[0], 410.0, size.box[2], 422.0)
+    assert plan.span_on_plan(beam, over, supports) is None
+
+
+def test_a_bar_callout_on_an_elevation_takes_the_span_it_sits_over(tmp_path):
+    """Fix A. XB5's break marks are at x = 97, 266.5 and 400 pt, mapped left to right onto plan lines 1, 2, 3 (shares
+    0.559 and 0.441, as in the test above). "3Ø16" starts at x 300 pt, centre about 308: between 266.5 and 400, so over
+    span 2/3; "4Ø10" (centre about 188) over span 1/2; "2Ø12" (x 258, centre about 266) sits over support 2, under
+    half a title height (about 3.5 pt) from it, so no span. With the plan's supports at 0, 44.1, 100 (the shares
+    reversed), only right to left fits: the elevation's second span is the plan's first, "3Ø16" over 1/2."""
+    page = ingest(make_elevation_pdf(tmp_path / "b.pdf", breaks=True))[0]
+    box = {w.text: w.box for w in page.words if w.text in ("3Ø16", "4Ø10", "2Ø12")}
+    fwd = {"XB5": [(0.0, "1", "column"), (55.9, "2", "column"), (100.0, "3", "column")]}
+    assert {t: plan.elevation_span_at(page, b, fwd) for t, b in box.items()} == {
+        "3Ø16": "2/3", "4Ø10": "1/2", "2Ø12": None}
+    rev = {"XB5": [(0.0, "1", "column"), (44.1, "2", "column"), (100.0, "3", "column")]}
+    assert {t: plan.elevation_span_at(page, b, rev) for t, b in box.items()} == {
+        "3Ø16": "1/2", "4Ø10": "2/3", "2Ø12": None}
+
+
+def test_elevation_marks_match_a_run_of_plan_supports_at_the_sheet_s_scale():
+    """Fix A. Plan supports on lines 1, 2, 3 at 0, 20 and 60 (gaps 20 and 40); the sheet's scale is 2, so the spans
+    are drawn 40 and 80 long. Marks at 10, 50, 60 and 130: 10 to 50 is 40 and 50 to 130 is 80, so lines 1, 2, 3 left
+    to right, and the mark at 60 is not a support. Right to left the gaps would be 80 then 40: from 10, 90 is no mark;
+    from 50, 130 then 170 is none; so that direction does not fit. Marks at 0 and 40 only (one span of 40): span 1-2
+    left to right, or 2-1 right to left, two ways; a span of 41 fits within the 1.5 tolerance, one of 44 does not
+    (3% of 40 is 1.2, under 1.5)."""
+    sup = [(0.0, "1", "column"), (20.0, "2", "column"), (60.0, "3", "column")]
+    assert plan._scaled_mappings([10.0, 50.0, 60.0, 130.0], sup, 2.0, 1.5) == [
+        [(10.0, "1"), (50.0, "2"), (130.0, "3")]]
+    two = plan._scaled_mappings([0.0, 40.0], sup, 2.0, 1.5)
+    assert sorted(sorted(lab for _, lab in mp) for mp in two) == [["1", "2"], ["1", "2"]]
+    assert len(plan._scaled_mappings([0.0, 41.0], sup, 2.0, 1.5)) == 2
+    assert plan._scaled_mappings([0.0, 44.0], sup, 2.0, 1.5) == []
+
+
+def test_a_top_extra_is_placed_by_its_bar_only_over_one_support_or_one_span(tmp_path, monkeypatch):
+    """Fix A. XB5's supports at x = 97, 266.5, 400 pt map to plan lines 1, 2, 3 (115.2, 316.5, 475.1 units). A bar
+    from 250 to 410 pt (296.9 to 486.9 units) reaches 2 and 3, the two ends of one span: "2/3". From 255 to 280 pt it
+    reaches 2 only: "2". From 90 to 410 pt it reaches all three, which is the continuous top bar, not an extra: None;
+    so is the drawn fixture's own bar for "3Ø16" (97 to 400). One reaching 1 and 3 but not 2 cannot happen on one
+    bar; none reached ("4Ø10"'s bar, 120 to 245 pt): None."""
+    page = ingest(make_elevation_pdf(tmp_path / "b.pdf", breaks=True))[0]
+    sup = {"XB5": [(0.0, "1", "column"), (55.9, "2", "column"), (100.0, "3", "column")]}
+    box = next(w.box for w in page.words if w.text == "3Ø16")
+    assert plan.top_extra_reach(page, box, sup) is None
+    none = next(w.box for w in page.words if w.text == "4Ø10")
+    assert plan.top_extra_reach(page, none, sup) is None
+    u = 1000 / 842
+
+    def bar(lo, hi):
+        monkeypatch.setattr(plan, "leader_bar", lambda *a: plan.Line("h", 400.0, lo * u, hi * u))
+        return plan.top_extra_reach(page, box, sup)
+    assert bar(250, 410) == "2/3"
+    assert bar(255, 280) == "2"
+    assert bar(90, 410) is None

@@ -19,7 +19,8 @@ A Gemini callout is accepted only when all of these hold; otherwise it becomes a
    storey group and the header names exactly one storey (`levels.one_storey`); the level is then marked as made by
    code (`level_by`, "storey from the schedule's table").
 7. No other accepted callout gives the same member and field a different value (`ambiguous`, both go to To check).
-   Top extras at different supports (`at`, the grid bubble under them on the detail sheet) are separate.
+   Top extras at different supports (`at`, the grid bubble under them on the detail sheet) are separate, and so are
+   beam values over different spans (`at` "14/18", the span's two supports).
    `frames_into` is exempt: a beam meets a column at each end. Each level is separate: a column has a value per
    storey. Zone, exposure and grades are project-wide: two
    values under any scopes conflict.
@@ -461,12 +462,19 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
         joined = [t for w in m.words for t in (w.joined or ())] or None
         support = None
         if c.field == "top_extra":                       # extra top bars belong to a support (plan.py)
-            from .plan import elevation_support_at, support_at
+            from .plan import elevation_support_at, support_at, top_extra_reach
             support = support_at(by_page[c.page], m.box) or (
-                elevation_support_at(by_page[c.page], m.box, supports) if supports else None)
+                elevation_support_at(by_page[c.page], m.box, supports) if supports else None) or (
+                top_extra_reach(by_page[c.page], m.box, supports) if supports else None)
         elif c.field == "bottom_extra" and supports:     # the supports its bar reaches, "-" for none (plan.py)
             from .plan import bar_reach
             support = bar_reach(by_page[c.page], m.box, supports)
+        elif c.field in ("top", "bottom") and supports:  # a bar callout on an elevation: its span (fix A)
+            from .plan import elevation_span_at
+            support = elevation_span_at(by_page[c.page], m.box, supports)
+        elif c.field == "section" and supports and _member_kind(c.member) == "beam":
+            from .plan import span_on_plan                # a size on a plan band: the span it sits over (fix A)
+            support = span_on_plan(by_page[c.page], m.box, supports)
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
                                         r.box, r.call, level, raw, joined, at=support, level_by=level_by))
 

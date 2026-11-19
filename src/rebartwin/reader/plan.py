@@ -871,24 +871,59 @@ BREAK_LEN = (0.22, 0.45)  # title heights: one stroke of a support's break mark 
 SPAN_MATCH = 0.03         # each span's share of the beam's length, elevation against plan, within this
 
 
-def plan_supports(plans: list[Plans]) -> dict[str, list[tuple[float, str, str]] | str]:
+class Supports(dict):
+    """Beam mark -> its supports along it (or why not known), as `plan_supports` gives; `pages` holds the beam layout
+    each mark's supports were read on, whose coordinates their positions are in."""
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.pages: dict[str, int] = {}
+
+
+def plan_supports(plans: list[Plans]) -> Supports:
     """Each beam mark's supports in order along it, from every beam layout read: its bands' columns and beam-on-beam
     ends, merged when the mark's bands lie on one grid line (a beam drawn in pieces between columns); the reason
     instead when the mark is drawn on different grid lines (XB11 on J and on K: which one an elevation shows is not
     known)."""
-    out: dict[str, list[tuple[float, str, str]] | str] = {}
+    out = Supports()
     for r in plans:
+        page = r.alignment.get("beam_page")
         for mark, bands_ in r.bands.items():
             lines_ = {g for g, _ in bands_}
             if mark in out or len(lines_) != 1:
                 out[mark] = f"{mark} is drawn on more than one grid line or layout"
+                out.pages.pop(mark, None)
                 continue
             merged: dict[str, tuple[float, str, str]] = {}
             for _, sup in bands_:
                 for s_ in sup:
                     merged.setdefault(s_[1], s_)
             out[mark] = sorted(merged.values())
+            if page is not None:
+                out.pages[mark] = page
     return out
+
+
+def span_on_plan(page: Page, box: Box, supports: dict) -> str | None:
+    """The span a size label on a beam layout sits over (fix A): the label is on the band of exactly one beam mark
+    (`band_tie`), that mark's supports were read on this same layout, and the label's centre along the band lies
+    between two consecutive supports, at least one text height from each (a label over a support says nothing about
+    which side). Returns the two supports' grid lines joined by "/" ("14/18", "C/C1/F"), else None."""
+    pages = getattr(supports, "pages", {})
+    found = band_tie(page, box)
+    if not found or len(found[0]) != 1:
+        return None
+    mark = next(iter(found[0]))
+    plan = supports.get(mark)
+    if not isinstance(plan, list) or len(plan) < 2 or pages.get(mark) != page.number:
+        return None
+    cy, cx = _centre(box)
+    along = cx if mark.startswith("XB") else cy
+    h = text_height(page) * 1000 / (page.width if mark.startswith("XB") else page.height)
+    for (a, la, _), (b, lb, _) in pairwise(plan):
+        if a + h <= along <= b - h:
+            return f"{la}/{lb}"
+    return None
 
 
 def elevation_supports(page: Page, e: Elevation) -> list[float]:
@@ -926,11 +961,75 @@ def _shares(ps: list[float]) -> list[float]:
     return [(b - a) / total for a, b in pairwise(ps)] if total > 0 else []
 
 
-def elevation_support_at(page: Page, box: Box, supports: dict) -> str | None:
-    """The support an extra top bar callout belongs to, by mapping its elevation's supports onto the plan's, left to
-    right. Only when the counts are equal and the spans' shares of the length match (within SPAN_MATCH) in exactly
-    one direction, or in both directions with the same answer for this callout; and the callout's nearest support
-    is clear (the next at least twice as far). Returns the plan support's grid line(s), else None (To check)."""
+SCALE_AGREE = 0.02        # sheet scales from different elevations agree within this share of their median
+SCALE_TOL = 1.5           # title heights: a span drawn at the sheet's scale matches the plan's within this ...
+SCALE_SHARE = 0.03        # ... or within this share of the span, whichever is larger
+
+
+def _full_mappings(es: list[float], plan: list) -> list[list[tuple[float, str]]]:
+    """Equal counts, the spans' shares of the length matching within SPAN_MATCH: left to right, right to left, or
+    both (the original rule)."""
+    if len(es) != len(plan) or len(es) < 2:
+        return []
+    ps = [p_[0] for p_ in plan]
+    want = _shares(es)
+    out = []
+    if all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares(ps))):
+        out.append([(x, plan[i][1]) for i, x in enumerate(es)])
+    if all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares([-v for v in reversed(ps)]))):
+        out.append([(x, plan[len(plan) - 1 - i][1]) for i, x in enumerate(es)])
+    return out
+
+
+def sheet_scale(page: Page, prefix: str, supports: dict) -> float | None:
+    """A detail sheet's drawing scale for beams with this prefix (XB or YB: plan positions along x or y), in sheet
+    units per plan unit: from the elevations whose 3 or more supports map onto the plan's in exactly one way, when
+    at least two give it and all agree within SCALE_AGREE of their median. Two-support matches always fit by shares,
+    so they do not count. None otherwise."""
+    ks = []
+    for e in elevations(page):
+        plan = supports.get(e.member)
+        if not e.member.startswith(prefix) or not isinstance(plan, list) or len(plan) < 3:
+            continue
+        es = elevation_supports(page, e)
+        if len(_full_mappings(es, plan)) == 1:
+            ks.append((es[-1] - es[0]) / abs(plan[-1][0] - plan[0][0]))
+    if len(ks) < 2:
+        return None
+    m = median(ks)
+    return m if all(abs(x - m) <= SCALE_AGREE * m for x in ks) else None
+
+
+def _scaled_mappings(es: list[float], plan: list, k: float, tol: float) -> list[list[tuple[float, str]]]:
+    """Elevation supports against a run of consecutive plan supports, at the sheet's scale `k`: every chosen mark's
+    gap to the next equals the plan gap times k, within `tol` or SCALE_SHARE of it. Marks not chosen are not
+    supports (a dimension tick, a cut-off drawn twice); plan supports outside the run are not on this elevation. Both
+    directions. Every way that fits with the most marks matched (at least 2) is returned."""
+    from itertools import combinations
+    ps = [p_[0] for p_ in plan]
+    found: list[tuple[int, list[tuple[float, str]]]] = []
+    for rev in (False, True):
+        order = list(range(len(plan)))[::-1] if rev else list(range(len(plan)))
+        for m in range(min(len(es), len(plan)), 1, -1):
+            for start in range(len(plan) - m + 1):
+                idx = order[start:start + m]
+                gaps = [abs(ps[j] - ps[i]) * k for i, j in pairwise(idx)]
+                for sub in combinations(range(len(es)), m):
+                    xs = [es[i] for i in sub]
+                    if all(abs((xb - xa) - g) <= max(tol, SCALE_SHARE * g) for (xa, xb), g in zip(pairwise(xs), gaps)):
+                        found.append((m, [(x, plan[j][1]) for x, j in zip(xs, idx)]))
+    if not found:
+        return []
+    best = max(m for m, _ in found)
+    return [mp for m, mp in found if m == best]
+
+
+def support_mappings(page: Page, box: Box, supports: dict) -> tuple[Elevation, list[list[tuple[float, str]]]] | None:
+    """The elevation a callout belongs to and every way its drawn supports map onto the plan's supports for that
+    beam: [(x on the elevation, plan grid line(s))]. Equal counts with matching shares first (the original rule);
+    otherwise (fix A), when the counts differ, at the sheet's scale (`sheet_scale`): a run of plan supports against
+    the marks that fit it. None when the callout ties to no one elevation, the plan's supports are not known, or
+    nothing fits."""
     found = elevation_tie(page, box)
     if not found or len(found[0]) != 1:
         return None
@@ -938,23 +1037,53 @@ def elevation_support_at(page: Page, box: Box, supports: dict) -> str | None:
     plan = supports.get(member)
     cx = _centre(box)[1]
     els = [e for e in elevations(page) if e.member == member and e.lo <= cx <= e.hi and e.title[0] >= box[2]]
-    if not isinstance(plan, list) or len(els) != 1:
+    if not isinstance(plan, list) or len(plan) < 2 or len(els) != 1:
         return None
-    es = elevation_supports(page, els[0])
-    if len(es) != len(plan) or len(es) < 2:
+    e = els[0]
+    es = elevation_supports(page, e)
+    maps = _full_mappings(es, plan)
+    if not maps and len(es) != len(plan) and len(es) >= 2 and member[:2] in ("XB", "YB"):
+        k = sheet_scale(page, member[:2], supports)
+        if k:
+            maps = _scaled_mappings(es, plan, k, SCALE_TOL * (e.title[2] - e.title[0]))
+    return (e, maps) if maps else None
+
+
+def elevation_support_at(page: Page, box: Box, supports: dict) -> str | None:
+    """The support an extra top bar callout belongs to, by mapping its elevation's supports onto the plan's
+    (`support_mappings`): the mapped support nearest the callout, when the next is at least twice as far, and the
+    same plan support under every mapping that fits. Returns the plan support's grid line(s), else None (To check)."""
+    found = support_mappings(page, box, supports)
+    if found is None:
         return None
-    ps = [p_[0] for p_ in plan]
-    want = _shares(es)
-    fwd = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares(ps)))
-    rev = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares([-v for v in reversed(ps)])))
-    near = sorted((abs(x - cx), i) for i, x in enumerate(es))
-    if len(near) > 1 and near[1][0] < 2 * near[0][0]:
-        return None
-    i = near[0][1]
-    labels = {plan[i][1]} if fwd else set()
-    if rev:
-        labels.add(plan[len(plan) - 1 - i][1])
+    cx = _centre(box)[1]
+    labels = set()
+    for mp in found[1]:
+        near = sorted((abs(x - cx), lab) for x, lab in mp)
+        if len(near) > 1 and near[1][0] < 2 * near[0][0]:
+            return None
+        labels.add(near[0][1])
     return labels.pop() if len(labels) == 1 else None
+
+
+def elevation_span_at(page: Page, box: Box, supports: dict) -> str | None:
+    """The span a top or bottom bar callout sits over on a beam elevation (fix A): between two consecutive mapped
+    supports (`support_mappings`), at least half a title height from each, the same span under every mapping that
+    fits. Returns the two plan supports' grid lines joined by "/", in plan order, else None."""
+    found = support_mappings(page, box, supports)
+    if found is None:
+        return None
+    e, maps = found
+    cx = _centre(box)[1]
+    margin = (e.title[2] - e.title[0]) / 2
+    order = {s_[1]: i for i, s_ in enumerate(supports[e.member])}
+    answers = set()
+    for mp in maps:
+        span = next(((la, lb) for (xa, la), (xb, lb) in pairwise(mp) if xa + margin <= cx <= xb - margin), None)
+        if span is None:
+            return None
+        answers.add("/".join(sorted(span, key=order.get)))
+    return answers.pop() if len(answers) == 1 else None
 
 
 def outline_tie(page: Page, box: Box) -> tuple[set[str], str] | None:
@@ -1032,37 +1161,43 @@ def leader_bar(page: Page, box: Box, e: Elevation) -> Line | None:
 
 def bar_reach(page: Page, box: Box, supports: dict) -> str | None:
     """Which plan supports an extra bottom bar reaches: its bar on the elevation (`leader_bar`), against the
-    elevation's supports mapped onto the plan's as for top extras (equal counts, spans matching in one direction, or
-    in both with the same answer). Returns the reached supports' grid lines joined by "/", "-" when the bar reaches
-    none (it stops short), or None when any of it is not clear: then where it stops needs a person."""
-    found = elevation_tie(page, box)
-    if not found or len(found[0]) != 1:
+    elevation's supports mapped onto the plan's as for top extras (`support_mappings`), the same under every mapping
+    that fits. Returns the reached supports' grid lines joined by "/", "-" when the bar reaches none (it stops
+    short), or None when any of it is not clear: then where it stops needs a person."""
+    found = support_mappings(page, box, supports)
+    if found is None:
         return None
-    member = next(iter(found[0]))
-    plan = supports.get(member)
-    cx = _centre(box)[1]
-    els = [e for e in elevations(page) if e.member == member and e.lo <= cx <= e.hi and e.title[0] >= box[2]]
-    if not isinstance(plan, list) or len(els) != 1:
-        return None
-    e = els[0]
-    es = elevation_supports(page, e)
-    if len(es) != len(plan) or len(es) < 2:
-        return None
-    ps = [p_[0] for p_ in plan]
-    want = _shares(es)
-    fwd = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares(ps)))
-    rev = all(abs(a - b) <= SPAN_MATCH for a, b in zip(want, _shares([-v for v in reversed(ps)])))
+    e, maps = found
     bar = leader_bar(page, box, e)
-    if bar is None or not (fwd or rev):
+    if bar is None:
         return None
     tol = REACH * (e.title[2] - e.title[0])
-    reached = [i for i, x in enumerate(es) if bar.lo - tol <= x <= bar.hi + tol]
-    answers = set()
-    if fwd:
-        answers.add(tuple(sorted(plan[i][1] for i in reached)))
-    if rev:
-        answers.add(tuple(sorted(plan[len(plan) - 1 - i][1] for i in reached)))
+    answers = {tuple(sorted(lab for x, lab in mp if bar.lo - tol <= x <= bar.hi + tol)) for mp in maps}
     if len(answers) != 1:
         return None
     labels = answers.pop()
     return "/".join(labels) if labels else "-"
+
+
+def top_extra_reach(page: Page, box: Box, supports: dict) -> str | None:
+    """Where an extra top bar is, by its drawn bar (fix A), for a callout no support is clearly nearest: the supports
+    its bar reaches (`leader_bar`, within REACH title heights), under every mapping that fits (`support_mappings`),
+    accepted only when that is one support, or the two ends of one span (a bar run across a short span). A bar
+    reaching three or more supports is most likely the continuous top bar, not the extra: None, as is a bar that
+    reaches none. Returns the grid line(s), two supports joined by "/"."""
+    found = support_mappings(page, box, supports)
+    if found is None:
+        return None
+    e, maps = found
+    bar = leader_bar(page, box, e)
+    if bar is None:
+        return None
+    tol = REACH * (e.title[2] - e.title[0])
+    order = {s_[1]: i for i, s_ in enumerate(supports[e.member])}
+    answers = set()
+    for mp in maps:
+        got = sorted((lab for x, lab in mp if bar.lo - tol <= x <= bar.hi + tol), key=order.get)
+        if not 1 <= len(got) <= 2 or (len(got) == 2 and abs(order[got[0]] - order[got[1]]) != 1):
+            return None
+        answers.add("/".join(got))
+    return answers.pop() if len(answers) == 1 else None

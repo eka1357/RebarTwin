@@ -254,7 +254,18 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    comes from a grid bubble under it on the detail sheet, else from mapping its elevation's supports (break marks
    under the beam) onto the plan's supports along that beam (columns plus beam-on-beam ends), left to right, only
    when the counts are equal and each span's share of the length matches within 3% in exactly one direction (or in
-   both, when both give the same support for that callout). A joint the model cannot give every required number
+   both, when both give the same support for that callout). When the counts differ (a break mark missed or drawn
+   twice, an elevation showing part of the beam), the marks are matched at the sheet's scale instead: the scale is
+   the median of the elevations on that sheet, of the same prefix (XB or YB), whose 3 or more supports map in exactly
+   one way, used only when there are at least two and they agree within 2%; then a run of consecutive plan supports
+   fits a subset of the marks when every gap equals the plan gap times the scale within 1.5 title heights or 3%, and
+   the answer must be the same under every run and direction that fits (fix A). Beam values by span (fix A): a size
+   on a plan band, and a top or bottom bar callout on an elevation, carry `at` = the span they sit over, its two
+   supports' grid lines joined by "/" ("14/18"), when the label is clearly between two supports; rule 7 then keeps
+   values over different spans apart. At a joint, a beam's section, top and bottom are the values over spans ending
+   on its support line there plus unplaced ones; equal values either side are one value; different values mean the
+   beam changes at the column, an `ambiguous` item (the engine takes one beam per direction). A two-size elevation
+   title ("200x450/200x600-inv") is not split by span: it stays To check. A joint the model cannot give every required number
    for (a number left at 0) is written as a draft, `joints/<id>.draft.json`: id, place, floor, storey, column and
    beams with, for each value, the accepted fields that give it or null, and the To check items blocking it, one of
    them naming the null paths. Never a placeholder number. The API lists drafts as blocked joints (`draft: true`)

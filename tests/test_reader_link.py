@@ -437,3 +437,24 @@ def test_a_storey_from_the_table_is_a_note_and_in_provenance(agreement):
         "C4 section: the storey is the schedule's header above the value, read from the table by code (Gemini gave "
         "none)."]
     assert blocking(run(a2, LINK)) == blocking(run(agreement, LINK))
+
+
+def test_beam_values_count_only_on_the_spans_meeting_the_joint(agreement):
+    """Fix A. The joint is at B-2; B12 runs along X, so its support line here is 2. B12's section 230x450 (f0010) is
+    placed over span 1/2 and a second 230x450 over span 2/3 (f0201): both end on line 2 and are equal, so they are one
+    value and the joint checks with the model citing either. A 230x600 over span 3/4 (f0202) does not reach line 2
+    and is left out. If span 2/3 were 230x600 instead (f0203), B12 is 230x450 on one side of C4 and 230x600 on the
+    other: the beam changes at the column, one ambiguous item on beams[0].section and nothing proved there."""
+    sec = next(a for a in agreement.accepted if a.id == "f0010")
+    places = {"f0008": "B-2", "f0013": "B-2"}
+    left = replace(sec, at="1/2")
+    acc = [left if a is sec else a for a in placed(agreement, places).accepted]
+    jid = "C4xB12xB13@B-2"
+    same = replace(sec, id="f0201", at="2/3")
+    far = replace(sec, id="f0202", value="230x600", at="3/4")
+    ok = run(Agreement(acc + [same, far], list(agreement.to_check), []), LINK)
+    assert blocking(ok, jid) == [] and ok.joints[0].provenance["beams[0].section"]["field_id"] == "f0010"
+    other = replace(sec, id="f0203", value="230x600", at="2/3")
+    changed = blocking(run(Agreement(acc + [other], list(agreement.to_check), []), LINK), jid)
+    assert [(t.field, t.reason) for t in changed] == [("beams[0].section", "ambiguous")]
+    assert "B12 section is 230x450 and 230x600 at C4 B-2 (spans 1/2, 2/3): the beam changes" in changed[0].detail

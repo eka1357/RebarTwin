@@ -399,3 +399,26 @@ def test_mixed_column_main_is_corner_and_face_bars_and_code_settles_what_it_prov
     assert [t.field for t in blocking(run(with_main("4-16 + 4-12"), col(None)))] == ["column.main"]
     odd = blocking(run(with_main("2-16 + 6-12"), col(12, unresolved=["column.main"])))
     assert sorted((t.field, t.reason) for t in odd) == [("column.main", "ambiguous"), ("column.main", "disagree")]
+
+
+def test_an_item_about_a_column_off_the_grid_blocks_only_joints_at_its_place(agreement):
+    """Fix E. C4 with B12 and B13 stands at B-2 (both frames_into fields placed there). A second C4 drawn off the grid
+    near N1-4 is a To check item on frames_into for C4 with place "N1-4": it is about that place, where no joint is,
+    so it blocks 0 joints and stays in to_check.json with joint null. The same item at "B-2" blocks the one joint;
+    an item with no place (any other agreement item on C4) still blocks every joint that uses C4: 1 here."""
+    from rebartwin.reader.agree import ToCheck
+    jid = "C4xB12xB13@B-2"
+
+    def with_item(place):
+        a2 = placed(agreement, {"f0008": "B-2", "f0013": "B-2"})
+        a2.to_check.append(ToCheck("tc_0097", "C4", "frames_into", 2, (0, 0, 1, 1), None, None, "ambiguous",
+                                   "C4 is near N1-4 but its outline is not on that grid intersection", place=place))
+        result = run(a2, LINK)
+        assert [v.joint.id for v in result.joints] == [jid]
+        return [t for t in result.to_check if t.id == "tc_0097" or t.detail == "C4 is near N1-4 but its outline is "
+                "not on that grid intersection"]
+
+    [off] = with_item("N1-4")
+    assert off.joint is None and off.place == "N1-4" and off.to_json()["place"] == "N1-4"
+    assert [t.joint for t in with_item("B-2")] == [jid]
+    assert [t.joint for t in with_item(None)] == [jid]

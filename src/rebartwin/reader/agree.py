@@ -115,6 +115,7 @@ class ToCheck:
     joint: str | None = None
     resolution: dict | None = None
     level: str | None = None
+    place: str | None = None      # a grid place ("N1-4"): the item blocks only joints at that place
 
     def to_json(self) -> dict:
         d = asdict(self)

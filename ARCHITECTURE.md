@@ -143,6 +143,7 @@ from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face
    "layer": 1, "level": "FOUNDATION TO FIRST FLOOR" | null, "page": 3, "box_2d": [...] | null,
    "gemini": {"value": "5-20"} | null,
    "parser": {"value": "5-16"} | null, "reason": "disagree|missing|ambiguous", "detail": "a sentence for a person",
+   "place": "N1-4" | null,
    "resolution": null | {"value": "5-20", "by": "person", "at": "2026-11-19T10:02:00Z"} }]
 ```
 
@@ -151,7 +152,9 @@ from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face
 path for items from linking. `joint` null with member ALL, ALL_BEAMS or ALL_COLUMNS, or field `seismic_zone` or
 `exposure`, is a project-level item: it blocks every joint until resolved. A drawing that does not state the zone
 or exposure gets one such item each (reason `missing`), never a silent zone II or mild: zone II would turn IS 13920
-off. Otherwise `joint` null means the item blocks nothing (a member in no joint, a grade).
+off. Otherwise `joint` null means the item blocks nothing (a member in no joint, a grade). `place` is the grid place
+an item is about (a column drawn off the grid "near N1-4"): it blocks only joints at that place, so a column on no
+grid intersection blocks none and its item stays with `joint` null.
 
 A joint with unresolved items is shown as "To check" and is not checked until they are resolved.
 
@@ -222,7 +225,8 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    id. A beam layout (grid plus XB/YB labels tied to bands of two parallel edges, dashes merged) is fitted onto the
    column layout per axis by shared grid labels (at least 2, worst residual under 0.5% of the span; else one To check
    item and no joints). Columns are labels tied to their filled outlines, covering the grid lines that cross them
-   (close sub-grids such as B and B1 can both cross one column); a column off the grid is To check. A band meets a
+   (close sub-grids such as B and B1 can both cross one column); a column off the grid is To check, with the place
+   it is near as the item's `place`, so it blocks no joint of that column type elsewhere. A band meets a
    column when, mapped onto the column layout, it overlaps the outline across and reaches it along (one text height
    of slack, since edges stop at column faces): that is a `frames_into` field with status `geometry`, level the
    layout's title ("FIRST FLOOR BEAM LAYOUT") and `at` its place ("F-14"); one field per place. Slab marks in

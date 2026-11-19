@@ -564,13 +564,17 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
                 reason=issue.reason, detail=issue.detail, joint=v.joint.id))
 
     # Items from agreement block every joint that uses their member. Items on general notes and project-wide
-    # settings stay as one project-level item (joint null), which blocks every joint (see `blocks`).
+    # settings stay as one project-level item (joint null), which blocks every joint (see `blocks`). An item about
+    # one grid place (a column off the grid near N1-4) blocks only joints at that place: none, for a column on no
+    # grid intersection, so it stays in to_check.json with joint null.
     for t in to_check:
         if t.joint is None and t.field in USED_FIELDS and not project_level(t):
             hits = [v.joint.id for v in joints if t.member in _members(v.joint) and (
-                not t.level or v.floor is None or ends_at(t.level, v.floor) or floor(t.level) == v.floor)]
+                not t.level or v.floor is None or ends_at(t.level, v.floor) or floor(t.level) == v.floor)
+                and (t.place is None or v.place == t.place)]
             hits += [d["id"] for d in drafts if t.member in {d["column"]["id"], *(b["id"] for b in d["beams"])} and (
-                not t.level or d["floor"] is None or ends_at(t.level, d["floor"]) or floor(t.level) == d["floor"])]
+                not t.level or d["floor"] is None or ends_at(t.level, d["floor"]) or floor(t.level) == d["floor"])
+                and (t.place is None or d["place"] == t.place)]
             if len(hits) == 1:
                 t.joint = hits[0]
             elif hits:                                   # a beam in two joints: one item per joint

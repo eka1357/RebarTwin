@@ -332,6 +332,7 @@ class Problem:
     page: int
     box: Box
     detail: str
+    place: str | None = None       # the grid place the problem is at ("N1-4"), when it is about one place
 
 
 def _gap(page: Page, a: Box, b: Box) -> float:
@@ -391,8 +392,10 @@ def columns(page: Page, g: Grid) -> tuple[list[Column], list[Problem]]:
         nx = col.xs or ([min(g.xs, key=lambda k: abs(g.xs[k] - cx))] if g.xs else ["?"])
         ny = col.ys or ([min(g.ys, key=lambda k: abs(g.ys[k] - cy))] if g.ys else ["?"])
         what = "its outline" if col.outline else "its label (no outline found)"
-        problems.append(Problem(cid, page.number, b, f"{cid} is near {'/'.join(ny)}-{'/'.join(nx)} but {what} is "
-                                "not on that grid intersection"))
+        near = f"{'/'.join(ny)}-{'/'.join(nx)}"
+        # The place it is near, never a joint's place: an item about this column blocks no joint (fix E).
+        problems.append(Problem(cid, page.number, b, f"{cid} is near {near} but {what} is not on that grid "
+                                "intersection", place=near))
     return out, problems
 
 
@@ -734,11 +737,12 @@ def read_plans(pages: list[Page], agreement) -> dict:
                   "alignment": [], "joints": [], "junctions": []}
     n_tc = len(agreement.to_check) + len(agreement.unassigned)
 
-    def flag(member: str | None, page: int, box: Box | None, reason: str, detail: str) -> None:
+    def flag(member: str | None, page: int, box: Box | None, reason: str, detail: str,
+             place: str | None = None) -> None:
         nonlocal n_tc
         n_tc += 1
         agreement.to_check.append(ToCheck(f"tc_{n_tc:04d}", member, "frames_into", page, box, None, None, reason,
-                                          detail))
+                                          detail, place=place))
 
     have = {(a.member, a.value, a.level, a.at) for a in agreement.accepted if a.field == "frames_into"}
     made: list[Accepted] = []
@@ -755,7 +759,7 @@ def read_plans(pages: list[Page], agreement) -> dict:
         info["alignment"].append(r.alignment)
         info["junctions"] += r.junctions
         for p in r.problems:
-            flag(None if p.member == "ALL" else p.member, p.page, p.box, "ambiguous", p.detail)
+            flag(None if p.member == "ALL" else p.member, p.page, p.box, "ambiguous", p.detail, p.place)
         for m in r.meets:
             info["joints"].append({"beam": m.beam, "column": m.column, "at": m.at, "level": m.level,
                                    "beam_page": m.beam_page, "column_page": m.column_page})

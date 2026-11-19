@@ -77,6 +77,7 @@ def test_columns_sit_on_grid_intersections_or_are_flagged(sheets):
     assert {(c.id, c.name()) for c in cols} == {("C2", "A-1"), ("C3", "A-2"), ("C4", "A-3"), ("C5", "B-1"),
                                                 ("C6", "B-2"), ("C8", "C1-1")}
     assert [p.detail for p in problems] == ["C7 is near C1-3 but its outline is not on that grid intersection"]
+    assert [p.place for p in problems] == ["C1-3"]          # fix E: the item is about that place only
 
 
 def test_dashed_edges_make_bands_and_labels_tie_by_direction(sheets):
@@ -128,6 +129,7 @@ def test_read_plans_adds_geometry_fields_and_to_check_items(sheets):
     prov = xb2.provenance()
     assert prov["status"] == "geometry" and prov["refs"][0]["page"] == 2 and prov["refs"][0]["at"] == "B-1"
     assert sorted(t.member for t in agreement.to_check) == ["C7", "XB2", "XB3"]
+    assert {t.member: t.place for t in agreement.to_check} == {"C7": "C1-3", "XB2": None, "XB3": None}
     assert {t.field for t in agreement.to_check} == {"frames_into"}
 
 

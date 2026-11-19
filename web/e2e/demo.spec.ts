@@ -577,4 +577,70 @@ test.describe("Demo 3D Scene W3", () => {
     expect(axe.violations).toEqual([]);
     await context.setOffline(false);
   });
+
+  test("shows >= 50vh canvas with 1 callout and +n more below 768 px while keeping 1440x900 desktop unchanged", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+
+    // Phone 375x812 on /demo/iit
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/demo/iit");
+    const iitWrap = page.getByRole("img", { name: /Joint C1xXB17/i });
+    await expect(iitWrap.locator("canvas")).toBeVisible();
+    await expect
+      .poll(async () => iitWrap.getAttribute("data-joint-bounds"), { timeout: 5000 })
+      .not.toBeNull();
+
+    const iitPhoneCanvas = await iitWrap.locator("canvas").boundingBox();
+    expect(iitPhoneCanvas).not.toBeNull();
+    expect(iitPhoneCanvas!.height).toBeGreaterThanOrEqual(812 * 0.5 - 1);
+    await expect(page.locator("button[data-callout-index]:visible")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "+8 more" })).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+    ).toBe(true);
+
+    // Phone 375x812 on /demo
+    await page.goto("/demo");
+    const demoWrap = page.getByRole("img", { name: /Joint C4xB12:/i });
+    await expect(demoWrap.locator("canvas")).toBeVisible();
+    await expect
+      .poll(async () => demoWrap.getAttribute("data-joint-bounds"), { timeout: 5000 })
+      .not.toBeNull();
+
+    const demoPhoneCanvas = await demoWrap.locator("canvas").boundingBox();
+    expect(demoPhoneCanvas).not.toBeNull();
+    expect(demoPhoneCanvas!.height).toBeGreaterThanOrEqual(812 * 0.5 - 1);
+    await expect(page.locator("button[data-callout-index]:visible")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "+5 more" })).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+    ).toBe(true);
+
+    // Laptop 1440x900 on /demo/iit unchanged (8 callouts + "+1 more", zero page scroll)
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/demo/iit");
+    await expect(iitWrap.locator("canvas")).toBeVisible();
+    await expect
+      .poll(async () => iitWrap.getAttribute("data-joint-bounds"), { timeout: 5000 })
+      .not.toBeNull();
+    await expect(page.locator("button[data-callout-index]:visible")).toHaveCount(8);
+    await expect(page.getByRole("button", { name: "+1 more" })).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1),
+    ).toBe(true);
+
+    // Laptop 1440x900 on /demo unchanged (6 callouts, no overflow button, zero page scroll)
+    await page.goto("/demo");
+    await expect(demoWrap.locator("canvas")).toBeVisible();
+    await expect
+      .poll(async () => demoWrap.getAttribute("data-joint-bounds"), { timeout: 5000 })
+      .not.toBeNull();
+    await expect(page.locator("button[data-callout-index]:visible")).toHaveCount(6);
+    await expect(page.getByRole("button", { name: /^\+\d+ more$/ })).toHaveCount(0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1),
+    ).toBe(true);
+  });
 });

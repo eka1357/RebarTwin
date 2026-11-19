@@ -1,6 +1,8 @@
 import { useReducedMotion } from "motion/react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { selectCalloutFindings } from "../../lib/calloutLayout";
 import { DURATION_MS } from "../../lib/motion";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { useWorkspaceStore } from "../../stores/workspace";
 import type { Bundle, Finding } from "../../types/bundle";
 import { SceneController } from "./SceneController";
@@ -117,23 +119,13 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     return bundle.report.findings;
   }, [activeAttempt, bundle.report.findings, bundle.rules, hasAttemptScene, isWorkingsActive, mode]);
 
-  const { visibleFindings, mirroredFindings, overflowCount } = useMemo(() => {
-    const indexed = activeFindings.map((f, index) => ({ f, index }));
-    const filteredForMode = indexed.filter(({ f }) => labelMode === "all" || f.status === "fail");
-    const localized = filteredForMode
-      .filter(({ f }) => Boolean(f.at))
-      .sort((a, b) => {
-        if (a.f.status !== b.f.status) return a.f.status === "fail" ? -1 : 1;
-        return a.index - b.index;
-      });
-    const visible = labelMode === "hidden" ? [] : localized.slice(0, 8);
-    const overflow = labelMode === "hidden" ? 0 : Math.max(0, localized.length - 8);
-    return {
-      visibleFindings: visible,
-      mirroredFindings: indexed.filter(({ f }) => f.status === "fail" || labelMode === "all"),
-      overflowCount: overflow,
-    };
-  }, [activeFindings, labelMode]);
+  const isTabletOrUp = useMediaQuery("(min-width: 768px)");
+  const maxCallouts = isTabletOrUp ? 8 : 1;
+
+  const { visibleFindings, mirroredFindings, overflowCount } = useMemo(
+    () => selectCalloutFindings(activeFindings, labelMode, maxCallouts),
+    [activeFindings, labelMode, maxCallouts],
+  );
 
   const highlightedBarIds = useMemo(() => {
     const ids = new Set<string>();
@@ -256,7 +248,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     if (!ctrl) return;
     ctrl.setCalloutIndicators(activeFindings, labelMode, selectedFindingIndex);
     ctrl.renderImmediate();
-  }, [activeFindings, labelMode, selectedFindingIndex]);
+  }, [activeFindings, labelMode, selectedFindingIndex, maxCallouts]);
 
   useEffect(() => {
     controllerRef.current?.setSelection(highlightedBarIds, hoveredBarId);
@@ -367,7 +359,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        className="relative flex-1 min-h-0 overflow-hidden focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]"
+        className="relative flex-1 min-h-[50vh] md:min-h-0 overflow-hidden focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]"
       >
         <div
           ref={canvasWrapRef}
@@ -376,7 +368,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
           data-scene-mode={isWorkingsActive ? "workings" : mode}
           data-replay-attempt={isWorkingsActive ? String(replayIndex + 1) : undefined}
           data-scene-bar-ids={activeScene.bars.map((b) => b.id).join(",")}
-          className="h-full w-full"
+          className="h-full min-h-[50vh] md:min-h-0 w-full"
         />
 
         {isWorkingsActive && activeAttempt && (

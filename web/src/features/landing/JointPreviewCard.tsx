@@ -39,7 +39,7 @@ export function JointPreviewCard() {
   return (
     <section
       aria-label="Live joint geometry proof preview"
-      className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 sm:p-5 space-y-4"
+      className="min-w-0 rounded-[var(--radius-lg)] border border-border bg-surface p-4 sm:p-5 space-y-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -190,19 +190,19 @@ export function JointPreviewCard() {
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5 text-xs">
           {isBefore ? (
             <>
-              <Badge variant="fail" className="font-num">
+              <Badge variant="fail" className="font-num whitespace-normal">
                 7 mm overlap · Geometry (8×)
               </Badge>
-              <Badge variant="fail" className="font-num">
+              <Badge variant="fail" className="font-num whitespace-normal">
                 24.7 mm · needs 25 · IS 456 cl. 26.3.2
               </Badge>
             </>
           ) : (
             <>
-              <Badge variant="pass" className="font-num">
+              <Badge variant="pass" className="font-num whitespace-normal">
                 C1 face bars at y = -40, 40 mm
               </Badge>
-              <Badge variant="advisory" className="font-num">
+              <Badge variant="advisory" className="font-num whitespace-normal">
                 Recheck · d: 410 → 395 mm
               </Badge>
             </>

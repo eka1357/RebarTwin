@@ -29,6 +29,7 @@ test.describe("App shell W2", () => {
     page,
   }) => {
     await page.goto("/");
+    await expect(page.getByRole("heading", { name: /Gemini reads and proposes/i })).toBeVisible();
     // Skip link appears on first Tab
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: /Skip to content/i })).toBeFocused();
@@ -100,5 +101,44 @@ test.describe("App shell W2", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     const lightAxe = await new AxeBuilder({ page }).analyze();
     expect(lightAxe.violations).toEqual([]);
+  });
+
+  test("renders 404 NotFoundRoute, resets After state across joints, and searches Zone III findings in CommandPalette", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    // 1. Unknown route renders calm 404 page with zero axe violations
+    await page.goto("/projects/does-not-exist/bad");
+    await expect(page.getByRole("heading", { name: /Page not found/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Open IIT 3D joint/i })).toHaveAttribute(
+      "href",
+      "/demo/iit",
+    );
+    const axe404 = await new AxeBuilder({ page }).analyze();
+    expect(axe404.violations).toEqual([]);
+
+    // 2. Preview After on /demo -> navigate via CommandPalette to /demo/iit -> resets to Before cleanly
+    await page.goto("/demo");
+    await page.getByRole("tab", { name: "Fix" }).click();
+    await page.getByRole("button", { name: /Preview After/i }).first().click();
+    await expect(page).toHaveURL(/\/demo\?.*o=0/);
+
+    await page.keyboard.press("Control+k");
+    const cmdInput = page.getByPlaceholder(/Jump to route/i);
+    await cmdInput.fill("IIT Real Joint");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/demo\/iit$/);
+    const iitWrap = page.getByRole("img", { name: /Joint C1xXB17/i });
+    await expect(iitWrap).toHaveAttribute("data-scene-mode", "before");
+
+    // 3. Zone III via ?zone=3 loads Zone III bundle and indexes IS 13920 cl. 7.1.1 in CommandPalette
+    await page.goto("/demo?zone=3");
+    await expect(page.getByText(/7 Fails/i).first()).toBeVisible();
+    await page.keyboard.press("Control+k");
+    await page.getByPlaceholder(/Jump to route/i).fill("7.1.1");
+    await expect(page.getByText(/IS 13920 cl\. 7\.1\.1/i).first()).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/demo\?.*zone=3.*f=/);
   });
 });

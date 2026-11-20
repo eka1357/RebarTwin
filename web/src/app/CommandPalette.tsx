@@ -36,7 +36,7 @@ export function CommandPalette() {
   const triggerFrame = useWorkspaceStore((s) => s.triggerFrame);
 
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const queryClient = useQueryClient();
 
   const isIitRoute =
@@ -63,6 +63,12 @@ export function CommandPalette() {
     }
   }
 
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
+  const demoZone3 =
+    pathname === "/demo" &&
+    (searchParams.get("zone") === "3" || searchParams.get("variant") === "zone3");
+  const queryJointId = searchParams.get("joint");
+
   // Look up active project and active bundle from TanStack Query cache when palette opens
   const activeProjectData = useMemo(() => {
     if (!open) return null;
@@ -71,6 +77,9 @@ export function CommandPalette() {
     }
     return queryClient.getQueryData<ProjectDetail>(["project", activeProject]) ?? null;
   }, [activeProject, open, queryClient]);
+
+  const firstReadyJointId = activeProjectData?.joints.find((j) => j.bundle_ready)?.id ?? null;
+  const effectiveJointId = activeJointId ?? queryJointId ?? firstReadyJointId;
 
   const activeBundle = useMemo<Bundle | null>(() => {
     if (!open) return null;
@@ -83,16 +92,27 @@ export function CommandPalette() {
     }
     if (pathname === "/demo") {
       return (
-        queryClient.getQueryData<Bundle>(["demo-bundle", "zone2"]) ??
-        queryClient.getQueryData<Bundle>(["demo-bundle", "zone3"]) ??
-        null
+        queryClient.getQueryData<Bundle>(["demo-bundle", demoZone3 ? "zone3" : "zone2"]) ?? null
       );
     }
-    if (activeJointId) {
-      return queryClient.getQueryData<Bundle>(["joint-bundle", activeProject, activeJointId]) ?? null;
+    if (effectiveJointId) {
+      return queryClient.getQueryData<Bundle>(["joint-bundle", activeProject, effectiveJointId]) ?? null;
     }
     return null;
-  }, [activeJointId, activeProject, open, pathname, queryClient]);
+  }, [activeProject, demoZone3, effectiveJointId, open, pathname, queryClient]);
+
+  const isWorkspaceRoute =
+    pathname === "/demo" || pathname === "/demo/iit" || pathname.includes("/joints/");
+  const activeJointUrl =
+    pathname === "/demo"
+      ? demoZone3
+        ? "/demo?zone=3"
+        : "/demo"
+      : activeProject === "iit-demo"
+        ? "/demo/iit"
+        : effectiveJointId
+          ? jointPath(activeProject, effectiveJointId)
+          : null;
 
   const routeItems = useMemo(() => {
     const firstReady = activeProjectData?.joints.find((j) => j.bundle_ready)?.id;
@@ -101,15 +121,18 @@ export function CommandPalette() {
         ? "/demo/iit"
         : activeProject === "c4-b12"
           ? jointPath("c4-b12", "C4xB12")
-          : activeJointId
-            ? jointPath(activeProject, activeJointId)
+          : effectiveJointId
+            ? jointPath(activeProject, effectiveJointId)
             : firstReady
               ? jointPath(activeProject, firstReady)
               : projectPath(activeProject);
     const reportTarget =
       activeProject === "iit-demo"
         ? "/demo/iit/report"
-        : projectReportPath(activeProject, { joint: activeJointId ?? firstReady });
+        : projectReportPath(activeProject, {
+            joint: effectiveJointId ?? firstReady ?? undefined,
+            variant: activeProject === "c4-b12" && demoZone3 ? "zone3" : undefined,
+          });
 
     return [
       { label: "Landing", path: "/" },
@@ -118,13 +141,13 @@ export function CommandPalette() {
       { label: `Project Overview (${activeProject})`, path: projectPath(activeProject) },
       { label: "Upload Drawings", path: projectUploadPath(activeProject) },
       { label: `To Check Queue (${activeProject})`, path: projectReviewPath(activeProject) },
-      { label: `Joint Workspace (${activeJointId ?? firstReady ?? "C4xB12"})`, path: jointTarget },
+      { label: `Joint Workspace (${effectiveJointId ?? "C4xB12"})`, path: jointTarget },
       { label: "Printable Report", path: reportTarget },
       ...(import.meta.env.DEV
         ? [{ label: "Design System Styleguide", path: "/styleguide" }]
         : []),
     ];
-  }, [activeJointId, activeProject, activeProjectData]);
+  }, [activeProject, activeProjectData, demoZone3, effectiveJointId]);
 
   const failingFindings = useMemo(() => {
     if (!activeBundle) return [];
@@ -198,11 +221,16 @@ export function CommandPalette() {
                 key={`finding-${index}`}
                 value={`${formatClause(f.clause)} ${f.bars.join(" ")} ${formatCalloutValue(f)} ${f.message}`}
                 onSelect={() => {
-                  selectFinding(index);
-                  selectBar(f.bars[0] ?? null);
-                  setInspectorTab("findings");
-                  triggerFrame();
-                  setOpen(false);
+                  if (isWorkspaceRoute) {
+                    selectFinding(index);
+                    selectBar(f.bars[0] ?? null);
+                    setInspectorTab("findings");
+                    triggerFrame();
+                    setOpen(false);
+                  } else if (activeJointUrl) {
+                    const sep = activeJointUrl.includes("?") ? "&" : "?";
+                    go(`${activeJointUrl}${sep}f=${index}`);
+                  }
                 }}
               >
                 <span>
@@ -221,10 +249,15 @@ export function CommandPalette() {
                 key={`opt-${idx}`}
                 value={`Option ${idx + 1} ${opt.candidate.title} ${opt.column ?? ""}`}
                 onSelect={() => {
-                  setOptionIndex(idx);
-                  setMode("after");
-                  setInspectorTab("fix");
-                  setOpen(false);
+                  if (isWorkspaceRoute) {
+                    setOptionIndex(idx);
+                    setMode("after");
+                    setInspectorTab("fix");
+                    setOpen(false);
+                  } else if (activeJointUrl) {
+                    const sep = activeJointUrl.includes("?") ? "&" : "?";
+                    go(`${activeJointUrl}${sep}o=${idx}`);
+                  }
                 }}
               >
                 <span>

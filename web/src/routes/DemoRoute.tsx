@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Compass } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { StatusPill } from "../components/StatusPill";
@@ -21,11 +21,10 @@ const LazyViewport = lazy(() => import("../features/workspace/Viewport"));
 
 export function DemoRoute() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialVariant: DemoVariant =
+  const variant: DemoVariant =
     searchParams.get("zone") === "3" || searchParams.get("variant") === "zone3"
       ? "zone3"
       : "zone2";
-  const [variant, setVariantState] = useState<DemoVariant>(initialVariant);
   const [tourOpen, setTourOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -33,21 +32,28 @@ export function DemoRoute() {
 
   const setStatus = useWorkspaceStore((s) => s.setStatus);
   const chosenOptionByKey = useWorkspaceStore((s) => s.chosenOptionByKey);
-  const setMode = useWorkspaceStore((s) => s.setMode);
-  const setReplay = useWorkspaceStore((s) => s.setReplay);
-  const clearSelection = useWorkspaceStore((s) => s.clearSelection);
 
-  const setVariant = (nextVariant: DemoVariant) => {
-    setVariantState(nextVariant);
-    const next = new URLSearchParams(searchParams);
-    next.delete("variant");
-    if (nextVariant === "zone3") {
-      next.set("zone", "3");
-    } else {
-      next.delete("zone");
-    }
-    setSearchParams(next, { replace: true });
-  };
+  const setVariant = useCallback(
+    (nextVariant: DemoVariant) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("variant");
+          next.delete("f");
+          next.delete("o");
+          next.delete("a");
+          if (nextVariant === "zone3") {
+            next.set("zone", "3");
+          } else {
+            next.delete("zone");
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const {
     data: bundle,
@@ -111,9 +117,6 @@ export function DemoRoute() {
             value={variant}
             onValueChange={(v) => {
               if (v === "zone2" || v === "zone3") {
-                clearSelection();
-                setMode("before");
-                setReplay({ replayPlaying: false, replayIndex: 0 });
                 setVariant(v);
               }
             }}

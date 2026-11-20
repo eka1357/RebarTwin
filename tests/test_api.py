@@ -547,3 +547,25 @@ def test_single_service_serves_spa_and_static_assets(tmp_path: Path, monkeypatch
     missing_asset = client.get("/assets/missing.js")
     assert missing_asset.status_code == 404
     assert missing_asset.headers["content-type"].startswith("application/problem+json")
+
+
+def test_upload_rejects_oversized_pdf_with_413(tmp_path: Path, monkeypatch):
+    import rebartwin.api as api_mod
+
+    monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path / "projects"))
+    monkeypatch.delenv("DEMO_ONLY", raising=False)
+    monkeypatch.setattr(api_mod, "_MAX_UPLOAD_BYTES", 64)
+
+    client = TestClient(create_app())
+    p_resp = client.post("/projects", json={"id": "size-proj", "name": "Size Proj"})
+    assert p_resp.status_code == 201
+
+    oversized = b"%PDF-1.4\n" + b"0" * 128
+    res = client.post(
+        "/projects/size-proj/drawings",
+        files={"file": ("huge.pdf", oversized, "application/pdf")},
+    )
+    assert res.status_code == 413
+    assert res.headers["content-type"].startswith("application/problem+json")
+    assert res.json()["title"] == "File too large"
+    assert not (tmp_path / "projects" / "size-proj" / "huge.pdf").exists()

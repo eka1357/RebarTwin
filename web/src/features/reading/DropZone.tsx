@@ -11,6 +11,32 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 
+const MAX_PDF_BYTES = 100 * 1024 * 1024;
+
+function validatePagesSpec(spec: string): string | null {
+  const trimmed = spec.trim();
+  if (!trimmed) return null;
+  let partCount = 0;
+  for (const rawPart of trimmed.split(",")) {
+    const part = rawPart.trim();
+    if (!part) continue;
+    partCount += 1;
+    const single = /^(\d+)$/.exec(part);
+    if (single) {
+      if (Number.parseInt(single[1], 10) >= 1) continue;
+      return "Enter page numbers or ranges, for example 7,10-12.";
+    }
+    const range = /^(\d+)\s*-\s*(\d+)$/.exec(part);
+    if (range) {
+      const start = Number.parseInt(range[1], 10);
+      const end = Number.parseInt(range[2], 10);
+      if (start >= 1 && start <= end) continue;
+    }
+    return "Enter page numbers or ranges, for example 7,10-12.";
+  }
+  return partCount > 0 ? null : "Enter page numbers or ranges, for example 7,10-12.";
+}
+
 interface DropZoneProps {
   disabled?: boolean;
   pagesSpec: string;
@@ -36,6 +62,7 @@ export function DropZone({
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
   const [pasting, setPasting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -44,8 +71,26 @@ export function DropZone({
   const pasteAreaId = useId();
   const pasteErrId = useId();
 
+  const pagesError = validatePagesSpec(pagesSpec);
+  const displayedError = pagesError ?? clientError ?? errorText;
+  const uploadDisabled = disabled || Boolean(pagesError);
+
   const pickFile = (file: File | undefined | null) => {
     if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setClientError("Only PDF drawing sets (.pdf) are accepted.");
+      return;
+    }
+    if (file.size > MAX_PDF_BYTES) {
+      setClientError("Drawing PDF exceeds the 100 MB upload limit.");
+      return;
+    }
+    const specErr = validatePagesSpec(pagesSpec);
+    if (specErr) {
+      setClientError(specErr);
+      return;
+    }
+    setClientError(null);
     onSelectPdf(file);
   };
 
@@ -73,20 +118,19 @@ export function DropZone({
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
       <div
-        className={`rounded-[var(--radius-lg)] border-2 border-dashed p-6 sm:p-8 text-center transition-colors duration-[var(--dur-1)] ${
-          dragging
-            ? "border-ring bg-surface-raised"
-            : "border-control-border bg-surface hover:border-border-strong"
-        }`}
+        className={`rounded-[var(--radius-lg)] border-2 border-dashed p-6 sm:p-8 text-center transition-colors duration-[var(--dur-1)] ${dragging
+          ? "border-ring bg-surface-raised"
+          : "border-control-border bg-surface hover:border-border-strong"
+          }`}
         onDragOver={(e) => {
           e.preventDefault();
-          if (!disabled) setDragging(true);
+          if (!uploadDisabled) setDragging(true);
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          if (disabled) return;
+          if (uploadDisabled) return;
           pickFile(e.dataTransfer.files[0]);
         }}
       >
@@ -96,7 +140,7 @@ export function DropZone({
           accept=".pdf,application/pdf"
           className="sr-only"
           aria-label="Choose structural PDF file"
-          disabled={disabled}
+          disabled={uploadDisabled}
           onChange={(e) => {
             pickFile(e.target.files?.[0]);
             e.target.value = "";
@@ -127,17 +171,21 @@ export function DropZone({
               id={pagesInputId}
               type="text"
               value={pagesSpec}
-              onChange={(e) => onPagesSpecChange(e.target.value)}
+              onChange={(e) => {
+                setClientError(null);
+                onPagesSpecChange(e.target.value);
+              }}
               placeholder="All sheets, or e.g. 7,10-12"
               disabled={disabled}
-              aria-describedby={errorText ? errorId : undefined}
+              aria-invalid={Boolean(pagesError)}
+              aria-describedby={displayedError ? errorId : undefined}
               className="mt-1 h-9 w-56 rounded-[var(--radius-sm)] border border-control-border bg-surface-sunken px-2.5 font-num text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
           <Button
             type="button"
-            disabled={disabled}
+            disabled={uploadDisabled}
             onClick={() => fileInputRef.current?.click()}
             className="h-9"
           >
@@ -146,9 +194,9 @@ export function DropZone({
           </Button>
         </div>
 
-        {errorText && (
+        {displayedError && (
           <p id={errorId} role="alert" className="mt-3 text-xs font-medium text-fail">
-            {errorText}
+            {displayedError}
           </p>
         )}
       </div>
@@ -169,7 +217,7 @@ export function DropZone({
           type="button"
           variant="outline"
           size="sm"
-          disabled={disabled}
+          disabled={uploadDisabled}
           onClick={() => fileInputRef.current?.click()}
         >
           <span>Select PDF from computer</span>

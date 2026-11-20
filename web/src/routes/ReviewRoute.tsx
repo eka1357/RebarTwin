@@ -33,7 +33,7 @@ export function ReviewRoute() {
   const [announcement, setAnnouncement] = useState("");
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
 
-  const isOfflineDemo = id === "c4-b12";
+  const isOfflineDemo = id === "c4-b12" || id === "iit-demo";
   const {
     data: rawItems,
     isLoading,
@@ -187,13 +187,18 @@ export function ReviewRoute() {
           </div>
           <StatusPill status="pass" count={0} />
         </div>
-        <div className="surface-paper rounded-[var(--radius-lg)] border p-6">
-          <p className="text-sm">
+        <div data-theme="light" className="surface-paper rounded-[var(--radius-lg)] border p-6">
+          <p className="text-sm text-foreground">
             Project <span className="font-num">{id}</span> has no unresolved items right now.
           </p>
-          <Button variant="paper" size="sm" className="mt-4" asChild>
-            <Link to={projectPath(id)}>Back to project</Link>
-          </Button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="default" size="sm" asChild>
+              <Link to={id === "iit-demo" ? "/demo/iit" : "/demo"}>Open 3D joint</Link>
+            </Button>
+            <Button variant="paper" size="sm" asChild>
+              <Link to={projectPath(id)}>Back to project</Link>
+            </Button>
+          </div>
         </div>
       </main>
     );

@@ -5,14 +5,16 @@ import { ShortcutDialog } from "./ShortcutDialog";
 import { TopBar } from "./TopBar";
 
 const TITLES: Array<[RegExp, string]> = [
-  [/^\/$/, "RebarTwin — 3D Beam-Column Joint Checker"],
-  [/^\/demo/, "Worked Example Demo — RebarTwin"],
-  [/\/upload$/, "Upload Drawings — RebarTwin"],
-  [/\/review$/, "To Check Queue — RebarTwin"],
-  [/\/joints\//, "Joint Workspace — RebarTwin"],
+  [/^\/$/, "RebarTwin · 3D Beam-Column Joint Checker"],
+  [/^\/demo\/iit\/report/, "Pre-pour check · C1 × XB17 · RebarTwin"],
+  [/^\/demo\/iit/, "IIT Real Joint · RebarTwin"],
+  [/^\/demo/, "Worked Example Demo · RebarTwin"],
+  [/\/upload$/, "Upload Drawings · RebarTwin"],
+  [/\/review$/, "To Check Queue · RebarTwin"],
+  [/\/joints\//, "Joint Workspace · RebarTwin"],
   [/\/report$/, "Pre-pour check · RebarTwin"],
-  [/^\/projects\//, "Project Overview — RebarTwin"],
-  [/^\/styleguide/, "Styleguide — RebarTwin"],
+  [/^\/projects\//, "Project Overview · RebarTwin"],
+  [/^\/styleguide/, "Styleguide · RebarTwin"],
 ];
 
 export function AppShell() {

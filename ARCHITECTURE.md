@@ -145,8 +145,8 @@ from one field uses the per-layer key `beams[i].top[0].bars`, otherwise the face
 [{ "id": "tc_0007", "joint": "C4xB12" | null, "member": "B12" | null, "field": "top" | "beams[0].top",
    "layer": 1, "level": "FOUNDATION TO FIRST FLOOR" | null, "page": 3, "box_2d": [...] | null,
    "gemini": {"value": "5-20"} | null,
-   "parser": {"value": "5-16"} | null, "reason": "disagree|missing|ambiguous", "detail": "a sentence for a person",
-   "place": "N1-4" | null,
+   "parser": {"value": "5-16"} | null, "reason": "disagree|missing|ambiguous|unsupported", "detail": "a sentence for a person",
+   "place": "N1-4" | null, "building": "SERVANT QUARTER" | null,
    "resolution": null | {"value": "5-20", "by": "person", "at": "2026-11-19T10:02:00Z"} }]
 ```
 
@@ -203,10 +203,10 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
 3. **Parser channel** (`parser.py`). Member ids include XB and YB beams (XB12 runs along X, YB3 along Y: code checks
    the linking model's direction against the prefix, a mismatch is To check, and the note says so). A grammar over
    the text for Indian notation ("5-20", "2-25+1-20", "2#25",
-   "8-T16", "3 nos 16φ", "230x450", "8φ @ 150 c/c", "2L-8 @ 100", "clear cover 25 mm", "C.C. 40", "M25",
+   "8-T16", "3 nos 16φ", "230x450", "200x600-inv", "8φ @ 150 c/c", "2L-8 @ 100", "clear cover 25 mm", "C.C. 40", "M25",
    "Fe500", "zone III", member ids), on visual lines (CAD often splits one callout into several text objects),
-   mapped to word boxes. Canonical values: bars "2-25 + 1-20", sections "230x450" (b x D), links "2L-8@100". No
-   model.
+   mapped to word boxes. Canonical values: bars "2-25 + 1-20", sections "230x450" (b x D) or "200x600-inv" (inverted
+   beam flag preserved so "-inv" never matches a plain size), links "2L-8@100". No model.
 4. **Agreement** (`agree.py`). Accept a callout only when both channels give the same canonical value at the same
    place (IoU at least 0.3, or one centre inside the other), the member is the label for that value in reading
    order (nearest same-kind id to its left in the row, else above in the column), a top or bottom label does not
@@ -276,7 +276,17 @@ junctions[{beam, page, kind: "beam on beam"|"off grid", at?, detail}]}`; junctio
    drawing does not show is `ambiguous` on `beams[i].bottom`. Every Joint and draft carries `place` and `floor`
    fields, so nothing downstream parses the id. A column main of two sizes whose first group is 4 bars is corner
    and face bars (`face_dia`), noted with how the face bars are spread; any other mix is To check. The linking
-   model's "unresolved" counts only on paths code has neither proved nor defaulted with a note. Prompt `link_v5`. A joint's floor is the floor of the plans its beams were read on; its column values must be
+   model's "unresolved" counts only on paths code has neither proved nor defaulted with a note. Inverted beams
+   (`200x600-inv`, `inverted: true`) are marked `reason: "unsupported"` ("not checked: inverted beam (not modelled yet)"),
+   which cannot be cleared in To check (`POST .../resolve` returns `409`). Equal copies: when the reply cites at least one
+   accepted copy of a value, code adds every other accepted copy with the same member, field, building, compatible
+   level/span and normalised value; differing copies still raise To check. Any optional value written by the linker with
+   no cited accepted field (such as seismic zone, exposure, aggregate, `stock_dias`, `max_layers`, `apply_is13920`, or
+   `spacer`) is dropped back to its schema default and noted on the joint ("the linker wrote ... with no source;
+   ignored"). Two-support elevations also verify drawn length against
+   the plan span times `sheet_scale` when the sheet has an established scale. Members on sheets whose drawing titles
+   name a separate building (e.g. `SERVANT QUARTER` on sheet 9) carry `building` and match only within their building.
+   Prompt `link_v5`. A joint's floor is the floor of the plans its beams were read on; its column values must be
    from the storey that ends there and its beam values from that floor, and that choice is a note. Without a floor,
    a column with values for several storeys goes to To check. Prompt `link_v3` (adds `at`: one joint per place, top
    extras by support).

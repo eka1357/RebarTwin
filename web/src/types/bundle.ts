@@ -222,6 +222,8 @@ export interface ProvenanceEntry {
   parser?: string | null;
   status?: string;
   ocr_raw?: string | null;
+  inverted?: boolean;
+  building?: string | null;
 }
 
 export interface Bundle {

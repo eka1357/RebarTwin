@@ -547,3 +547,41 @@ def test_single_service_serves_spa_and_static_assets(tmp_path: Path, monkeypatch
     missing_asset = client.get("/assets/missing.js")
     assert missing_asset.status_code == 404
     assert missing_asset.headers["content-type"].startswith("application/problem+json")
+
+
+def test_unsupported_to_check_item_cannot_be_cleared_via_api(tmp_path: Path, monkeypatch):
+    """Item 1: an 'unsupported' item (inverted beam) returns 409 and cannot be cleared via /resolve."""
+    monkeypatch.setenv("REBARTWIN_PROJECTS_DIR", str(tmp_path / "projects"))
+    monkeypatch.delenv("DEMO_ONLY", raising=False)
+    proj_dir = tmp_path / "projects" / "inv-proj"
+    proj_dir.mkdir(parents=True)
+    (proj_dir / "project.json").write_text(
+        json.dumps({"id": "inv-proj", "name": "Inv Proj", "status": "done"}),
+        encoding="utf-8",
+    )
+    tc_payload = [
+        {
+            "id": "tc_inv_1",
+            "member": "YB16",
+            "field": "beams[0].section",
+            "page": 18,
+            "box_2d": [100, 100, 120, 200],
+            "gemini": None,
+            "parser": {"value": "200x600-inv"},
+            "reason": "unsupported",
+            "detail": "not checked: inverted beam (not modelled yet) (YB16 200x600-inv)",
+            "layer": 1,
+            "joint": "C1xYB16@FIRST@A-1",
+            "resolution": None,
+            "level": "FIRST",
+            "building": None,
+        }
+    ]
+    (proj_dir / "to_check.json").write_text(json.dumps(tc_payload), encoding="utf-8")
+
+    client = TestClient(create_app())
+    r = client.post("/projects/inv-proj/to-check/tc_inv_1/resolve", json={"value": "200x600"})
+    assert r.status_code == 409
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json()["title"] == "Cannot clear unsupported item"
+    assert json.loads((proj_dir / "to_check.json").read_text(encoding="utf-8"))[0]["resolution"] is None

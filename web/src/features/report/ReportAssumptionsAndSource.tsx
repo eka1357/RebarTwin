@@ -151,7 +151,10 @@ export function ReportAssumptionsAndSource({ bundle, entries }: ReportAssumption
                   <tr key={entry.id} className="border-b border-border last:border-b-0 bg-surface-raised">
                     <td className="px-3 py-2 font-num text-foreground">
                       <div>
-                        {entry.member ?? entry.path} · {entry.field}
+                        {entry.member
+                          ? `${entry.member}${entry.building ? ` (${entry.building})` : ""}`
+                          : entry.path}{" "}
+                        · {entry.field}
                         {entry.layer !== null ? ` · Layer ${entry.layer}` : ""}
                       </div>
                       {entry.isColumn && entry.level && (

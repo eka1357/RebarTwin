@@ -176,6 +176,8 @@ export interface ToCheckItem {
   parser: { value: string } | null;
   reason: string;
   detail: string;
+  building?: string | null;
+  place?: string | null;
   resolution: { value: string; by: string; at: string; via?: string } | null;
   project_level?: boolean;
   blocks_joint?: boolean;

@@ -156,16 +156,16 @@ export function ReviewRoute() {
       } else if (e.key === "k" || e.key === "K" || e.key === "ArrowUp") {
         e.preventDefault();
         moveFocus(-1);
-      } else if ((e.key === "e" || e.key === "E") && !mutation.isPending) {
+      } else if ((e.key === "e" || e.key === "E") && !mutation.isPending && activeItem.reason !== "unsupported") {
         e.preventDefault();
         setEditingId((prev) => (prev === activeItem.id ? null : activeItem.id));
       } else if ((e.key === "s" || e.key === "S") && !mutation.isPending) {
         e.preventDefault();
         skipActive();
-      } else if (e.key === "1" && activeItem.gemini?.value && !mutation.isPending) {
+      } else if (e.key === "1" && activeItem.gemini?.value && !mutation.isPending && activeItem.reason !== "unsupported") {
         e.preventDefault();
         mutation.mutate({ itemId: activeItem.id, value: activeItem.gemini.value });
-      } else if (e.key === "2" && activeItem.parser?.value && !mutation.isPending) {
+      } else if (e.key === "2" && activeItem.parser?.value && !mutation.isPending && activeItem.reason !== "unsupported") {
         e.preventDefault();
         mutation.mutate({ itemId: activeItem.id, value: activeItem.parser.value });
       }

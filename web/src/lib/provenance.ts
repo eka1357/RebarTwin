@@ -8,6 +8,8 @@ export interface NormalizedProvenanceEntry {
   field: string;
   layer: number | string | null;
   level: string | null;
+  building: string | null;
+  inverted: boolean;
   page: number | null;
   box_2d: [number, number, number, number] | null;
   text: string | null;
@@ -49,6 +51,8 @@ export function normalizeProvenanceEntries(
       field: fieldLabel,
       layer: e.layer ?? null,
       level: e.level ?? null,
+      building: e.building ?? null,
+      inverted: Boolean(e.inverted),
       page: e.page ?? null,
       box_2d: e.box_2d ?? null,
       text: e.text ?? null,

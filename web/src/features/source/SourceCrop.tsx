@@ -105,7 +105,9 @@ export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) 
         <div className="flex flex-wrap gap-1" role="group" aria-label="Provenance values">
           {drawnEntries.map((item) => {
             const isCurrent = active?.id === item.id;
-            const head = item.member ?? item.path;
+            const head = item.member
+              ? `${item.member}${item.building ? ` (${item.building})` : ""}`
+              : item.path;
             const label =
               head === item.field || head.endsWith(`.${item.field}`)
                 ? head
@@ -142,9 +144,17 @@ export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) 
             <div className="space-y-0.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <p className="font-num text-xs font-semibold text-foreground">
-                  {active.member ?? active.path} · {active.field}
+                  {active.member
+                    ? `${active.member}${active.building ? ` (${active.building})` : ""}`
+                    : active.path}{" "}
+                  · {active.field}
                   {active.layer !== null ? ` · Layer ${active.layer}` : ""}
                 </p>
+                {active.building && (
+                  <Badge variant="muted" className="font-num">
+                    {active.building}
+                  </Badge>
+                )}
                 {active.isColumn && active.level && (
                   <Badge variant="muted" className="font-num">
                     Storey: {active.level}
@@ -308,7 +318,10 @@ export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) 
           <DialogContent className="w-[min(94vw,56rem)]">
             <DialogHeader>
               <DialogTitle>
-                {active.member ?? active.path} · {active.field}
+                {active.member
+                  ? `${active.member}${active.building ? ` (${active.building})` : ""}`
+                  : active.path}{" "}
+                · {active.field}
               </DialogTitle>
               <DialogDescription>
                 Page {active.page} full sheet

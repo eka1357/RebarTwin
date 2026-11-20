@@ -458,3 +458,152 @@ def test_beam_values_count_only_on_the_spans_meeting_the_joint(agreement):
     changed = blocking(run(Agreement(acc + [other], list(agreement.to_check), []), LINK), jid)
     assert [(t.field, t.reason) for t in changed] == [("beams[0].section", "ambiguous")]
     assert "B12 section is 230x450 and 230x600 at C4 B-2 (spans 1/2, 2/3): the beam changes" in changed[0].detail
+
+
+def test_inverted_beam_is_unsupported_and_never_checked(agreement):
+    """Item 1: a joint with an inverted beam ('200x600-inv', e.g. YB16 on sheet 18 or XB8's inverted spans on sheet 15)
+    gets reason='unsupported' ('not checked: inverted beam (not modelled yet)'), even when a plain span meets the same
+    column, and also on draft joints. A joint meeting only a plain span of the same beam still checks cleanly."""
+    sec = next(a for a in agreement.accepted if a.id == "f0010")
+    inv_acc = [replace(a, value="230x450-inv", inverted=True) if a is sec else a for a in agreement.accepted]
+    res_inv = run(Agreement(inv_acc, list(agreement.to_check), []), LINK)
+    items = blocking(res_inv)
+    assert [(t.field, t.reason) for t in items] == [("beams[0].section", "unsupported")]
+    assert "not checked: inverted beam (not modelled yet)" in items[0].detail
+
+    # XB8-like beam: plain 230x450 on span 1/2, inverted 230x600-inv on span 2/3.
+    # At B-2 (touching both 1/2 and 2/3) -> unsupported! At B-1 (touching only 1/2) -> passes!
+    plain_span = replace(sec, value="230x450", at="1/2", inverted=False)
+    inv_span = replace(sec, id="f0299", value="230x600-inv", at="2/3", inverted=True)
+    b2_acc = [plain_span if a is sec else a for a in placed(agreement, {"f0008": "B-2", "f0013": "B-2"}).accepted] + [inv_span]
+    res_b2 = run(Agreement(b2_acc, list(agreement.to_check), []), LINK)
+    assert any(t.field == "beams[0].section" and t.reason == "unsupported" for t in blocking(res_b2, "C4xB12xB13@B-2"))
+
+    b1_acc = [plain_span if a is sec else a for a in placed(agreement, {"f0008": "B-1", "f0013": "B-1"}).accepted] + [inv_span]
+    res_b1 = run(Agreement(b1_acc, list(agreement.to_check), []), LINK)
+    assert blocking(res_b1, "C4xB12xB13@B-1") == []
+
+    # Draft joint with inverted beam also records the unsupported item
+    def zero_col(item):
+        item["joint"]["column"]["bar_dia"] = 0
+    res_draft = run(Agreement(inv_acc, list(agreement.to_check), []), body_with(zero_col))
+    assert len(res_draft.drafts) == 1
+    assert any(t.reason == "unsupported" and "inverted beam" in t.detail for t in res_draft.to_check)
+
+
+def test_equal_copies_are_auto_included_and_differing_copies_still_block(agreement):
+    """Item 2: when the linking reply cites one copy of a value, code adds every other accepted copy with the same
+    member, field, building, compatible level/span and normalised value (the three 19 Nov blockers: column.section on
+    pages 7 & 21, column.cover on pages 15 & 18, beams[0].cover on pages 15 & 16). A copy with a different value is
+    never auto-added and still raises To check."""
+    col_sec = next(a for a in agreement.accepted if (a.member, a.field) == ("C4", "section"))
+    col_cov = next(a for a in agreement.accepted if (a.member, a.field) == ("ALL_COLUMNS", "cover"))
+    bm_cov = next(a for a in agreement.accepted if (a.member, a.field) == ("ALL_BEAMS", "cover"))
+
+    # Add second copies on other pages (one with level=None, matching 19 Nov sheets 21, 18, 16)
+    col_sec_copy = replace(col_sec, id="f0291", page=21, level=None)
+    col_cov_copy = replace(col_cov, id="f0196", page=18, level=None)
+    bm_cov_copy = replace(bm_cov, id="f0134", page=16, level=None)
+    a_copies = Agreement(agreement.accepted + [col_sec_copy, col_cov_copy, bm_cov_copy], list(agreement.to_check), [])
+
+    # LINK cites only the original ids (not f0291/f0196/f0134); code auto-adds all three equal copies
+    res = run(a_copies, LINK)
+    assert blocking(res) == []
+    [v] = res.joints
+    assert len(v.provenance["column.section"]) == 2
+    assert {p["page"] for p in v.provenance["column.section"]} == {col_sec.page, 21}
+    assert len(v.provenance["column.cover"]) == 2
+    assert len(v.provenance["beams[0].cover"]) == 2
+
+    # A second copy with a DIFFERENT value still blocks with "leaves out"
+    col_sec_diff = replace(col_sec, id="f0292", page=21, level=None, value="300x350")
+    a_diff = Agreement(agreement.accepted + [col_sec_diff], list(agreement.to_check), [])
+    diff_items = blocking(run(a_diff, LINK))
+    assert [(t.field, t.reason) for t in diff_items] == [("column.section", "missing")]
+    assert "leaves out 300x350" in diff_items[0].detail
+
+
+def test_uncited_optional_values_from_linker_are_dropped_and_noted(agreement):
+    """Item 2: if the linker writes seismic_zone='III', exposure='moderate' or aggregate=25 with no cited accepted
+    field, code drops them back to defaults, notes them on the joint, and leaves zone/exposure to the single
+    project-level To check items."""
+    a2 = copy.deepcopy(agreement)
+    a2.accepted = [a for a in a2.accepted if a.field not in ("seismic_zone", "exposure")]
+
+    def hallucinate(item):
+        item["sources"] = [s for s in item["sources"] if s["path"] not in ("settings.seismic_zone", "settings.exposure")]
+        item["joint"]["settings"]["seismic_zone"] = "III"
+        item["joint"]["settings"]["exposure"] = "moderate"
+        item["joint"]["settings"]["aggregate"] = 25
+        item["joint"]["settings"]["stock_dias"] = [8, 10, 12, 16, 20, 25, 32]
+        item["joint"]["settings"]["max_layers"] = 3
+        item["joint"]["settings"]["apply_is13920"] = True
+        item["unresolved"] = [
+            {"path": "settings.seismic_zone", "reason": "not stated"},
+            {"path": "settings.exposure", "reason": "not stated"},
+        ]
+
+    res = run(a2, body_with(hallucinate))
+    [v] = res.joints
+    assert v.joint.settings.seismic_zone == "II"
+    assert v.joint.settings.exposure == "mild"
+    assert v.joint.settings.aggregate == 20.0
+    assert v.joint.settings.stock_dias == [12.0, 16.0, 20.0, 25.0]
+    assert v.joint.settings.max_layers == 2
+    assert v.joint.settings.apply_is13920 is None
+    assert "the linker wrote seismic zone III with no source; ignored" in v.joint.notes
+    assert "the linker wrote exposure moderate with no source; ignored" in v.joint.notes
+    assert "the linker wrote aggregate 25 mm with no source; ignored" in v.joint.notes
+    assert "the linker wrote stock dias [8, 10, 12, 16, 20, 25, 32] with no source; ignored" in v.joint.notes
+    assert "the linker wrote max layers 3 with no source; ignored" in v.joint.notes
+    assert "the linker wrote apply IS 13920 True with no source; ignored" in v.joint.notes
+    # Only the two project-level ALL items block the joint; no spurious joint-level missing/ambiguous settings items
+    assert blocking(res) == []
+    proj_items = [(t.member, t.field, t.reason) for t in res.to_check if t.field in ("seismic_zone", "exposure")]
+    assert sorted(proj_items) == [("ALL", "exposure", "missing"), ("ALL", "seismic_zone", "missing")]
+
+
+def test_separate_building_keeps_servant_quarter_members_apart(agreement):
+    """Item 5: sheet 9's SERVANT QUARTER C1 (200x500, 8-16) and C2 (200x500, 4-16 + 4-12) live in their own building
+    and never share accepted values, To check items or joints with the main house's columns."""
+    from rebartwin.reader.agree import ToCheck
+    from rebartwin.reader.ingest import Page, Word
+    from rebartwin.reader.levels import sheet_building
+
+    p9 = Page(9, 842, 595, words=[
+        Word("SERVANT", (20, 100, 35, 160), 9, (0, 0)),
+        Word("QUARTER", (20, 165, 35, 225), 9, (0, 1)),
+        Word("COLUMN", (20, 230, 35, 280), 9, (0, 2)),
+        Word("SCHEDULE", (20, 285, 35, 350), 9, (0, 3)),
+        Word("C1", (100, 50, 112, 70), 9, (1, 0)),
+        Word("200x500", (100, 120, 112, 180), 9, (1, 1)),
+        Word("8Ø16", (100, 210, 112, 250), 9, (1, 2)),
+        Word("C2", (140, 50, 152, 70), 9, (2, 0)),
+        Word("200x500", (140, 120, 152, 180), 9, (2, 1)),
+        Word("4Ø16+4Ø12", (140, 210, 152, 280), 9, (2, 2)),
+    ])
+    p7 = Page(7, 842, 595, words=[
+        Word("INTEGRATED", (20, 100, 35, 180), 7, (0, 0)),
+        Word("DIRECTOR", (20, 185, 35, 250), 7, (0, 1)),
+        Word("RESIDENCE", (20, 255, 35, 330), 7, (0, 2)),
+        Word("C1", (100, 50, 112, 70), 7, (1, 0)),
+        Word("200x450", (100, 120, 112, 180), 7, (1, 1)),
+    ])
+    assert sheet_building(p9) == "SERVANT QUARTER"
+    assert sheet_building(p7) is None
+
+    # Adding SERVANT QUARTER C4 accepted fields + a SERVANT QUARTER C4 To check item must NOT touch main C4xB12xB13
+    col_sec = next(a for a in agreement.accepted if (a.member, a.field) == ("C4", "section"))
+    col_main = next(a for a in agreement.accepted if (a.member, a.field) == ("C4", "main"))
+    sq_sec = replace(col_sec, id="f0901", page=9, value="200x500", building="SERVANT QUARTER")
+    sq_main = replace(col_main, id="f0902", page=9, value="4-16 + 4-12", building="SERVANT QUARTER")
+    sq_tc = ToCheck("tc_0900", "C4", "links", 9, (100, 100, 120, 140), {"value": "8@150"}, {"value": "8@200"},
+                    "disagree", "Servant quarter tie disagreement", building="SERVANT QUARTER")
+    a_both = Agreement(agreement.accepted + [sq_sec, sq_main], list(agreement.to_check) + [sq_tc], [])
+
+    res = run(a_both, LINK)
+    assert blocking(res) == []
+    [v] = res.joints
+    assert (v.joint.column.b, v.joint.column.h, v.joint.column.n_bars, v.joint.column.bar_dia) == (300, 300, 8, 16)
+    sq_out = next(t for t in res.to_check if t.id == "tc_0900")
+    assert sq_out.joint is None and sq_out.building == "SERVANT QUARTER"

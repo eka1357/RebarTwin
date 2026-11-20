@@ -715,10 +715,12 @@ def roles(pages: list[Page]) -> tuple[list[Page], list[Page]]:
 def support_map(pages: list[Page]) -> dict:
     """Every beam mark's supports along it, from the beam layouts among `pages` and the column layout each fits
     (`plan_supports`); empty when there are none. Agreement uses it to place extra top bars."""
+    from .levels import sheet_building
     beam_pages, column_pages = roles(pages)
     found = []
     for bp in beam_pages:
-        fits = [cp for cp in column_pages if all(align(grid(bp), grid(cp))[:2])]
+        bldg = sheet_building(bp)
+        fits = [cp for cp in column_pages if sheet_building(cp) == bldg and all(align(grid(bp), grid(cp))[:2])]
         if len(fits) == 1:
             found.append(meet(bp, fits[0]))
     return plan_supports(found)
@@ -731,6 +733,7 @@ def read_plans(pages: list[Page], agreement) -> dict:
     none or several, its beams' joints need a person."""
     from .agree import Accepted, ToCheck
     from .ingest import box_2d
+    from .levels import sheet_building
 
     beam_pages, column_pages = roles(pages)
     info: dict = {"beam_layouts": [p.number for p in beam_pages], "column_layouts": [p.number for p in column_pages],
@@ -738,39 +741,41 @@ def read_plans(pages: list[Page], agreement) -> dict:
     n_tc = len(agreement.to_check) + len(agreement.unassigned)
 
     def flag(member: str | None, page: int, box: Box | None, reason: str, detail: str,
-             place: str | None = None) -> None:
+             place: str | None = None, building: str | None = None) -> None:
         nonlocal n_tc
         n_tc += 1
         agreement.to_check.append(ToCheck(f"tc_{n_tc:04d}", member, "frames_into", page, box, None, None, reason,
-                                          detail, place=place))
+                                          detail, place=place, building=building))
 
-    have = {(a.member, a.value, a.level, a.at) for a in agreement.accepted if a.field == "frames_into"}
+    have = {(a.member, a.value, a.level, a.at, a.building) for a in agreement.accepted if a.field == "frames_into"}
     made: list[Accepted] = []
     for bp in beam_pages:
-        fits = [cp for cp in column_pages if all(align(grid(bp), grid(cp))[:2])]
+        bldg = sheet_building(bp)
+        fits = [cp for cp in column_pages if sheet_building(cp) == bldg and all(align(grid(bp), grid(cp))[:2])]
         if len(fits) != 1:
             flag(None, bp.number, None, "missing" if not fits else "ambiguous",
                  f"the beam layout on sheet {bp.number} lines up with "
                  + ("no column layout" if not fits else
                     "column layouts on sheets " + ", ".join(str(p.number) for p in fits))
-                 + "; which column each beam meets needs a person")
+                 + "; which column each beam meets needs a person", building=bldg)
             continue
         r = meet(bp, fits[0])
         info["alignment"].append(r.alignment)
         info["junctions"] += r.junctions
         for p in r.problems:
-            flag(None if p.member == "ALL" else p.member, p.page, p.box, "ambiguous", p.detail, p.place)
+            flag(None if p.member == "ALL" else p.member, p.page, p.box, "ambiguous", p.detail, p.place, building=bldg)
         for m in r.meets:
             info["joints"].append({"beam": m.beam, "column": m.column, "at": m.at, "level": m.level,
-                                   "beam_page": m.beam_page, "column_page": m.column_page})
-            if (m.beam, m.column, m.level, m.at) in have:     # one field per place: C5 is at F-14 and F-33
+                                   "beam_page": m.beam_page, "column_page": m.column_page,
+                                   **({"building": bldg} if bldg else {})})
+            if (m.beam, m.column, m.level, m.at, bldg) in have:     # one field per place: C5 is at F-14 and F-33
                 continue
-            have.add((m.beam, m.column, m.level, m.at))
+            have.add((m.beam, m.column, m.level, m.at, bldg))
             made.append(Accepted(
                 "", m.beam, "frames_into", 1, m.column, m.beam_page, m.beam_box, f"{m.beam} / {m.column} at {m.at}",
                 "", (0.0, 0.0, 0.0, 0.0), "geometry", m.level, status="geometry",
                 refs=[{"page": m.column_page, "box_2d": box_2d(m.column_box), "text": m.column, "at": m.at}],
-                at=m.at))
+                at=m.at, building=bldg))
     start = len(agreement.accepted)
     for i, a in enumerate(made, start + 1):
         a.id = f"f{i:04d}"
@@ -1042,6 +1047,14 @@ def support_mappings(page: Page, box: Box, supports: dict) -> tuple[Elevation, l
     e = els[0]
     es = elevation_supports(page, e)
     maps = _full_mappings(es, plan)
+    if maps and len(es) == 2 and len(plan) == 2 and member[:2] in ("XB", "YB"):
+        k = sheet_scale(page, member[:2], supports)
+        if k:
+            expected_len = abs(plan[1][0] - plan[0][0]) * k
+            actual_len = abs(es[1] - es[0])
+            tol = max(SCALE_TOL * (e.title[2] - e.title[0]), SCALE_SHARE * expected_len)
+            if abs(actual_len - expected_len) > tol:
+                maps = []
     if not maps and len(es) != len(plan) and len(es) >= 2 and member[:2] in ("XB", "YB"):
         k = sheet_scale(page, member[:2], supports)
         if k:

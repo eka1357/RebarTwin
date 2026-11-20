@@ -83,3 +83,30 @@ def ends_at(level: str | None, at_floor: str | None) -> bool:
     if s is None:
         return floor(level) is None or floor(level) == at_floor
     return s[1] == at_floor
+
+
+_SEPARATE_BUILDING = re.compile(
+    r"\b(SERVANT\s+QUARTERS?|GUARD\s+ROOM|SECURITY\s+CABIN|GUEST\s+HOUSE|OUTHOUSE|ANNEXE|PUMP\s+ROOM|DG\s+ROOM)\b",
+    re.IGNORECASE,
+)
+
+
+def building_of(text: str | None) -> str | None:
+    """Canonical separate building name if `text` names one (e.g. 'SERVANT QUARTER'), else None (main building)."""
+    if not text:
+        return None
+    m = _SEPARATE_BUILDING.search(_latin(text))
+    if not m:
+        return None
+    norm = " ".join(m.group(1).upper().split())
+    if norm == "SERVANT QUARTERS":
+        return "SERVANT QUARTER"
+    return norm
+
+
+def sheet_building(page) -> str | None:
+    """Building named by a sheet's drawing text/titles (None for main building, e.g. 'SERVANT QUARTER' on sheet 9)."""
+    words = getattr(page, "words", ())
+    if not words:
+        return None
+    return building_of(" ".join(w.text for w in words))

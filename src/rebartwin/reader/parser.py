@@ -37,7 +37,11 @@ _GROUP = (rf"(\d{{1,2}})(?:\s*(?:nos?\.?|Nos?\.?|NOS?\.?)\s*{_DASH}?\s*|\s*[{_DA
           rf"(?:[TY]|{_PHI})?\s*(\d{{1,2}})(?![\d.])(?:\s*{_MARK})?")
 _BARS = re.compile(rf"{_START}{_GROUP}(?:\s*\+\s*{_GROUP})*(?!\s*@)(?![\w./])")
 _ONE_GROUP = re.compile(_GROUP)
-_SECTION = re.compile(r"(?<![\w.])(\d{3,4})\s*(?:mm)?\s*[xX×*]\s*(\d{3,4})(?:\s*mm)?(?![\w.])")
+_SECTION = re.compile(
+    r"(?<![\w.])(\d{3,4})\s*(?:mm)?\s*[xX×*]\s*(\d{3,4})(?:\s*mm)?"
+    r"(?:(?:\s*[-–—]\s*|\s+|\s*\()(inv(?:erted)?)\)?(?![\w.]))?(?![\w.])",
+    re.IGNORECASE,
+)
 _LINKS = re.compile(
     rf"{_START}(?:(\d)\s*{_DASH}?\s*L(?:egged)?\s*{_DASH}?\s*)?(?:[TY]|{_PHI})?\s*(\d{{1,2}})(?![\d.])\s*(?:{_MARK})?"
     rf"(?:\s*@\s*(\d{{2,3}})|\s*{_DASH}\s*(\d{{2,3}})(?=\s*(?:mm\s*)?[cC]\s*/\s*[cC]))(?!\d)(?:\s*mm)?"
@@ -86,9 +90,16 @@ def _bars(m: re.Match) -> str | None:
     return " + ".join(groups) or None
 
 
+def is_inverted_section(value: str | None) -> bool:
+    """True when a canonical section string carries the inverted-beam flag ('200x600-inv')."""
+    return bool(value and value.lower().endswith("-inv"))
+
+
 def _section(m: re.Match) -> str | None:
     b, d = int(m.group(1)), int(m.group(2))
-    return f"{b}x{d}" if 100 <= b <= 3000 and 100 <= d <= 3000 else None
+    if not (100 <= b <= 3000 and 100 <= d <= 3000):
+        return None
+    return f"{b}x{d}-inv" if m.group(3) else f"{b}x{d}"
 
 
 def _links(m: re.Match) -> str | None:

@@ -280,3 +280,24 @@ def test_a_top_extra_is_placed_by_its_bar_only_over_one_support_or_one_span(tmp_
     assert bar(250, 410) == "2/3"
     assert bar(255, 280) == "2"
     assert bar(90, 410) is None
+
+
+def test_two_support_elevation_rejected_when_length_mismatches_sheet_scale(tmp_path, monkeypatch):
+    """Item 4: a two-support elevation (like YB1 on sheet 18) always matches trivially by share (1.0 vs 1.0), so
+    support_mappings checks its drawn length against the plan span times sheet_scale when a sheet scale exists."""
+    page = ingest(make_elevation_pdf(tmp_path / "two.pdf", breaks=True))[0]
+    e = next(e for e in plan.elevations(page) if e.member == "XB5")
+    box = next(w.box for w in page.words if w.text == "1Ø16")
+    # Force two supports at x = 100 and 260 (actual drawn length = 160 units).
+    monkeypatch.setattr(plan, "elevation_supports", lambda p, elev: [100.0, 260.0])
+    monkeypatch.setattr(plan, "sheet_scale", lambda p, prefix, sups: 2.0)
+
+    # Plan span = 40 units -> expected length = 40 * 2.0 = 80 vs actual 160 (~2x off, like YB1 on sheet 18) -> rejected!
+    mismatch = {"XB5": [(0.0, "1", "column"), (40.0, "2", "column")]}
+    assert plan.support_mappings(page, box, mismatch) is None
+    assert plan.elevation_support_at(page, box, mismatch) is None
+
+    # Plan span = 80 units -> expected length = 80 * 2.0 = 160 -> matches sheet scale -> accepted!
+    good = {"XB5": [(0.0, "1", "column"), (80.0, "2", "column")]}
+    found = plan.support_mappings(page, box, good)
+    assert found is not None and len(found[1]) == 2

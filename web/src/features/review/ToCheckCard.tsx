@@ -54,6 +54,8 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
 
   const meta = describeFieldMeta(item.field);
   const isResolved = Boolean(item.resolution);
+  const isUnsupported = item.reason === "unsupported";
+  const canEdit = !busy && !isUnsupported;
   const hasGemini = Boolean(item.gemini?.value);
   const hasParser = Boolean(item.parser?.value);
   const hasCrop = item.page > 0;
@@ -61,6 +63,7 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
 
   const submitDraft = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEdit) return;
     const res = validateCalloutGrammar(item.field, draft);
     if (!res.valid || !res.normalized) {
       setErrorText(res.error ?? "Invalid value.");
@@ -92,8 +95,15 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
               {item.reason}
             </Badge>
             <h2 className="font-display text-sm font-semibold text-foreground">
-              {item.member ? `${item.member} · ${item.field}` : item.field}
+              {item.member
+                ? `${item.member}${item.building ? ` (${item.building})` : ""} · ${item.field}`
+                : item.field}
             </h2>
+            {item.building && (
+              <Badge variant="muted" className="font-num">
+                {item.building}
+              </Badge>
+            )}
             {item.layer > 1 && (
               <Badge variant="muted" className="font-num">
                 Layer {item.layer}
@@ -155,8 +165,8 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
           type="button"
           role="radio"
           aria-checked={item.resolution?.value === item.gemini?.value && hasGemini}
-          disabled={!hasGemini || busy}
-          onClick={() => item.gemini?.value && onResolve(item.gemini.value)}
+          disabled={!hasGemini || !canEdit}
+          onClick={() => item.gemini?.value && canEdit && onResolve(item.gemini.value)}
           className={`flex flex-col items-start gap-1 rounded-[var(--radius-md)] border p-3 text-left transition-colors duration-[var(--dur-1)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
             item.resolution?.value === item.gemini?.value && hasGemini
               ? "border-2 border-pass bg-pass-surface"
@@ -176,8 +186,8 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
           type="button"
           role="radio"
           aria-checked={item.resolution?.value === item.parser?.value && hasParser}
-          disabled={!hasParser || busy}
-          onClick={() => item.parser?.value && onResolve(item.parser.value)}
+          disabled={!hasParser || !canEdit}
+          onClick={() => item.parser?.value && canEdit && onResolve(item.parser.value)}
           className={`flex flex-col items-start gap-1 rounded-[var(--radius-md)] border p-3 text-left transition-colors duration-[var(--dur-1)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
             item.resolution?.value === item.parser?.value && hasParser
               ? "border-2 border-pass bg-pass-surface"
@@ -203,8 +213,8 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
               type="button"
               variant={item.resolution?.value === opt.value ? "default" : "outline"}
               size="sm"
-              disabled={busy}
-              onClick={() => onResolve(opt.value)}
+              disabled={!canEdit}
+              onClick={() => canEdit && onResolve(opt.value)}
               className="h-7 text-xs"
             >
               {opt.label}
@@ -214,7 +224,7 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
       )}
 
       {/* Manual edit form (toggled with E or button) */}
-      {editing && (
+      {editing && canEdit && (
         <form onSubmit={submitDraft} className="mt-3 space-y-2 border-t border-paper-border pt-3">
           <label htmlFor={inputId} className="block text-xs font-medium text-foreground">
             Confirmed value ({item.field})
@@ -263,12 +273,17 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
             variant="outline"
             size="sm"
             className="h-7 text-xs"
-            disabled={busy}
+            disabled={!canEdit}
             onClick={() => onToggleEdit(!editing)}
           >
             <Edit3 className="h-3 w-3" aria-hidden="true" />
             <span>Type value (E)</span>
           </Button>
+          {isUnsupported && (
+            <span className="text-xs text-muted-foreground">
+              Not modelled yet; cannot be cleared in To check.
+            </span>
+          )}
           {!isResolved && (
             <Button
               type="button"

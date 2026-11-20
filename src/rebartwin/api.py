@@ -361,7 +361,12 @@ def _dict_is_assigned_to_joint(item: dict[str, Any], joint_id: str, member_ids: 
         return True
     if item.get("joint") == joint_id:
         return True
-    return item.get("joint") is None and item.get("member") in member_ids and item.get("field") in USED_FIELDS
+    return (
+        item.get("joint") is None
+        and not item.get("building")
+        and item.get("member") in member_ids
+        and item.get("field") in USED_FIELDS
+    )
 
 
 def _normalize_zone(raw: str) -> Zone:
@@ -588,6 +593,8 @@ def _apply_resolved_provenance(
                 "field": acc.get("field") or p.get("field") or path.rsplit(".", 1)[-1],
                 "layer": acc.get("layer") if acc else p.get("layer"),
                 "level": p.get("level") or acc.get("level"),
+                "building": p.get("building") or acc.get("building"),
+                "inverted": bool(p.get("inverted") or acc.get("inverted")),
                 "page": page_num,
                 "box_2d": p.get("box_2d"),
                 "text": p.get("text"),
@@ -1386,6 +1393,12 @@ def create_app(
         target = next((t for t in items if t.get("id") == item_id), None)
         if not target:
             raise ProblemError(404, "To check item not found", f"Item {item_id!r} was not found in project {project_id!r}.")
+        if target.get("reason") == "unsupported":
+            raise ProblemError(
+                409,
+                "Cannot clear unsupported item",
+                target.get("detail") or "This item cannot be cleared in To check.",
+            )
 
         normalized = _validate_resolution(target, body.value)
         now_iso = _utc_now()

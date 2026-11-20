@@ -9,8 +9,10 @@ pytest.importorskip("pymupdf")
 from reader_pdf import make_pdf  # noqa: E402
 
 from rebartwin.model import parse_bars  # noqa: E402
+from rebartwin.reader.agree import agree  # noqa: E402
+from rebartwin.reader.gemini import Callout, Read  # noqa: E402
 from rebartwin.reader.ingest import Page, Word, ingest  # noqa: E402
-from rebartwin.reader.parser import normalise, parse_page, scan  # noqa: E402
+from rebartwin.reader.parser import is_inverted_section, normalise, parse_page, scan  # noqa: E402
 
 
 def only(text: str) -> tuple[str, str]:
@@ -156,3 +158,39 @@ def test_separate_text_objects_join_into_one_callout():
     ])
     found = {(m.kind, m.value) for m in parse_page(page)}
     assert found == {("links", "8@150"), ("bars", "5-20")}
+
+
+def test_inverted_beam_sections_keep_inv_flag_and_never_match_plain():
+    """Item 1: '-inv' on YB16(200x600-inv) and XB8(200x450/200x600-inv) stays on the canonical value so neither
+    channel can accept an inverted beam as a plain section."""
+    assert [(k, v) for k, v, *_ in scan("YB16(200x600-inv)")] == [("member", "YB16"), ("section", "200x600-inv")]
+    assert [(k, v) for k, v, *_ in scan("XB8(200x450/200x600-inv)")] == [
+        ("member", "XB8"), ("section", "200x450"), ("section", "200x600-inv")]
+    assert only("200x1475-INV") == ("section", "200x1475-inv")
+    assert only("200x600(inv)") == ("section", "200x600-inv")
+    assert normalise("section", "200x600-inv") == "200x600-inv"
+    assert normalise("section", "200x600") == "200x600"
+    assert is_inverted_section("200x600-inv") is True
+    assert is_inverted_section("200x600") is False
+
+
+def test_agree_rejects_plain_section_for_inverted_and_sets_inverted_flag():
+    """On sheet 18, YB16(200x600-inv): if Gemini drops '-inv' and writes '200x600', agreement rejects it as a
+    disagreement; when both channels read '200x600-inv', it is accepted with inverted=True so linking flags it."""
+    page = Page(18, 842, 595, words=[
+        Word("YB16(200x600-inv)", (100, 100, 115, 220), 18, (0, 0)),
+    ])
+    matches = parse_page(page)
+    plain_read = [Read(Callout(member="YB16", field="section", value="200x600", box_2d=[100, 100, 115, 220], page=18),
+                       (100, 100, 115, 220), "read-p18", "gemini-3.8-flash")]
+    dis = agree(plain_read, matches, [page])
+    assert dis.accepted == []
+    assert [(t.member, t.field, t.reason) for t in dis.to_check] == [("YB16", "section", "disagree")]
+
+    inv_read = [Read(Callout(member="YB16", field="section", value="200x600-inv", box_2d=[100, 100, 115, 220], page=18),
+                     (100, 100, 115, 220), "read-p18", "gemini-3.8-flash")]
+    acc = agree(inv_read, matches, [page])
+    assert len(acc.accepted) == 1
+    assert acc.accepted[0].value == "200x600-inv"
+    assert acc.accepted[0].inverted is True
+    assert acc.accepted[0].provenance()["inverted"] is True

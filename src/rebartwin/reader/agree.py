@@ -36,9 +36,9 @@ from dataclasses import asdict, dataclass, field
 
 from .gemini import FIELD_KIND, GLOBAL_MEMBERS, Read
 from .ingest import Box, Page, box_2d
-from .levels import floor, is_storey_header, one_storey, same_level, storey
+from .levels import floor, is_storey_header, one_storey, same_level, sheet_building, storey
 from .cells import rule_right_of, strip, table_left
-from .parser import Match, normalise, union, visual_lines
+from .parser import Match, is_inverted_section, normalise, union, visual_lines
 
 IOU_MIN = 0.3
 PROJECT_WIDE = {"seismic_zone", "exposure", "concrete_grade", "steel_grade"}
@@ -93,6 +93,8 @@ class Accepted:
     at: str | None = None         # where on the grid: a geometry frames_into's place ("F-14", "C/C1-25"); a top
                                   # extra's support grid line ("14"), from the bubble under it on the detail sheet
     level_by: str | None = None   # who gave the level when Gemini did not: "storey from the schedule's table"
+    inverted: bool = False        # True for inverted beam sections ("200x600-inv"); never checked as plain beam
+    building: str | None = None   # separate building title (e.g. "SERVANT QUARTER" on sheet 9), None for main
 
     def provenance(self) -> dict:
         p = {"page": self.page, "box_2d": box_2d(self.box), "text": self.text, "gemini": self.gemini,
@@ -102,6 +104,10 @@ class Accepted:
             p["at"] = self.at
         if self.level_by:
             p["level_by"] = self.level_by
+        if self.inverted:
+            p["inverted"] = True
+        if self.building:
+            p["building"] = self.building
         if self.refs:
             p["refs"] = self.refs
         return p
@@ -116,13 +122,14 @@ class ToCheck:
     box_2d: Box | None
     gemini: dict | None
     parser: dict | None
-    reason: str                   # disagree | missing | ambiguous
+    reason: str                   # disagree | missing | ambiguous | unsupported
     detail: str
     layer: int = 1
     joint: str | None = None
     resolution: dict | None = None
     level: str | None = None
     place: str | None = None      # a grid place ("N1-4"): the item blocks only joints at that place
+    building: str | None = None   # separate building title (e.g. "SERVANT QUARTER"), None for main building
 
     def to_json(self) -> dict:
         d = asdict(self)
@@ -372,6 +379,7 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
     """`supports`: each beam mark's supports along it from the plans (plan.support_map), for placing extra top
     bars."""
     by_page = {p.number: p for p in pages}
+    page_building = {p.number: sheet_building(p) for p in pages}
     line_of = {id(w): (p.number, k) for p in pages for k, line in enumerate(visual_lines(p)) for w in line}
     result = Agreement()
     n_tc = 0
@@ -385,9 +393,11 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
         if level is None and column_value and c.member not in GLOBAL_MEMBERS:
             # the storey header the value sits under on the sheet, so the item blocks only joints of that storey
             level = _storey_header(by_page[c.page], r.box)
+        bldg = None if c.member in GLOBAL_MEMBERS else page_building.get(c.page)
         result.to_check.append(ToCheck(
             f"tc_{n_tc:04d}", c.member, c.field, c.page, r.box, {"value": c.value},
-            {"value": parser_value} if parser_value is not None else None, reason, detail, c.layer, level=level))
+            {"value": parser_value} if parser_value is not None else None, reason, detail, c.layer,
+            level=level, building=bldg))
 
     claimed: set[int] = set()
     for r in reads:
@@ -407,11 +417,12 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
                     flag(r, "ambiguous", f"Gemini says floor {c.level!r}; nothing on this sheet names it")
                     continue
                 both = [m for m in near if m.value in (c.member, c.value)]
+                bldg = page_building.get(c.page)
                 result.accepted.append(Accepted(
                     "", c.member, c.field, c.layer, c.value, c.page,
                     (min(m.box[0] for m in both), min(m.box[1] for m in both), max(m.box[2] for m in both),
                      max(m.box[3] for m in both)), " / ".join(m.text for m in both), c.value, r.box, r.call,
-                    c.level))
+                    c.level, building=bldg))
             else:
                 flag(r, "missing", f"the text layer does not show both {c.member} and {c.value} in the box")
             continue
@@ -475,8 +486,11 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
         elif c.field == "section" and supports and _member_kind(c.member) == "beam":
             from .plan import span_on_plan                # a size on a plan band: the span it sits over (fix A)
             support = span_on_plan(by_page[c.page], m.box, supports)
+        bldg = None if c.member in GLOBAL_MEMBERS else page_building.get(c.page)
+        inv = c.field == "section" and is_inverted_section(value)
         result.accepted.append(Accepted("", c.member, c.field, c.layer, value, c.page, m.box, m.text, c.value,
-                                        r.box, r.call, level, raw, joined, at=support, level_by=level_by))
+                                        r.box, r.call, level, raw, joined, at=support, level_by=level_by,
+                                        inverted=inv, building=bldg))
 
     # Rule 8: one value on the drawing backs one field. Two callouts that agree with the same parser value but
     # name different fields (XB16's top and its bottom on one '2Ø12') cannot both be right: neither is accepted.
@@ -493,12 +507,14 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
                 result.to_check.append(ToCheck(
                     f"tc_{n_tc:04d}", a.member, a.field, a.page, a.box, {"value": a.gemini}, {"value": a.value},
                     "ambiguous", f"one value on the drawing, {a.text}, was read as "
-                    f"{' and '.join(sorted({f'{x.member} {x.field}' for x in group}))}", a.layer, level=a.level))
+                    f"{' and '.join(sorted({f'{x.member} {x.field}' for x in group}))}", a.layer,
+                    level=a.level, building=a.building))
 
-    # Rule 7: one value per member, field and layer; project-wide settings get one value whatever their scope.
+    # Rule 7: one value per member (within its building), field and layer; project-wide settings get one value
+    # whatever their scope.
     groups: dict[tuple, list[Accepted]] = {}
     for a in result.accepted:
-        scope = "*" if a.field in PROJECT_WIDE else a.member
+        scope = "*" if a.field in PROJECT_WIDE else (a.member, a.building)
         groups.setdefault((scope, a.field, a.layer, storey(a.level) or floor(a.level), a.at), []).append(a)
     keep = []
     for (_scope, fld, layer, _level, _at), group in groups.items():
@@ -514,7 +530,7 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
             result.to_check.append(ToCheck(
                 f"tc_{n_tc:04d}", a.member, fld, a.page, a.box, {"value": a.gemini}, {"value": a.value}, "ambiguous",
                 f"the drawing gives {a.member} {fld.replace('_', ' ')} more than one value: "
-                f"{', '.join(sorted(values))}", layer, level=a.level))
+                f"{', '.join(sorted(values))}", layer, level=a.level, building=a.building))
     for i, a in enumerate(sorted(keep, key=lambda a: (a.page, a.member, a.field, a.layer, a.level or "")), 1):
         a.id = f"f{i:04d}"
     result.accepted = sorted(keep, key=lambda a: a.id)
@@ -550,5 +566,6 @@ def agree(reads: list[Read], matches: list[Match], pages: list[Page], supports: 
             n_tc += 1
             result.unassigned.append(ToCheck(
                 f"tc_{n_tc:04d}", None, m.kind, m.page, m.box, None, {"value": m.value}, "missing",
-                "the parser read this value but Gemini did not report it"))
+                "the parser read this value but Gemini did not report it",
+                building=page_building.get(m.page)))
     return result

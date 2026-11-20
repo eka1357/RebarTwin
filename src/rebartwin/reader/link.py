@@ -25,6 +25,7 @@ from ..model import Beam, Column, Joint, Settings, parse_bars
 from .agree import Accepted, Agreement, ToCheck
 from .gemini import GLOBAL_MEMBERS, PROMPTS, ModelNotFound, Transport, call
 from .levels import ends_at, floor, storey
+from .parser import is_inverted_section
 
 LINK_PROMPT = "link_v5"
 DEFAULT_LINK_MODEL = "gemini-4-argon"
@@ -67,6 +68,7 @@ class Verified:
     defaults: dict[str, str] = field(default_factory=dict)     # path -> the default used, e.g. "8 mm"
     floor: str | None = None       # the beams' floor, from the plans they were read on ("FIRST")
     place: str | None = None       # the column's grid place, from geometry frames_into fields ("F-14")
+    building: str | None = None    # separate building title (e.g. "SERVANT QUARTER"), None for main
 
 
 def _bars(value: str) -> Counter:
@@ -77,8 +79,22 @@ def _bars(value: str) -> Counter:
 
 
 def _section(value: str) -> tuple[float, float]:
-    b, d = value.split("x")
+    clean = value[:-4] if is_inverted_section(value) else value
+    b, d = clean.split("x")
     return float(b), float(d)
+
+
+def _equal_copy(a: Accepted, g: Accepted) -> bool:
+    """True when accepted field `a` is an equal copy of cited field `g` (same member, field, building, compatible
+    level and beam span, and identical normalised value). Copies with a different value return False."""
+    if (a.member, a.field, a.value, a.building) != (g.member, g.field, g.value, g.building):
+        return False
+    if a.level is not None and g.level is not None:
+        if (storey(a.level) or floor(a.level)) != (storey(g.level) or floor(g.level)):
+            return False
+    if a.at is not None and g.at is not None and a.at != g.at:
+        return False
+    return True
 
 
 def _link_dia(value: str) -> float:
@@ -122,6 +138,11 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     if len(plan_floors) > 1:
         issues.append(Issue("beams", "ambiguous", f"the beams were read on plans of different floors: "
                             f"{', '.join(plan_floors)}"))
+    buildings = sorted({a.building for got in cited.values() for a in got if a.building})
+    if len(buildings) > 1:
+        issues.append(Issue("joint", "ambiguous", f"the joint mixes members from different buildings: "
+                            f"{', '.join(buildings)}"))
+    joint_building = buildings[0] if len(buildings) == 1 else None
 
     def fits(a: Accepted) -> bool:
         if a.level is None or at_floor is None:
@@ -129,16 +150,18 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         return ends_at(a.level, at_floor) if storey(a.level) else floor(a.level) == at_floor
 
     def of(member: str, *names: str, scope: tuple[str, ...] = ()) -> list[Accepted]:
-        """Accepted fields for a member at this joint's floor; general notes in `scope` only when the member has none
-        of its own."""
-        own = [a for a in accepted if a.member == member and a.field in names and fits(a)]
-        return own or [a for a in accepted if a.member in scope and a.field in names and fits(a)]
+        """Accepted fields for a member within its building at this joint's floor; general notes in `scope` only when
+        the member has none of its own."""
+        own = [a for a in accepted if a.member == member and a.field in names and a.building == joint_building and fits(a)]
+        return own or [a for a in accepted if a.member in scope and a.field in names
+                       and a.building in (None, joint_building) and fits(a)]
 
     def use(path: str, expected: list[Accepted], names: tuple[str, ...], check: Callable[[list[Accepted]], str | None],
-            *, required: bool = True, value=None, default=None, label: str = "", note_default: bool = True) -> bool:
-        """One path: the cited fields are the expected ones, none is left out, and the value matches them.
-        An optional value with no field must equal the model default, which becomes a note."""
-        got = cited.get(path, [])
+            *, required: bool = True, value=None, default=None, label: str = "", note_default: bool = True,
+            reset: Callable[[], None] | None = None) -> bool:
+        """One path: the cited fields are the expected ones, equal copies are included automatically, and the value
+        matches them. An optional value written with no accepted field is dropped and noted."""
+        got = list(cited.get(path, []))
         levels = sorted({a.level for a in expected if a.level})
         if len({storey(x) or floor(x) for x in levels}) > 1:
             issues.append(Issue(path, "ambiguous", f"{path}: the drawing gives a value for each of "
@@ -156,6 +179,13 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
             elif required:
                 issues.append(Issue(path, "missing", f"no accepted field gives {path}"))
             elif value != default:
+                if reset is not None:
+                    reset()
+                    notes.append(f"the linker wrote {label} {value} with no source; ignored")
+                    if note_default:
+                        notes.append(f"Default: {label} {default} (not on the drawing).")
+                        defaults[path] = str(default)
+                    return True
                 issues.append(Issue(path, "missing", f"{label} {value} comes from no accepted field"))
             else:
                 if note_default:
@@ -163,6 +193,12 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
                     defaults[path] = str(default)
                 return True
             return False
+        # Equal copies: when the reply cites at least one copy, code adds every other accepted copy with the same
+        # member, field, building, level, span and normalised value; differing copies stay in left_out (To check).
+        extra_copies = [a for a in expected if a not in got and any(_equal_copy(a, g) for g in got)]
+        if extra_copies:
+            got = got + extra_copies
+            cited[path] = got
         left_out = [a for a in expected if a not in got]
         if left_out and len(expected) > 1:
             issues.append(Issue(path, "missing", f"{path} leaves out {', '.join(a.value for a in left_out)}",
@@ -177,6 +213,11 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
 
     col = j.column
     dc, db, ds = Column.model_fields, Beam.model_fields, Settings.model_fields
+    for axis_field in ("face_along_x", "face_along_y"):
+        val = getattr(col, axis_field)
+        if val is not None:
+            setattr(col, axis_field, None)
+            notes.append(f"the linker wrote {col.id} {axis_field.replace('_', ' ')} {val} with no source; ignored")
 
     def sec_col(got):
         b, h = _section(got[0].value)
@@ -222,13 +263,15 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
     use("column.ties", of(col.id, "links"), ("links",),
         lambda got: None if col.tie_dia == _link_dia(got[0].value) else
         f"{col.id} ties are {col.tie_dia:g} mm in the joint, {got[0].value} on the drawing",
-        required=False, value=f"{col.tie_dia:g} mm", default=f"{dc['tie_dia'].default:g} mm", label=f"{col.id} ties")
+        required=False, value=f"{col.tie_dia:g} mm", default=f"{dc['tie_dia'].default:g} mm", label=f"{col.id} ties",
+        reset=lambda: setattr(col, "tie_dia", dc["tie_dia"].default))
 
     def cover(member: str, value: float):
         return lambda got: None if float(got[0].value) == value else \
             f"{member} cover is {value:g} mm in the joint, {got[0].value} mm on the drawing"
     use("column.cover", of(col.id, "cover", scope=("ALL", "ALL_COLUMNS")), ("cover",), cover(col.id, col.cover),
-        required=False, value=f"{col.cover:g} mm", default=f"{dc['cover'].default:g} mm", label=f"{col.id} cover")
+        required=False, value=f"{col.cover:g} mm", default=f"{dc['cover'].default:g} mm", label=f"{col.id} cover",
+        reset=lambda: setattr(col, "cover", dc["cover"].default))
     notes.append(f"{col.id} cover measured to the {'main bars' if col.cover_to == 'main' else 'ties'} "
                  "(the linking model's reading of the notes).")
 
@@ -262,9 +305,22 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         def sec_beam(got, beam=beam):
             if (beam.b, beam.D) != _section(got[0].value):
                 return f"{beam.id} is {beam.b:g} x {beam.D:g} in the joint, {got[0].value} on the drawing"
-        sections = at_joint(beam, f"{p}.section", "section")
-        if sections is not None:
-            use(f"{p}.section", sections, ("section",), sec_beam)
+        raw_sections = of(beam.id, "section")
+        if place:
+            sec_line = support_line(place, direction_of(beam.id) or beam.direction)
+            raw_sections = [a for a in raw_sections if not a.at or (set(a.at.split("/")) & sec_line)]
+        inv_sections = [a for a in raw_sections if a.inverted or is_inverted_section(a.value)]
+        if inv_sections:
+            issues.append(Issue(
+                f"{p}.section",
+                "unsupported",
+                f"not checked: inverted beam (not modelled yet) ({beam.id} {inv_sections[0].value})",
+                inv_sections,
+            ))
+        else:
+            sections = at_joint(beam, f"{p}.section", "section")
+            if sections is not None:
+                use(f"{p}.section", sections, ("section",), sec_beam)
 
         for face in ("top", "bottom"):
             def face_check(got, beam=beam, face=face):
@@ -321,10 +377,12 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
             lambda got, beam=beam: None if beam.stirrup_dia == _link_dia(got[0].value) else
             f"{beam.id} stirrups are {beam.stirrup_dia:g} mm in the joint, {got[0].value} on the drawing",
             required=False, value=f"{beam.stirrup_dia:g} mm", default=f"{db['stirrup_dia'].default:g} mm",
-            label=f"{beam.id} stirrups")
+            label=f"{beam.id} stirrups",
+            reset=lambda beam=beam: setattr(beam, "stirrup_dia", db["stirrup_dia"].default))
         use(f"{p}.cover", of(beam.id, "cover", scope=("ALL", "ALL_BEAMS")), ("cover",), cover(beam.id, beam.cover),
             required=False, value=f"{beam.cover:g} mm", default=f"{db['cover'].default:g} mm",
-            label=f"{beam.id} cover")
+            label=f"{beam.id} cover",
+            reset=lambda beam=beam: setattr(beam, "cover", db["cover"].default))
         notes.append(f"{beam.id} cover measured to the {'main bars' if beam.cover_to == 'main' else 'stirrups'} "
                      "(the linking model's reading of the notes).")
         meets = [a for a in of(beam.id, "frames_into")
@@ -340,12 +398,13 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
             else:
                 notes.append(f"{beam.id} meets {col.id} on the plan; it runs along {beam.direction.upper()} "
                              "(the linking model's reading of the plan).")
+        if beam.spacer != db["spacer"].default:
+            bad_spacer = f"{beam.spacer:g} mm"
+            beam.spacer = db["spacer"].default
+            notes.append(f"the linker wrote {beam.id} spacer {bad_spacer} with no source; ignored")
         if len(beam.top) > 1 or len(beam.bottom) > 1:
-            if beam.spacer == db["spacer"].default:
-                defaults[f"{p}.spacer"] = f"{beam.spacer:g} mm"
-            notes.append(f"Default: {beam.id} spacer between layers {beam.spacer:g} mm (not on the drawing)."
-                         if beam.spacer == db["spacer"].default else
-                         f"{beam.id} spacer {beam.spacer:g} mm (the linking model's value; no field gives it).")
+            defaults[f"{p}.spacer"] = f"{beam.spacer:g} mm"
+            notes.append(f"Default: {beam.id} spacer between layers {beam.spacer:g} mm (not on the drawing).")
 
     st = j.settings
     for name, value in (("seismic_zone", st.seismic_zone), ("exposure", st.exposure)):
@@ -353,21 +412,42 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         use(f"settings.{name}", [a for a in accepted if a.field == name], (name,),
             lambda got, value=value, label=label: None if got[0].value == value else
             f"{label} is {value} in the joint, {got[0].value} on the drawing",
-            required=False, value=value, default=ds[name].default, label=label, note_default=False)
-    if st.aggregate == ds["aggregate"].default:
-        notes.append(f"Default: aggregate {st.aggregate:g} mm (not on the drawing).")
-        defaults["settings.aggregate"] = f"{st.aggregate:g} mm"
-    else:
-        issues.append(Issue("settings.aggregate", "missing", f"aggregate {st.aggregate:g} mm comes from no "
-                            "accepted field"))
+            required=False, value=value, default=ds[name].default, label=label, note_default=False,
+            reset=lambda name=name: setattr(st, name, ds[name].default))
+    if st.aggregate != ds["aggregate"].default:
+        bad_agg = f"{st.aggregate:g} mm"
+        st.aggregate = ds["aggregate"].default
+        notes.append(f"the linker wrote aggregate {bad_agg} with no source; ignored")
+    default_dias = ds["stock_dias"].default_factory()
+    if [float(d) for d in st.stock_dias] != [float(d) for d in default_dias]:
+        bad_dias = ", ".join(f"{d:g}" for d in st.stock_dias)
+        st.stock_dias = list(default_dias)
+        notes.append(f"the linker wrote stock dias [{bad_dias}] with no source; ignored")
+    if st.max_layers != ds["max_layers"].default:
+        bad_layers = st.max_layers
+        st.max_layers = ds["max_layers"].default
+        notes.append(f"the linker wrote max layers {bad_layers} with no source; ignored")
+    if st.apply_is13920 is not None:
+        bad_flag = st.apply_is13920
+        st.apply_is13920 = None
+        notes.append(f"the linker wrote apply IS 13920 {bad_flag} with no source; ignored")
+    notes.append(f"Default: aggregate {st.aggregate:g} mm (not on the drawing).")
+    defaults["settings.aggregate"] = f"{st.aggregate:g} mm"
 
     for u in linked.unresolved:
         # Code decides: a path code has proved from the drawing, or filled with a noted default, is settled whatever
-        # the linking model says; its "unresolved" counts only where code has no value.
+        # the linking model says; its "unresolved" counts only where code has no value. Project-level seismic_zone
+        # and exposure are tracked once under ALL when unstated on the drawing.
         if u.path in provenance or u.path in defaults:
+            continue
+        if u.path in ("settings.seismic_zone", "settings.exposure") and not any(
+            a.field == u.path.split(".", 1)[1] for a in accepted
+        ):
             continue
         issues.append(Issue(u.path, "ambiguous", f"Linking model: {u.reason}"))
     j.floor, j.place = at_floor, place              # explicit, so nothing downstream parses the id
+    if joint_building:
+        j.id = f"{j.id}@{safe_id(joint_building)}"
     if at_floor:
         j.id = f"{j.id}@{safe_id(at_floor)}"
     if place:
@@ -377,7 +457,7 @@ def verify(linked: LinkedJoint, fields: dict[str, Accepted]) -> Verified:
         face = j.beams[int(key[6:key.index("]")])].face(key.rsplit(".", 1)[1])
         if len(face) == 1 and isinstance(provenance[key], dict):
             provenance[f"{key}[0].bars"] = provenance.pop(key)
-    return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults, at_floor, place)
+    return Verified(Joint.model_validate(j.model_dump()), provenance, issues, defaults, at_floor, place, joint_building)
 
 
 def safe_id(text: str) -> str:
@@ -432,6 +512,11 @@ def draft(item, fields: dict[str, Accepted], place: str | None = None) -> dict |
     # The place: the cited frames_into fields' place, else the one place every beam meets the column at.
     cited = [fields[i] for s in item.get("sources") or [] if isinstance(s, dict)
              and str(s.get("path", "")).endswith(".frames_into") for i in s.get("field_ids") or [] if i in fields]
+    all_cited = [fields[i] for s in item.get("sources") or [] if isinstance(s, dict)
+                 for i in s.get("field_ids") or [] if i in fields]
+    bldg_set = sorted({a.building for a in (cited or all_cited) if a.building})
+    bldg = bldg_set[0] if len(bldg_set) == 1 else None
+    meets = [a for a in meets if a.building == bldg]
     common = None
     for b, _ in beams:
         mine = {a.at for a in meets if a.member == b and a.at}
@@ -448,10 +533,13 @@ def draft(item, fields: dict[str, Accepted], place: str | None = None) -> dict |
 
     def vals(member: str, names: tuple[str, ...], column: bool, scope: tuple[str, ...] = (),
              keep=lambda a: True) -> list[dict] | None:
-        own = [a for a in accepted if a.member == member and a.field in names and fits(a, column) and keep(a)]
-        got = own or [a for a in accepted if a.member in scope and a.field in names and fits(a, column)]
+        own = [a for a in accepted if a.member == member and a.field in names
+               and a.building == bldg and fits(a, column) and keep(a)]
+        got = own or [a for a in accepted if a.member in scope and a.field in names
+                      and a.building in (None, bldg) and fits(a, column)]
         return [{"value": a.value, "field": a.field, "layer": a.layer, "field_id": a.id, "page": a.page,
-                 "level": a.level, "at": a.at} for a in got] or None
+                 "level": a.level, "at": a.at, **({"inverted": True} if a.inverted else {}),
+                 **({"building": a.building} if a.building else {})} for a in got] or None
 
     column = {"id": col, "section": vals(col, ("section",), True), "main": vals(col, ("main",), True),
               "ties": vals(col, ("links",), True), "cover": vals(col, ("cover",), True, ("ALL", "ALL_COLUMNS"))}
@@ -462,7 +550,7 @@ def draft(item, fields: dict[str, Accepted], place: str | None = None) -> dict |
         def on_span(a: Accepted, line=line) -> bool:          # fix A: a value over a span ending here, or unplaced
             return not (line and a.at) or bool(set(a.at.split("/")) & line)
         top = vals(bid, ("top",), False, keep=on_span)
-        extras = [a for a in accepted if a.member == bid and a.field == "top_extra" and fits(a, False)]
+        extras = [a for a in accepted if a.member == bid and a.field == "top_extra" and a.building == bldg and fits(a, False)]
         def at_support(a: Accepted, line=line) -> bool:
             return bool(line and a.at and a.at != "-" and set(a.at.split("/")) & line)
         here = vals(bid, ("top_extra",), False, keep=at_support)
@@ -474,19 +562,22 @@ def draft(item, fields: dict[str, Accepted], place: str | None = None) -> dict |
             "top_extra_unplaced": bool(place and any(not a.at for a in extras)),
             "bottom": bottom and bottom + (reach or []),
             "bottom_extra_unclear": bool(place and any(not a.at for a in accepted if a.member == bid
-                                                       and a.field == "bottom_extra" and fits(a, False))),
+                                                       and a.field == "bottom_extra" and a.building == bldg
+                                                       and fits(a, False))),
             "stirrups": vals(bid, ("links",), False),
             "cover": vals(bid, ("cover",), False, ("ALL", "ALL_BEAMS")),
             "frames_into": vals(bid, ("frames_into",), False, keep=lambda a: a.value == col and
                                 (place is None or a.at in (None, place)))})
     storeys = sorted({x["level"] for k in ("section", "main", "ties") for x in column[k] or [] if x["level"]})
     jid = "x".join([col, *(b for b, _ in beams)])
+    if bldg:
+        jid += f"@{safe_id(bldg)}"
     if at_floor:
         jid += f"@{safe_id(at_floor)}"
     if place:
         jid += f"@{safe_id(place)}"
     return {"id": jid, "draft": True, "place": place, "floor": at_floor, "storey": storeys[0] if len(storeys) == 1
-            else None, "column": column, "beams": out_beams}
+            else None, "building": bldg, "column": column, "beams": out_beams}
 
 
 def _nulls(d: dict) -> list[str]:
@@ -504,8 +595,10 @@ def _nulls(d: dict) -> list[str]:
 
 def _inputs(agreement: Agreement) -> str:
     accepted = [{"id": a.id, "member": a.member, "field": a.field, "layer": a.layer, "level": a.level,
-                 "value": a.value, "page": a.page, **({"at": a.at} if a.at else {})} for a in agreement.accepted]
-    pending = [{"member": t.member, "field": t.field, "reason": t.reason} for t in agreement.to_check]
+                 "value": a.value, "page": a.page, **({"at": a.at} if a.at else {}),
+                 **({"building": a.building} if a.building else {})} for a in agreement.accepted]
+    pending = [{"member": t.member, "field": t.field, "reason": t.reason,
+                **({"building": t.building} if t.building else {})} for t in agreement.to_check]
     template = (PROMPTS / f"{LINK_PROMPT}.md").read_text(encoding="utf-8")
     return (template.replace("{accepted}", json.dumps(accepted, ensure_ascii=False, indent=0))
             .replace("{pending}", json.dumps(pending, ensure_ascii=False, indent=0)))
@@ -581,13 +674,21 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
             drafts.append(d)
             missing = _nulls(d)
             to_check.append(new_item(member=d["column"]["id"], field="joint", page=0, box_2d=None, gemini=None,
-                                     parser=None, reason="missing", joint=d["id"],
+                                     parser=None, reason="missing", joint=d["id"], building=d.get("building"),
                                      detail=f"{d['id']} is a draft: no accepted value gives "
                                             f"{', '.join(missing) if missing else 'a value the joint needs'}"))
+            for bi, b in enumerate(d["beams"]):
+                inv = [s for s in (b.get("section") or []) if s.get("inverted") or is_inverted_section(s.get("value"))]
+                if inv:
+                    to_check.append(new_item(
+                        member=b["id"], field=f"beams[{bi}].section", page=inv[0].get("page", 0), box_2d=None,
+                        gemini=None, parser={"value": inv[0]["value"]}, reason="unsupported", joint=d["id"],
+                        building=d.get("building"),
+                        detail=f"not checked: inverted beam (not modelled yet) ({b['id']} {inv[0]['value']})"))
             continue
-        if any(v.joint.id == other.joint.id for other in joints):
+        if any(v.joint.id == other.joint.id and v.building == other.building for other in joints):
             to_check.append(new_item(member=v.joint.column.id, field="joint", page=0, box_2d=None, gemini=None,
-                                     parser=None, reason="ambiguous", joint=v.joint.id,
+                                     parser=None, reason="ambiguous", joint=v.joint.id, building=v.building,
                                      detail=f"the linking model gave {v.joint.id} twice"))
             continue
         joints.append(v)
@@ -598,18 +699,20 @@ def link(agreement: Agreement, transport: Transport, model: str | None = None, f
                 member=first.member if first else None, field=issue.path, page=first.page if first else 0,
                 box_2d=first.box if first else None, gemini=None,
                 parser={"value": ", ".join(a.value for a in issue.fields)} if issue.fields else None,
-                reason=issue.reason, detail=issue.detail, joint=v.joint.id))
+                reason=issue.reason, detail=issue.detail, joint=v.joint.id,
+                building=first.building if first else v.building))
 
-    # Items from agreement block every joint that uses their member. Items on general notes and project-wide
-    # settings stay as one project-level item (joint null), which blocks every joint (see `blocks`). An item about
-    # one grid place (a column off the grid near N1-4) blocks only joints at that place: none, for a column on no
-    # grid intersection, so it stays in to_check.json with joint null.
+    # Items from agreement block every joint that uses their member within the same building. Items on general notes
+    # and project-wide settings stay as one project-level item (joint null), which blocks every joint (see `blocks`).
+    # An item about one grid place (a column off the grid near N1-4) blocks only joints at that place: none, for a
+    # column on no grid intersection, so it stays in to_check.json with joint null.
     for t in to_check:
         if t.joint is None and t.field in USED_FIELDS and not project_level(t):
-            hits = [v.joint.id for v in joints if t.member in _members(v.joint) and (
+            hits = [v.joint.id for v in joints if t.member in _members(v.joint) and t.building == v.building and (
                 not t.level or v.floor is None or ends_at(t.level, v.floor) or floor(t.level) == v.floor)
                 and (t.place is None or v.place == t.place)]
-            hits += [d["id"] for d in drafts if t.member in {d["column"]["id"], *(b["id"] for b in d["beams"])} and (
+            hits += [d["id"] for d in drafts if t.member in {d["column"]["id"], *(b["id"] for b in d["beams"])}
+                     and t.building == d.get("building") and (
                 not t.level or d["floor"] is None or ends_at(t.level, d["floor"]) or floor(t.level) == d["floor"])
                 and (t.place is None or d["place"] == t.place)]
             if len(hits) == 1:

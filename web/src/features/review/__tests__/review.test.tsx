@@ -232,4 +232,98 @@ describe("W9 To Check & Callout Grammar", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("displays non-main building next to member and prevents clearing unsupported items", async () => {
+    const queue: ToCheckItem[] = [
+      {
+        id: "tc_inv",
+        joint: "C1xYB16@FIRST@A-1",
+        member: "YB16",
+        field: "beams[0].section",
+        layer: 1,
+        level: "FIRST",
+        page: 18,
+        box_2d: [100, 100, 120, 200],
+        gemini: { value: "200x600-inv" },
+        parser: { value: "200x600-inv" },
+        reason: "unsupported",
+        detail: "not checked: inverted beam (not modelled yet) (YB16 200x600-inv)",
+        resolution: null,
+        blocks_joint: true,
+      },
+      {
+        id: "tc_sq",
+        joint: null,
+        member: "C1",
+        building: "SERVANT QUARTER",
+        field: "section",
+        layer: 1,
+        level: "FOUNDATION TO GROUND ROOF",
+        page: 9,
+        box_2d: [100, 100, 120, 200],
+        gemini: { value: "200x500" },
+        parser: { value: "200x500" },
+        reason: "ambiguous",
+        detail: "Servant quarter column C1 item",
+        resolution: null,
+        blocks_joint: false,
+      },
+    ];
+
+    const resolveCalls: string[] = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/to-check")) {
+        return new Response(JSON.stringify(queue), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.endsWith("/resolve")) {
+        resolveCalls.push(url);
+        return new Response("Conflict", { status: 409 });
+      }
+      if (url.endsWith("/projects/live-inv")) {
+        return new Response(
+          JSON.stringify({
+            id: "live-inv",
+            name: "Live Inv",
+            status: "done",
+            sheets: [{ page: 18 }, { page: 9 }],
+            joints: [],
+            to_check_counts: { total: 2, unresolved: 2, project_level_unresolved: 0 },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/projects/live-inv/review"]}>
+          <Routes>
+            <Route path="/projects/:id/review" element={<ReviewRoute />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByText(/Not modelled yet; cannot be cleared in To check\./i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/C1 \(SERVANT QUARTER\) · section/i)).toBeInTheDocument();
+
+    // Keyboard shortcuts 1, 2, E on the active unsupported card must not resolve or open edit form
+    fireEvent.keyDown(window, { key: "1" });
+    fireEvent.keyDown(window, { key: "2" });
+    fireEvent.keyDown(window, { key: "e" });
+    expect(resolveCalls).toEqual([]);
+    expect(screen.queryByLabelText(/Confirmed value/i)).not.toBeInTheDocument();
+
+    vi.unstubAllGlobals();
+  });
 });

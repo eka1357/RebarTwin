@@ -88,6 +88,15 @@ function rebartwinAssetsPlugin(): Plugin {
           fs.copyFileSync(src, path.join(wasmTarget, file));
         }
       }
+      // Keep only iit-demo under dist/live/ so local pre-staged projects never bloat dist (61 MB -> 10 MB)
+      const distLive = path.join(outDir, "live");
+      if (fs.existsSync(distLive)) {
+        for (const entry of fs.readdirSync(distLive, { withFileTypes: true })) {
+          if (entry.name !== "iit-demo") {
+            fs.rmSync(path.join(distLive, entry.name), { recursive: true, force: true });
+          }
+        }
+      }
     },
   };
 }
@@ -96,6 +105,23 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), rebartwinAssetsPlugin()],
   resolve: {
     dedupe: ["react", "react-dom", "three"],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/react-router") ||
+            id.includes("node_modules/@tanstack/react-query")
+          ) {
+            return "vendor-react";
+          }
+          return undefined;
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: ["web-ifc"],

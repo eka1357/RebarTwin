@@ -68,6 +68,11 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     return bundle.fix.attempts[idx] ?? null;
   }, [bundle.fix.attempts, isWorkingsActive, replayIndex]);
 
+  const clampedOptionIndex =
+    bundle.option_scenes.length > 0
+      ? Math.min(Math.max(0, optionIndex), bundle.option_scenes.length - 1)
+      : 0;
+
   const activeScene = useMemo(() => {
     if (isWorkingsActive && clampedAttemptSceneIndex >= 0 && bundle.attempt_scenes) {
       const att = bundle.attempt_scenes[clampedAttemptSceneIndex];
@@ -81,8 +86,8 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
         };
       }
     }
-    if (mode === "after" && bundle.option_scenes[optionIndex]) {
-      return bundle.option_scenes[optionIndex];
+    if (mode === "after" && bundle.option_scenes[clampedOptionIndex]) {
+      return bundle.option_scenes[clampedOptionIndex];
     }
     return bundle.scene;
   }, [
@@ -90,9 +95,9 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     bundle.option_scenes,
     bundle.scene,
     clampedAttemptSceneIndex,
+    clampedOptionIndex,
     isWorkingsActive,
     mode,
-    optionIndex,
   ]);
 
   const activeFindings = useMemo<Finding[]>(() => {
@@ -159,7 +164,12 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
 
   const failCount = activeFindings.filter((f) => f.status === "fail").length;
   const affectedBars = activeScene.bars.filter((b) => b.status === "fail").length;
-  const summaryText = `Joint ${bundle.joint.id}: ${activeScene.bars.length} bars, ${failCount} checks fail, ${affectedBars} bars affected`;
+  const summaryText =
+    isWorkingsActive && activeAttempt
+      ? `Joint ${bundle.joint.id}: Workings attempt ${replayIndex + 1} of ${bundle.fix.attempts.length}, ${
+          activeAttempt.passed ? "passes every check" : `${activeAttempt.failures.length} checks fail`
+        }`
+      : `Joint ${bundle.joint.id}: ${activeScene.bars.length} bars, ${failCount} checks fail, ${affectedBars} bars affected`;
 
   // Mount SceneController once
   useEffect(() => {
@@ -387,7 +397,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
         {!isWorkingsActive && mode === "after" && (
           <div className="pointer-events-auto absolute top-3 left-3 flex items-center gap-2 rounded-[var(--radius-md)] border border-border-strong bg-surface-raised/95 px-2.5 py-1 text-xs shadow-[var(--shadow-overlay)]">
             <span className="font-num font-medium text-foreground">
-              After · Option #{optionIndex + 1}
+              After · Option #{clampedOptionIndex + 1}
             </span>
             <button
               type="button"

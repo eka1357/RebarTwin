@@ -272,13 +272,13 @@ export function SourceCrop({ bundle, focusMember, bundleUrl }: SourceCropProps) 
             <div className="rounded-[var(--radius-sm)] border border-paper-border bg-surface-raised p-2">
               <Badge variant="muted">Gemini</Badge>
               <p className="mt-1 font-num font-medium text-foreground">
-                {active.geminiText || active.text || "—"}
+                {active.geminiText || active.text || "Not read"}
               </p>
             </div>
             <div className="rounded-[var(--radius-sm)] border border-paper-border bg-surface-raised p-2">
               <Badge variant="muted">Parser</Badge>
               <p className="mt-1 font-num font-medium text-foreground">
-                {active.parserText || active.text || "—"}
+                {active.parserText || active.text || "Not read"}
               </p>
               {active.ocrRaw && (
                 <p className="mt-1 font-num text-xs text-muted-foreground">

@@ -128,7 +128,9 @@ export function ReportRoute({ preset }: { preset?: "iit" } = {}) {
     : isIitOffline
       ? jointPath("iit-demo", resolvedJointId)
       : isWorkedDemo
-        ? "/demo"
+        ? demoVariant === "zone3"
+          ? "/demo?zone=3"
+          : "/demo"
         : targetJointId
           ? jointPath(id, targetJointId)
           : projectPath(id);

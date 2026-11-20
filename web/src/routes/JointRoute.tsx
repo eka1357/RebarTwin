@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { StatusPill } from "../components/StatusPill";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import { JointInspector } from "../features/workspace/JointInspector";
 import { ReplayUrlSync } from "../features/workspace/ReplayUrlSync";
+import { WorkspaceUrlSync } from "../features/workspace/WorkspaceUrlSync";
 import { ApiError, getJointBundle, jointBundleUrl, jointIfcUrl } from "../lib/api";
 import { demoAssetUrl, fetchDemoBundle } from "../lib/demoData";
 import {
@@ -126,11 +128,14 @@ export function JointRoute({ preset }: { preset?: "iit" } = {}) {
         </div>
       ) : (
         <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-[minmax(0,1fr)_25rem] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+          <WorkspaceUrlSync bundle={bundle} />
           <ReplayUrlSync totalAttempts={bundle.fix.attempts.length} />
           <div className="min-h-80 lg:h-full lg:min-h-0">
-            <Suspense fallback={<Skeleton className="h-full w-full" />}>
-              <LazyViewport bundle={bundle} ifcUrl={resolvedIfcUrl} />
-            </Suspense>
+            <ErrorBoundary compact>
+              <Suspense fallback={<Skeleton className="h-full w-full" />}>
+                <LazyViewport bundle={bundle} ifcUrl={resolvedIfcUrl} />
+              </Suspense>
+            </ErrorBoundary>
           </div>
           <JointInspector
             bundle={bundle}

@@ -149,6 +149,10 @@ export function ReviewRoute() {
         return;
       }
       if (!activeItem) return;
+      const inInteractiveControl = Boolean(
+        target?.closest?.('button, a, [role="button"], [role="radio"], [role="tab"], [role="slider"]'),
+      );
+      const isUnsupported = activeItem.reason === "unsupported";
 
       if (e.key === "j" || e.key === "J" || e.key === "ArrowDown") {
         e.preventDefault();
@@ -156,16 +160,18 @@ export function ReviewRoute() {
       } else if (e.key === "k" || e.key === "K" || e.key === "ArrowUp") {
         e.preventDefault();
         moveFocus(-1);
-      } else if ((e.key === "e" || e.key === "E") && !mutation.isPending && activeItem.reason !== "unsupported") {
+      } else if (inInteractiveControl) {
+        return;
+      } else if ((e.key === "e" || e.key === "E") && !mutation.isPending && !isUnsupported) {
         e.preventDefault();
         setEditingId((prev) => (prev === activeItem.id ? null : activeItem.id));
       } else if ((e.key === "s" || e.key === "S") && !mutation.isPending) {
         e.preventDefault();
         skipActive();
-      } else if (e.key === "1" && activeItem.gemini?.value && !mutation.isPending && activeItem.reason !== "unsupported") {
+      } else if (e.key === "1" && activeItem.gemini?.value && !mutation.isPending && !isUnsupported) {
         e.preventDefault();
         mutation.mutate({ itemId: activeItem.id, value: activeItem.gemini.value });
-      } else if (e.key === "2" && activeItem.parser?.value && !mutation.isPending && activeItem.reason !== "unsupported") {
+      } else if (e.key === "2" && activeItem.parser?.value && !mutation.isPending && !isUnsupported) {
         e.preventDefault();
         mutation.mutate({ itemId: activeItem.id, value: activeItem.parser.value });
       }

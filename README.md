@@ -65,10 +65,12 @@ prompts/         antigravity-build-prompt.md: the reader, the Gemini proposer, t
 
 ## Status
 
-Built and tested: the engine for interior joints with one beam per direction, and the 3D web viewer (`web/`) for
-`bundle.json`, `joint.ifc`, `fixed.ifc`, and `issues.bcf`. Next, in Antigravity: the Gemini reader, the Gemini fix
-proposer, and the API on Cloud Run. Not modelled yet: anchorage, laps,
-confining ties, exterior and corner joints (see `docs/rules.md`). The rule texts were checked against secondary
-sources and an IIT Gandhinagar worked-examples document, not yet the BIS originals.
+Built, tested, and deployed:
+- **Live public demo (`DEMO_ONLY=true` on Cloud Run):** https://rebartwin-17371270384.asia-south1.run.app (`/demo/iit` for the real IIT Hyderabad Director's Residence joint `C1 × XB17`, `/demo` for the 5-beat guided tour on `C4 × B12` across Zone II and Zone III, and `/demo/iit/report` for the printable A4 pre-pour report).
+- **Engine (`src/rebartwin/`):** 3D bar placement, exact segment-to-segment distances, IS 456 and IS 13920 rules, fix loop with column face-bar placement and `GeminiProposer`, IFC4 (with IfcOpenShell kernel cross-check), BCF 2.1, Markdown report, and `bundle.json`.
+- **Reader (`src/rebartwin/reader/`):** PyMuPDF ingest, AutoCAD SHX comment extraction, Cloud Vision OCR with Ø repair, two-channel agreement (`read_v2` + grammar parser), plan geometry alignment (`plan.py`), and cross-sheet linking (`link_v5`) with code-side verification of every number.
+- **API & Web (`src/rebartwin/api.py`, `web/`):** FastAPI service with SSE reading progress and To check queue resolution, plus React, TypeScript, Tailwind v4, Radix/shadcn, Motion, and three.js 3D workspace.
 
-See `PROVENANCE.md` for who built what, and `THIRD_PARTY_NOTICES.md` for ORCA's MIT notice.
+Not modelled yet: anchorage, laps, confining ties, exterior and corner joints, and inverted beams (see `docs/rules.md`). The rule texts were checked against secondary sources and an IIT Gandhinagar worked-examples document, not yet the BIS originals.
+
+See `PROVENANCE.md` for who built what, `docs/DEMO.md` for the presentation runbook, and `THIRD_PARTY_NOTICES.md` for ORCA's MIT notice.

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { HelpCircle, Menu, Moon, Search, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
@@ -10,6 +11,7 @@ import {
   SheetTrigger,
 } from "../components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
+import type { ProjectDetail } from "../lib/api";
 import {
   jointPath,
   projectPath,
@@ -21,7 +23,7 @@ import { cn } from "../lib/utils";
 import { useWorkspaceStore } from "../stores/workspace";
 import { StatusIsland } from "./StatusIsland";
 
-function buildNavLinks(pathname: string) {
+function buildNavLinks(pathname: string, firstReadyJointId: string | null) {
   if (pathname === "/demo/iit" || pathname.startsWith("/demo/iit/")) {
     return [
       { label: "Demo", to: "/demo" },
@@ -56,7 +58,11 @@ function buildNavLinks(pathname: string) {
     ? jointPath(activeProject, activeJoint)
     : activeProject === "c4-b12"
       ? jointPath("c4-b12", "C4xB12")
-      : projectPath(activeProject);
+      : activeProject === "iit-demo"
+        ? "/demo/iit"
+        : firstReadyJointId
+          ? jointPath(activeProject, firstReadyJointId)
+          : projectPath(activeProject);
 
   return [
     { label: "Demo", to: "/demo" },
@@ -64,7 +70,15 @@ function buildNavLinks(pathname: string) {
     { label: "Upload", to: projectUploadPath(activeProject) },
     { label: "To check", to: projectReviewPath(activeProject) },
     { label: "Joint", to: jointTo },
-    { label: "Report", to: projectReportPath(activeProject) },
+    {
+      label: "Report",
+      to:
+        activeProject === "iit-demo"
+          ? "/demo/iit/report"
+          : projectReportPath(activeProject, {
+              joint: activeJoint ?? firstReadyJointId ?? undefined,
+            }),
+    },
     ...(import.meta.env.DEV ? [{ label: "Styleguide", to: "/styleguide" }] : []),
   ];
 }
@@ -72,7 +86,25 @@ function buildNavLinks(pathname: string) {
 export function TopBar() {
   const [navOpen, setNavOpen] = useState(false);
   const { pathname } = useLocation();
-  const navLinks = useMemo(() => buildNavLinks(pathname), [pathname]);
+  const queryClient = useQueryClient();
+  const projMatch = /^\/projects\/([^/]+)/.exec(pathname);
+  let activeProject = "c4-b12";
+  if (projMatch?.[1]) {
+    try {
+      activeProject = decodeURIComponent(projMatch[1]);
+    } catch {
+      activeProject = projMatch[1];
+    }
+  }
+  const cachedProject = queryClient.getQueryData<ProjectDetail>(["project", activeProject]);
+  const firstReadyJointId =
+    cachedProject?.joints.find((j) => j.bundle_ready)?.id ?? null;
+
+  const navLinks = useMemo(
+    () => buildNavLinks(pathname, firstReadyJointId),
+    [pathname, firstReadyJointId],
+  );
+  const showStatusIsland = pathname !== "/" && !pathname.startsWith("/styleguide");
   const theme = useWorkspaceStore((s) => s.theme);
   const toggleTheme = useWorkspaceStore((s) => s.toggleTheme);
   const setCommandOpen = useWorkspaceStore((s) => s.setCommandOpen);
@@ -94,7 +126,7 @@ export function TopBar() {
         <nav aria-label="Primary" className="hidden items-center gap-0.5 lg:flex">
           {navLinks.map((item) => (
             <NavLink
-              key={item.to}
+              key={item.label}
               to={item.to}
               end={item.to === "/demo" || item.to === "/demo/iit"}
               className={({ isActive }) =>
@@ -113,9 +145,11 @@ export function TopBar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <div className="hidden md:block">
-          <StatusIsland />
-        </div>
+        {showStatusIsland && (
+          <div className="hidden md:block">
+            <StatusIsland />
+          </div>
+        )}
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -196,7 +230,7 @@ export function TopBar() {
               </NavLink>
               {navLinks.map((item) => (
                 <NavLink
-                  key={item.to}
+                  key={item.label}
                   to={item.to}
                   onClick={() => setNavOpen(false)}
                   className={({ isActive }) =>

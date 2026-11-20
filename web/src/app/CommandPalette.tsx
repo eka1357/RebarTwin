@@ -1,5 +1,6 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router";
 import {
   CommandDialog,
   CommandEmpty,
@@ -8,6 +9,8 @@ import {
   CommandItem,
   CommandList,
 } from "../components/ui/command";
+import type { ProjectDetail } from "../lib/api";
+import { formatCalloutValue, formatClause } from "../lib/format";
 import {
   jointPath,
   projectPath,
@@ -16,20 +19,7 @@ import {
   projectUploadPath,
 } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
-
-const ROUTE_ITEMS = [
-  { label: "Landing", path: "/", shortcut: "" },
-  { label: "Worked Example Demo (C4 × B12)", path: "/demo", shortcut: "" },
-  { label: "IIT Real Joint Offline (C1 × XB17)", path: "/demo/iit", shortcut: "" },
-  { label: "Project Overview", path: projectPath("c4-b12"), shortcut: "" },
-  { label: "Upload Drawings", path: projectUploadPath("c4-b12"), shortcut: "" },
-  { label: "To Check Queue", path: projectReviewPath("c4-b12"), shortcut: "" },
-  { label: "Joint Workspace (C4xB12)", path: jointPath("c4-b12", "C4xB12"), shortcut: "" },
-  { label: "Printable Report", path: projectReportPath("c4-b12"), shortcut: "" },
-  ...(import.meta.env.DEV
-    ? [{ label: "Design System Styleguide", path: "/styleguide", shortcut: "" }]
-    : []),
-];
+import type { Bundle } from "../types/bundle";
 
 export function CommandPalette() {
   const open = useWorkspaceStore((s) => s.commandOpen);
@@ -39,7 +29,120 @@ export function CommandPalette() {
   const setShortcutsOpen = useWorkspaceStore((s) => s.setShortcutsOpen);
   const setMode = useWorkspaceStore((s) => s.setMode);
   const mode = useWorkspaceStore((s) => s.mode);
+  const selectFinding = useWorkspaceStore((s) => s.selectFinding);
+  const selectBar = useWorkspaceStore((s) => s.selectBar);
+  const setOptionIndex = useWorkspaceStore((s) => s.setOptionIndex);
+  const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
+  const triggerFrame = useWorkspaceStore((s) => s.triggerFrame);
+
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const queryClient = useQueryClient();
+
+  const isIitRoute =
+    pathname === "/demo/iit" ||
+    pathname.startsWith("/demo/iit/") ||
+    pathname.startsWith("/projects/iit-demo");
+  const projMatch = /^\/projects\/([^/]+)/.exec(pathname);
+  const jointMatch = /^\/projects\/[^/]+\/joints\/([^/]+)/.exec(pathname);
+
+  let activeProject = isIitRoute ? "iit-demo" : "c4-b12";
+  if (projMatch?.[1]) {
+    try {
+      activeProject = decodeURIComponent(projMatch[1]);
+    } catch {
+      activeProject = projMatch[1];
+    }
+  }
+  let activeJointId: string | null = null;
+  if (jointMatch?.[1]) {
+    try {
+      activeJointId = decodeURIComponent(jointMatch[1]);
+    } catch {
+      activeJointId = jointMatch[1];
+    }
+  }
+
+  // Look up active project and active bundle from TanStack Query cache when palette opens
+  const activeProjectData = useMemo(() => {
+    if (!open) return null;
+    if (activeProject === "iit-demo") {
+      return queryClient.getQueryData<ProjectDetail>(["offline-iit-project"]) ?? null;
+    }
+    return queryClient.getQueryData<ProjectDetail>(["project", activeProject]) ?? null;
+  }, [activeProject, open, queryClient]);
+
+  const activeBundle = useMemo<Bundle | null>(() => {
+    if (!open) return null;
+    if (pathname === "/demo/iit" || activeProject === "iit-demo") {
+      return (
+        queryClient.getQueryData<Bundle>(["joint-bundle", "iit-demo", "C1xXB17@FIRST@L1+M+M1-28"]) ??
+        queryClient.getQueryData<Bundle>(["demo-bundle", "iit"]) ??
+        null
+      );
+    }
+    if (pathname === "/demo") {
+      return (
+        queryClient.getQueryData<Bundle>(["demo-bundle", "zone2"]) ??
+        queryClient.getQueryData<Bundle>(["demo-bundle", "zone3"]) ??
+        null
+      );
+    }
+    if (activeJointId) {
+      return queryClient.getQueryData<Bundle>(["joint-bundle", activeProject, activeJointId]) ?? null;
+    }
+    return null;
+  }, [activeJointId, activeProject, open, pathname, queryClient]);
+
+  const routeItems = useMemo(() => {
+    const firstReady = activeProjectData?.joints.find((j) => j.bundle_ready)?.id;
+    const jointTarget =
+      activeProject === "iit-demo"
+        ? "/demo/iit"
+        : activeProject === "c4-b12"
+          ? jointPath("c4-b12", "C4xB12")
+          : activeJointId
+            ? jointPath(activeProject, activeJointId)
+            : firstReady
+              ? jointPath(activeProject, firstReady)
+              : projectPath(activeProject);
+    const reportTarget =
+      activeProject === "iit-demo"
+        ? "/demo/iit/report"
+        : projectReportPath(activeProject, { joint: activeJointId ?? firstReady });
+
+    return [
+      { label: "Landing", path: "/" },
+      { label: "Worked Example Demo (C4 × B12)", path: "/demo" },
+      { label: "IIT Real Joint Offline (C1 × XB17)", path: "/demo/iit" },
+      { label: `Project Overview (${activeProject})`, path: projectPath(activeProject) },
+      { label: "Upload Drawings", path: projectUploadPath(activeProject) },
+      { label: `To Check Queue (${activeProject})`, path: projectReviewPath(activeProject) },
+      { label: `Joint Workspace (${activeJointId ?? firstReady ?? "C4xB12"})`, path: jointTarget },
+      { label: "Printable Report", path: reportTarget },
+      ...(import.meta.env.DEV
+        ? [{ label: "Design System Styleguide", path: "/styleguide" }]
+        : []),
+    ];
+  }, [activeJointId, activeProject, activeProjectData]);
+
+  const failingFindings = useMemo(() => {
+    if (!activeBundle) return [];
+    return activeBundle.report.findings
+      .map((f, index) => ({ f, index }))
+      .filter(({ f }) => f.status === "fail")
+      .slice(0, 12);
+  }, [activeBundle]);
+
+  const fixOptions = useMemo(() => {
+    if (!activeBundle) return [];
+    return activeBundle.fix.options.slice(0, 5);
+  }, [activeBundle]);
+
+  const readyJoints = useMemo(() => {
+    if (!activeProjectData) return [];
+    return activeProjectData.joints.filter((j) => j.bundle_ready).slice(0, 10);
+  }, [activeProjectData]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -63,13 +166,76 @@ export function CommandPalette() {
       <CommandList>
         <CommandEmpty>No matching commands.</CommandEmpty>
         <CommandGroup heading="Routes">
-          {ROUTE_ITEMS.map((item) => (
-            <CommandItem key={item.path} onSelect={() => go(item.path)}>
+          {routeItems.map((item) => (
+            <CommandItem key={`${item.label}-${item.path}`} onSelect={() => go(item.path)}>
               <span>{item.label}</span>
               <span className="font-num text-xs text-muted-foreground">{item.path}</span>
             </CommandItem>
           ))}
         </CommandGroup>
+
+        {readyJoints.length > 0 && (
+          <CommandGroup heading="Checked Joints">
+            {readyJoints.map((j) => (
+              <CommandItem
+                key={j.id}
+                value={`${j.id} ${j.column.id} ${j.beams.map((b) => b.id).join(" ")}`}
+                onSelect={() =>
+                  go(activeProject === "iit-demo" ? "/demo/iit" : jointPath(activeProject, j.id))
+                }
+              >
+                <span>{j.id}</span>
+                <span className="font-num text-xs text-fail">{j.fail_count} fails</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {failingFindings.length > 0 && (
+          <CommandGroup heading="Failing Findings in Current Joint">
+            {failingFindings.map(({ f, index }) => (
+              <CommandItem
+                key={`finding-${index}`}
+                value={`${formatClause(f.clause)} ${f.bars.join(" ")} ${formatCalloutValue(f)} ${f.message}`}
+                onSelect={() => {
+                  selectFinding(index);
+                  selectBar(f.bars[0] ?? null);
+                  setInspectorTab("findings");
+                  triggerFrame();
+                  setOpen(false);
+                }}
+              >
+                <span>
+                  {formatClause(f.clause)} · {f.bars.join(", ") || f.members.join(", ")}
+                </span>
+                <span className="font-num text-xs text-fail">{formatCalloutValue(f)}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {fixOptions.length > 0 && (
+          <CommandGroup heading="Verified Fix Options">
+            {fixOptions.map((opt, idx) => (
+              <CommandItem
+                key={`opt-${idx}`}
+                value={`Option ${idx + 1} ${opt.candidate.title} ${opt.column ?? ""}`}
+                onSelect={() => {
+                  setOptionIndex(idx);
+                  setMode("after");
+                  setInspectorTab("fix");
+                  setOpen(false);
+                }}
+              >
+                <span>
+                  Option #{idx + 1}: {opt.candidate.title}
+                </span>
+                <span className="font-num text-xs text-pass">Preview After</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
         <CommandGroup heading="Actions">
           <CommandItem
             onSelect={() => {

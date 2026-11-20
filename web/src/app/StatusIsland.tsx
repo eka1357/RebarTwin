@@ -1,16 +1,52 @@
 import { Activity, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { StatusPill } from "../components/StatusPill";
 import { getTransition, SPRING_PANEL } from "../lib/motion";
-import { projectReviewPath } from "../lib/routes";
+import { jointPath, projectPath, projectReviewPath } from "../lib/routes";
 import { useWorkspaceStore } from "../stores/workspace";
 
 export function StatusIsland() {
   const [expanded, setExpanded] = useState(false);
+  const { pathname } = useLocation();
   const status = useWorkspaceStore((s) => s.status);
   const reduced = useReducedMotion();
+
+  const isIitDemo = pathname === "/demo/iit" || pathname.startsWith("/demo/iit/") || pathname.startsWith("/projects/iit-demo");
+  const projMatch = /^\/projects\/([^/]+)/.exec(pathname);
+  const jointMatch = /^\/projects\/[^/]+\/joints\/([^/]+)/.exec(pathname);
+  let activeProject = isIitDemo ? "iit-demo" : "c4-b12";
+  if (projMatch?.[1]) {
+    try {
+      activeProject = decodeURIComponent(projMatch[1]);
+    } catch {
+      activeProject = projMatch[1];
+    }
+  }
+  let activeJoint: string | null = null;
+  if (jointMatch?.[1]) {
+    try {
+      activeJoint = decodeURIComponent(jointMatch[1]);
+    } catch {
+      activeJoint = jointMatch[1];
+    }
+  }
+
+  const primaryHref = isIitDemo
+    ? "/demo/iit"
+    : activeProject === "c4-b12"
+      ? "/demo"
+      : activeJoint
+        ? jointPath(activeProject, activeJoint)
+        : projectPath(activeProject);
+  const primaryLabel =
+    !isIitDemo && activeProject === "c4-b12"
+      ? "Open demo"
+      : isIitDemo || activeJoint
+        ? "Open joint"
+        : "Open project";
+  const reviewHref = projectReviewPath(activeProject);
 
   const pillStatus =
     status.failCount > 0 ? "fail" : status.toCheckCount > 0 ? "to_check" : "pass";
@@ -89,14 +125,14 @@ export function StatusIsland() {
             <p className="mt-1.5 font-num text-xs text-muted-foreground">{fullSummary}</p>
             <div className="mt-3 flex items-center gap-2">
               <Link
-                to="/demo"
+                to={primaryHref}
                 onClick={() => setExpanded(false)}
                 className="inline-flex h-7 items-center rounded-[var(--radius-sm)] bg-primary px-2.5 text-xs font-medium text-primary-foreground"
               >
-                Open demo
+                {primaryLabel}
               </Link>
               <Link
-                to={projectReviewPath("c4-b12")}
+                to={reviewHref}
                 onClick={() => setExpanded(false)}
                 className="inline-flex h-7 items-center rounded-[var(--radius-sm)] border border-control-border px-2.5 text-xs font-medium text-foreground hover:bg-surface"
               >

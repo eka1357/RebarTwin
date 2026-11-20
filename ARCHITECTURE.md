@@ -319,11 +319,10 @@ When `DEMO_ONLY=true` (or running in Cloud Run `K_SERVICE` without `DEMO_ONLY=fa
 
 ## Web app
 
-**Stack.** Vite, React 19, TypeScript (strict), Tailwind CSS v4 with tokens from DESIGN_SYSTEM.md, shadcn/ui on
-Radix primitives, Motion (`motion/react`) for interface animation, three.js with an imperative `SceneController`,
-`camera-controls` for camera moves, React Router 7, TanStack Query, Zustand, cmdk, sonner, lucide-react,
-self-hosted fonts via @fontsource. Landing route only, lazy-loaded: GSAP with ScrollTrigger and SplitText, and Lenis.
-web-ifc stays, lazy-loaded, behind "Open IFC".
+**Stack.** Vite, React, TypeScript (strict), Tailwind CSS v4 with tokens from DESIGN_SYSTEM.md, shadcn/ui on
+Radix primitives, Motion (`motion/react`) for interface and landing animation, three.js with an imperative
+`SceneController`, `camera-controls` for camera moves, React Router, TanStack Query, Zustand, cmdk, sonner,
+lucide-react, self-hosted fonts via @fontsource. web-ifc stays, lazy-loaded, behind "Open IFC".
 
 **Routes.**
 
@@ -400,8 +399,7 @@ short-lived URLs. Logs carry ids and numbers, not drawing content.
 3. **One bundle per joint.** Static-friendly, so the demo runs with no server and no network.
 4. **A single-page app.** React Router view transitions and Motion's `AnimatePresence`; Barba is for multi-page sites
    and would fight the router.
-5. **Motion for the interface, GSAP for the landing story.** Camera moves use `camera-controls`. Lenis on the landing
-   only; never in the workspace, which has its own scroll areas.
+5. **Motion for interface and landing transitions.** Camera moves use `camera-controls`, with reduced-motion instant cuts honoured throughout.
 6. **Radix primitives underneath.** Outside components (21st.dev, React Bits, Skiper UI, Watermelon) are copied in,
    reviewed for accessibility and restyled to tokens before use.
 7. **Two reading channels.** Agreement or a person; never a silent pick.

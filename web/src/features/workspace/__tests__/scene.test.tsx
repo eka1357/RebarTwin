@@ -10,8 +10,10 @@ import { FixPanel } from "../../fixes/FixPanel";
 import { SectionGlyph } from "../../fixes/SectionGlyph";
 import { resolveBundlePageImageUrl } from "../../../lib/routes";
 import { WorkingsTimeline } from "../../workings/WorkingsTimeline";
+import { selectCalloutFindings } from "../../../lib/calloutLayout";
 import { partitionSceneBars } from "../sceneMorph";
 import { JointInspector } from "../JointInspector";
+import { ViewportCallouts } from "../ViewportCallouts";
 import { SourceCrop } from "../../source/SourceCrop";
 
 describe("W3 Scene & Demo Bundle", () => {
@@ -367,5 +369,40 @@ describe("W3 Scene & Demo Bundle", () => {
     const beforeYs = [...colSvgs[0].querySelectorAll('circle[data-bar-dia="12"]')].map((c) => c.getAttribute("cy"));
     const afterYs = [...colSvgs[1].querySelectorAll('circle[data-bar-dia="12"]')].map((c) => c.getAttribute("cy"));
     expect(afterYs).not.toEqual(beforeYs);
+  });
+
+  it("caps 3D callouts to 1 plus +n more below 768 px while keeping up to 8 on desktop", () => {
+    const bundle = demoBundleRaw as unknown as Bundle;
+    const nineFails = [
+      ...bundle.report.findings.filter((f) => f.status === "fail" && Boolean(f.at)),
+      ...bundle.report.findings.filter((f) => f.status === "fail" && Boolean(f.at)).slice(0, 3),
+    ];
+    expect(nineFails).toHaveLength(9);
+
+    const phone = selectCalloutFindings(nineFails, "failures", 1);
+    expect(phone.visibleFindings).toHaveLength(1);
+    expect(phone.overflowCount).toBe(8);
+
+    const desktop = selectCalloutFindings(nineFails, "failures", 8);
+    expect(desktop.visibleFindings).toHaveLength(8);
+    expect(desktop.overflowCount).toBe(1);
+
+    const onOpenOverflow = vi.fn();
+    const { container } = render(
+      <ViewportCallouts
+        visibleFindings={phone.visibleFindings}
+        mirroredFindings={phone.mirroredFindings}
+        overflowCount={phone.overflowCount}
+        labelMode="failures"
+        selectedFindingIndex={null}
+        onSelectFinding={vi.fn()}
+        onOpenOverflow={onOpenOverflow}
+      />,
+    );
+    expect(container.querySelectorAll("button[data-callout-index]")).toHaveLength(1);
+    const moreBtn = screen.getByRole("button", { name: "+8 more" });
+    expect(moreBtn).toBeInTheDocument();
+    fireEvent.click(moreBtn);
+    expect(onOpenOverflow).toHaveBeenCalledTimes(1);
   });
 });

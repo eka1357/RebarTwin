@@ -5,8 +5,10 @@ const ROUTES = [
   { path: "/", heading: /Gemini reads and proposes/i },
   { path: "/demo", heading: /Worked Example: C4 × B12/i },
   { path: "/projects/c4-b12", heading: /Joints Overview/i },
+  { path: "/projects/iit-demo", heading: /Joints Overview/i },
   { path: "/projects/c4-b12/upload", heading: /Upload Structural Drawings/i },
   { path: "/projects/c4-b12/review", heading: /To Check Queue/i },
+  { path: "/projects/iit-demo/review", heading: /To Check Queue/i },
   { path: "/projects/c4-b12/joints/C4xB12", heading: /Joint Workspace: C4xB12/i },
   { path: "/projects/c4-b12/report", heading: /Pre-pour check · C4 × B12/i },
   { path: "/styleguide", heading: /Tokens, Type, Status and Primitives/i },
@@ -81,5 +83,22 @@ test.describe("App shell W2", () => {
 
     await page.getByRole("button", { name: /Open navigation menu/i }).click();
     await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeVisible();
+  });
+
+  test("landing W12 passes axe in both themes, toggles Before/After preview, and hides Styleguide in production", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: /Inspect IIT Hyderabad joint/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /View styleguide/i })).toHaveCount(0);
+
+    await page.getByRole("button", { name: /After \(Option #1\)/i }).click();
+    await expect(page.getByText(/Verified fix: passes without redesign/i)).toBeVisible();
+
+    await page.getByRole("button", { name: /Switch to light theme/i }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    const lightAxe = await new AxeBuilder({ page }).analyze();
+    expect(lightAxe.violations).toEqual([]);
   });
 });

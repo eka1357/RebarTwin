@@ -1,14 +1,13 @@
 import { forwardRef, useImperativeHandle, useRef } from "react";
-import { resolveCalloutLayout, type CalloutInput } from "../../lib/calloutLayout";
+import {
+  resolveCalloutLayout,
+  type CalloutInput,
+  type IndexedFinding,
+} from "../../lib/calloutLayout";
 import { formatCalloutValue, formatClause } from "../../lib/format";
 import type { LabelMode } from "../../stores/workspace";
 import type { Finding } from "../../types/bundle";
 import type { SceneController } from "./SceneController";
-
-export interface IndexedFinding {
-  f: Finding;
-  index: number;
-}
 
 export interface ViewportCalloutsHandle {
   updatePositions: (ctrl: SceneController, size: { width: number; height: number }) => void;

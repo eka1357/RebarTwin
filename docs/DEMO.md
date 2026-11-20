@@ -55,20 +55,21 @@ Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/) in Chrome.
 1. Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/) and click **Upload drawings**.
 2. In **Pages (optional)**, enter `7-9,15-21`.
 3. Click **Upload a drawing set** (or drag and drop `uploads/iith-director-residence-structural.pdf`).
-4. Let **ReadingBoard** and **ReadingLog** finish all 10 pages from `REBARTWIN_REPLIES_DIR` (takes ~3 to 4 minutes on CPU) until the app navigates to `/projects/<id>`.
-5. Bookmark or note that `/projects/<id>` URL (or ensure **Project** points to it) and keep both servers running.
+4. Let **ReadingBoard** and **ReadingLog** finish all 10 pages from `REBARTWIN_REPLIES_DIR` (`103` cached calls, `0` uncached calls, ~`130 s` on CPU) until the app navigates to `/projects/<id>`.
+5. Bookmark or note that `/projects/<id>` URL (currently pre-staged on `master` as `iith-director-residence-structur-ve7h`, the only live project listed by `GET /projects`) and keep both servers running.
 
 ### B. Live pitch click path (starts from the already-read project)
 
-1. Open the pre-read project overview at `http://127.0.0.1:4173/projects/<id>` (do not re-upload during the pitch):
-   - Review the summary counts (`45` joints found, initially blocked by project-wide `To check` items alongside non-blocking other readings listed separately), **Failures by rule**, sorted **Joints** rows (including `Draft` joints with `"not on the drawing yet"` for nulls), and **Beam-on-beam junctions (`35`)** shown as **Information**.
-2. Click **Resolve project items** (or **To check** in the header) to open `/projects/<id>/review` (blocking items appear first):
-   - Confirm **ALL · seismic_zone** using quick chip **Zone II (IS 13920 off)**.
-   - Confirm **ALL · exposure** using quick chip **Mild**.
+1. Open the pre-read project overview at `http://127.0.0.1:4173/projects/iith-director-residence-structur-ve7h` (do not re-upload during the pitch):
+   - Initial counts before answering zone and exposure: `301` accepted values, `45` joints found (`0` checked, `45` blocked), `1,340` To check items (`1,009` blocking, `331` non-blocking, `2` project-level), and `35` **Beam-on-beam junctions** shown as **Information**.
+   - On `iith-director-residence-structur-ve7h`, Zone II (`tc_1642`) and mild exposure (`tc_1643`) are already answered for direct rehearsal: `45` joints found, `1` checked (`1` failing, `44` blocked), and `1,338` unresolved To check items (`1,007` blocking, `331` non-blocking, `0` project-level).
+2. If rehearsing from a fresh upload before resolution, click **Resolve project items** (or **To check** in the header) to open `/projects/iith-director-residence-structur-ve7h/review` (blocking items appear first):
+   - Confirm **ALL · seismic_zone** (`tc_1642`) using quick chip **Zone II (IS 13920 off)**.
+   - Confirm **ALL · exposure** (`tc_1643`) using quick chip **Mild**.
 3. Return to **Project** overview and click **Joint** on **C1xXB17@FIRST@L1+M+M1-28**:
-   - Answering `seismic_zone = II` and `exposure = mild` unlocks `C1xXB17@FIRST@L1+M+M1-28` immediately (`9 Fails`: `8` clashes between `XB17`'s outer bars and `C1`'s 12 mm face bars, plus `1` bar gap at `IS 456 cl. 26.3.2`). Its row displays `C1 200 × 450 (4-16 corners + 4-12 faces) · XB17 200 × 450`.
-4. In the **3D Joint Workspace**, verify `4-16 corners + 4-12 faces` in the Inspector header and Column `C1` `SectionGlyph`, toggle concrete visibility, pick a failing bar or finding, and open **Source** to show the red bounding box over real CAD schedule/plan sheets (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
-5. Click **Report** to open `/projects/<id>/report?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, verify the light-theme A4 layout, mixed corner/face column glyphs, failing-check grouping, assumptions, provenance ledger, sign-off block, and `joint.ifc` / `issues.bcf` export links, and click **Print or save as PDF** (`window.print()`).
+   - Answering `seismic_zone = II` and `exposure = mild` unlocks `C1xXB17@FIRST@L1+M+M1-28` immediately (`9 Fails`: `8` clashes between `XB17`'s outer bars and `C1`'s 12 mm face bars, plus `1` bar gap at `IS 456 cl. 26.3.2`; `fix.status = "fixed"`, `78` of `102` candidates pass every rule, best fix `XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm`). Its row displays `C1 200 × 450 (4-16 corners + 4-12 faces) · XB17 200 × 450`.
+4. In the **3D Joint Workspace**, verify `4-16 corners + 4-12 faces` in the Inspector header and Column `C1` `SectionGlyph`, toggle concrete visibility, pick a failing bar or finding, inspect the **Fix** tab (`XB17 top: 2-16 in layer 1, 2-12 in layer 2; C1 face bars at y = -40, 40 mm`), and open **Source** to show the red bounding box over real CAD schedule/plan sheets (`Agreed`, `Geometry`, `Resolved`, and `Assumed, not on the drawing`).
+5. Click **Report** to open `/projects/iith-director-residence-structur-ve7h/report?joint=C1xXB17%40FIRST%40L1%2BM%2BM1-28`, verify the light-theme A4 layout, mixed corner/face column glyphs, failing-check grouping, assumptions, provenance ledger, sign-off block, and `joint.ifc` / `fixed.ifc` / `issues.bcf` export links, and click **Print or save as PDF** (`window.print()`).
 
 ## 4. Offline Fallbacks If Network or API Fails
 

@@ -1,3 +1,38 @@
+import type { LabelMode } from "../stores/workspace";
+import type { Finding } from "../types/bundle";
+
+export interface IndexedFinding {
+  f: Finding;
+  index: number;
+}
+
+export function selectCalloutFindings(
+  findings: Finding[],
+  labelMode: LabelMode,
+  maxVisible = 8,
+): {
+  visibleFindings: IndexedFinding[];
+  mirroredFindings: IndexedFinding[];
+  overflowCount: number;
+} {
+  const indexed = findings.map((f, index) => ({ f, index }));
+  const filteredForMode = indexed.filter(({ f }) => labelMode === "all" || f.status === "fail");
+  const localized = filteredForMode
+    .filter(({ f }) => Boolean(f.at))
+    .sort((a, b) => {
+      if (a.f.status !== b.f.status) return a.f.status === "fail" ? -1 : 1;
+      return a.index - b.index;
+    });
+  const limit = Math.max(0, maxVisible);
+  const visible = labelMode === "hidden" ? [] : localized.slice(0, limit);
+  const overflow = labelMode === "hidden" ? 0 : Math.max(0, localized.length - limit);
+  return {
+    visibleFindings: visible,
+    mirroredFindings: indexed.filter(({ f }) => f.status === "fail" || labelMode === "all"),
+    overflowCount: overflow,
+  };
+}
+
 export interface CalloutInput {
   id: number;
   ax: number;

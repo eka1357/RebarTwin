@@ -201,7 +201,7 @@ export function DemoRoute() {
         </div>
       ) : (
         <div className="flex flex-1 flex-col gap-3">
-          <div className="h-[52vh] min-h-72">
+          <div className="min-h-72 md:h-[52vh]">
             <Suspense fallback={<Skeleton className="h-full w-full" />}>
               <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
             </Suspense>

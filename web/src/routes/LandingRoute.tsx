@@ -19,7 +19,7 @@ export function LandingRoute() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-4 py-8 sm:px-6 sm:py-12">
       <section className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="space-y-3">
             <p className="font-num text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
               IS 456:2000 · IS 13920:2016 · 3D Joint Detailing Verification

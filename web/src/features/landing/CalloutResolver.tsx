@@ -94,7 +94,7 @@ export function CalloutResolver() {
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2 font-num text-sm">
-        <span className="rounded-[var(--radius-xs)] border border-paper-border bg-paper px-2 py-0.5 text-paper-foreground">
+        <span className="max-w-full break-words rounded-[var(--radius-xs)] border border-paper-border bg-paper px-2 py-0.5 text-paper-foreground">
           {sample.raw}
         </span>
         <span aria-hidden="true" className="text-muted-foreground">
@@ -103,7 +103,7 @@ export function CalloutResolver() {
         <span className="sr-only">
           Resolved reading for {sample.member} on {sample.sheet}: {sample.resolved}
         </span>
-        <span aria-hidden="true" className="font-semibold text-foreground">
+        <span aria-hidden="true" className="min-w-0 break-words font-semibold text-foreground">
           {shownText}
         </span>
       </div>

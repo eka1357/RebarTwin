@@ -7,23 +7,23 @@ import { Button } from "../../components/ui/button";
 const PIPELINE_STEPS = [
   {
     step: "01",
-    title: "Dual-channel reading",
+    title: "Visual reading where parsers fail",
     summary:
-      "Gemini 3.8 Flash reads schedule rows and elevation callouts with box_2d coordinates while an independent CAD text and OCR parser reads the same sheet. Both must agree, or the value waits in To check.",
+      "Indian A1 CAD PDFs break rule-only parsers with irregular schedules, SHX strokes, and local abbreviations. Multimodal Gemini 3.8 Flash reads every table cell and callout with box_2d coordinates, while a deterministic parser cross-checks every value and pauses disagreements in To check.",
     meta: "Provenance: page, box_2d, text, channel",
   },
   {
     step: "02",
-    title: "3D geometric proof",
+    title: "3D geometric verification",
     summary:
-      "RebarTwin builds every bar in millimetres (Z up): corner and face column bars, layered beam bars, ties, and stirrups. Closed-form geometry checks IS 456, IS 13920, and 3D clashes.",
-    meta: "Zero model arithmetic · Never rounds fails onto limits",
+      "RebarTwin builds every bar in millimetres (Z up): corner and face column bars, layered beam bars, ties, and stirrups. Formal 3D geometry checks IS 456, IS 13920, and bar-to-bar clashes to the millimetre.",
+    meta: "Formal 3D verifier · Zero model arithmetic",
   },
   {
     step: "03",
-    title: "Verified fixes and exports",
+    title: "Gemini proposals, checked in 3D",
     summary:
-      "Gemini and an exhaustive enumerator propose bar arrangements and face-bar placements. Only candidates that pass every applicable rule reach the screen, with IFC, BCF, and A4 PDF exports.",
+      "Gemini 4 Argon proposes targeted rebar arrangements, and our formal geometry solver verifies every candidate against all applicable code rules before export as IFC 4, BCF 2.1, or A4 PDF.",
     meta: "Advisory: the engineer of record decides",
   },
 ];
@@ -31,8 +31,9 @@ const PIPELINE_STEPS = [
 const MODEL_ROLES = [
   {
     component: "Gemini 3.8 Flash",
-    role: "Sheet extraction",
-    detail: "Reads structural schedule cells and beam callouts with bounding boxes (read_v2).",
+    role: "Visual sheet reading",
+    detail:
+      "Reads messy A1 schedule tables, Indian abbreviations, and beam elevation callouts with box_2d coordinates that rule-only parsers miss (read_v2).",
   },
   {
     component: "Cloud Vision OCR",
@@ -41,13 +42,15 @@ const MODEL_ROLES = [
   },
   {
     component: "Gemini 4 Argon",
-    role: "Cross-sheet linking & proposals",
-    detail: "Links plans to schedules (link_v5) and proposes rebar re-arrangements (propose_v1).",
+    role: "Cross-sheet linking & fix proposals",
+    detail:
+      "Connects framing plans, elevations, and schedules across sheets into 3D joints (link_v5) and proposes targeted bar re-arrangements (propose_v1).",
   },
   {
-    component: "Closed-form Engine",
-    role: "Sole source of truth",
-    detail: "Computes every clear gap, cover, clash overlap, steel area, effective depth, pass, and fail.",
+    component: "Formal 3D Verifier",
+    role: "Deterministic geometry checks",
+    detail:
+      "Verifies every clear gap, cover, clash overlap, steel area, effective depth, pass, and fail in exact millimetre geometry.",
   },
 ];
 
@@ -74,7 +77,7 @@ export function LandingSections({ demoOnly }: { demoOnly: boolean }) {
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 flex flex-col justify-between gap-4">
           <div className="space-y-2">
             <p className="font-num text-xs uppercase tracking-[0.06em] text-muted-foreground">
-              Why geometry decides
+              Why Gemini + formal geometry
             </p>
             <div className="flex items-baseline gap-3 font-num">
               <span className="text-3xl font-bold text-foreground">91%</span>
@@ -86,8 +89,10 @@ export function LandingSections({ demoOnly }: { demoOnly: boolean }) {
             </div>
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Google&apos;s Physical-Engineering&apos;s Last Exam (Nov 2026) showed AI alone misses
-            hard safety rules. RebarTwin pairs Gemini reading with deterministic 3D verification.
+            Messy 2D Indian CAD PDFs break traditional parsers. Multimodal Gemini unlocks reading,
+            linking, and fix proposals, while Google&apos;s Physical-Engineering&apos;s Last Exam
+            (Nov 2026) shows why pairing Gemini with a formal 3D geometry verifier closes the safety
+            gap.
           </p>
         </div>
       </section>
@@ -203,6 +208,44 @@ export function LandingSections({ demoOnly }: { demoOnly: boolean }) {
                 </Link>
               </Button>
             </div>
+          </article>
+        </div>
+      </section>
+
+      {/* Scope and buyers */}
+      <section aria-labelledby="scope-buyers-heading" className="space-y-4">
+        <div className="space-y-1">
+          <p className="font-num text-xs uppercase tracking-[0.06em] text-muted-foreground">
+            Adoption and wedge
+          </p>
+          <h2 id="scope-buyers-heading" className="font-display text-xl font-semibold sm:text-2xl">
+            Who buys RebarTwin first and what Phase 1 checks
+          </h2>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <article className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 space-y-2">
+            <h3 className="font-display text-base font-semibold text-foreground">
+              Who uses RebarTwin first
+            </h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Structural proof-checking and PMC QA-QC teams (paid to catch detailing defects before
+              GFC approval with drawing-crop citations and BCF issues), turnkey Design-Build EPC
+              contractors preventing site rebar rework and slab pour delays, and mid-to-large design
+              consultancies running a pre-issue GFC gate.
+            </p>
+          </article>
+
+          <article className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 space-y-2">
+            <h3 className="font-display text-base font-semibold text-foreground">
+              Current scope (Phase 1)
+            </h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Checks interior beam-column joints across 8 core congestion, cover, 3D bar-clash,
+              and seismic depth rules (IS 456:2000 and IS 13920:2016). Exterior and corner
+              anchorage (IS 13920 cl. 6.2.5), lap splices, and confining ties follow on the same
+              3D cage.
+            </p>
           </article>
         </div>
       </section>

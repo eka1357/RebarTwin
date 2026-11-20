@@ -43,6 +43,7 @@ _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9._@+-]+$")
 _SECTION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*$", re.IGNORECASE)
 _DIA_RE = re.compile(r"(?:\d+\s*L\s*[-–]\s*)?(?:Ø|Φ|ø|φ|#)?\s*(\d+(?:\.\d+)?)\s*(?:mm|φ|Φ|ø)?", re.IGNORECASE)
 _NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*$", re.IGNORECASE)
+_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 
 class ProblemError(Exception):
@@ -1142,18 +1143,52 @@ def create_app(
         safe_name = Path(file.filename or "drawing.pdf").name
         if not safe_name.lower().endswith(".pdf"):
             raise ProblemError(400, "Invalid file type", "Only PDF drawing sets (.pdf) are accepted.")
-        raw = await file.read()
-        if not raw.startswith(b"%PDF"):
-            raise ProblemError(400, "Invalid PDF", "Uploaded file does not start with a %PDF header.")
 
-        # Validate page range syntax upfront before launching thread
+        # Validate page range syntax upfront before reading/writing upload
         try:
             _parse_pages_arg(pages)
         except ValueError as exc:
             raise ProblemError(400, "Invalid page filter", str(exc)) from exc
 
         pdf_path = p_dir / safe_name
-        pdf_path.write_bytes(raw)
+        total_bytes = 0
+        chunks: list[bytes] = []
+        first_chunk_checked = False
+        tmp_upload: Path | None = None
+        out_handle = None
+        try:
+            while chunk := await file.read(1024 * 1024):
+                if not first_chunk_checked:
+                    first_chunk_checked = True
+                    if not chunk.startswith(b"%PDF"):
+                        raise ProblemError(400, "Invalid PDF", "Uploaded file does not start with a %PDF header.")
+                total_bytes += len(chunk)
+                if total_bytes > _MAX_UPLOAD_BYTES:
+                    raise ProblemError(413, "File too large", "Drawing PDF exceeds the 100 MB upload limit.")
+                if tmp_upload is None and total_bytes > 1024 * 1024:
+                    tmp_upload = p_dir / f".{safe_name}.{uuid.uuid4().hex}.part"
+                    out_handle = tmp_upload.open("wb")
+                    for prev in chunks:
+                        out_handle.write(prev)
+                    chunks.clear()
+                if out_handle is not None:
+                    out_handle.write(chunk)
+                else:
+                    chunks.append(chunk)
+            if not first_chunk_checked:
+                raise ProblemError(400, "Invalid PDF", "Uploaded file does not start with a %PDF header.")
+            if out_handle is not None and tmp_upload is not None:
+                out_handle.close()
+                out_handle = None
+                tmp_upload.replace(pdf_path)
+            else:
+                pdf_path.write_bytes(b"".join(chunks))
+        except BaseException:
+            if out_handle is not None:
+                out_handle.close()
+            if tmp_upload is not None:
+                tmp_upload.unlink(missing_ok=True)
+            raise
         hub.reset(project_id, p_dir)
 
         meta = _read_json(p_dir / "project.json", {})

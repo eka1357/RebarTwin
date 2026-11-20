@@ -46,6 +46,7 @@ function applyThemeToDom(theme: ThemeMode) {
 
 interface WorkspaceState {
   theme: ThemeMode;
+  activeJointKey: string | null;
   status: StatusIslandSummary;
   selectedBarId: string | null;
   hoveredBarId: string | null;
@@ -68,6 +69,7 @@ interface WorkspaceState {
   shortcutsOpen: boolean;
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
+  syncJointContext: (jointKey: string) => boolean;
   setStatus: (patch: Partial<StatusIslandSummary>) => void;
   selectBar: (barId: string | null) => void;
   setHoveredBar: (barId: string | null) => void;
@@ -96,6 +98,7 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   theme: readInitialTheme(),
+  activeJointKey: null,
   status: {
     jointLabel: "C4 × B12",
     failCount: 6,
@@ -132,6 +135,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const next: ThemeMode = get().theme === "dark" ? "light" : "dark";
     applyThemeToDom(next);
     set({ theme: next });
+  },
+  syncJointContext: (jointKey) => {
+    if (get().activeJointKey === jointKey) return false;
+    set({
+      activeJointKey: jointKey,
+      selectedBarId: null,
+      hoveredBarId: null,
+      selectedFindingIndex: null,
+      mode: "before",
+      optionIndex: 0,
+      replayPlaying: false,
+      replayIndex: 0,
+    });
+    return true;
   },
   setStatus: (patch) => set((s) => ({ status: { ...s.status, ...patch } })),
   selectBar: (selectedBarId) => set({ selectedBarId }),

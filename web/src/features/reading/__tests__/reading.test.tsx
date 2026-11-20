@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UploadRoute } from "../../../routes/UploadRoute";
@@ -104,5 +105,50 @@ describe("W8 Reading & Upload", () => {
       "/demo",
     );
     expect(screen.getByLabelText(/Choose structural PDF file/i)).toBeDisabled();
+  });
+
+  it("rejects non-PDF files and invalid page specs client-side before uploading", () => {
+    const onSelectPdf = vi.fn();
+    function Harness() {
+      const [pagesSpec, setPagesSpec] = useState("");
+      return (
+        <MemoryRouter>
+          <DropZone
+            pagesSpec={pagesSpec}
+            onPagesSpecChange={setPagesSpec}
+            onSelectPdf={onSelectPdf}
+            errorText={null}
+          />
+        </MemoryRouter>
+      );
+    }
+
+    render(<Harness />);
+
+    const fileInput = screen.getByLabelText(/Choose structural PDF file/i);
+    const badFile = new File(["hello"], "notes.txt", { type: "text/plain" });
+    fireEvent.change(fileInput, { target: { files: [badFile] } });
+    expect(onSelectPdf).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Only PDF drawing sets (.pdf) are accepted.");
+
+    const pagesInput = screen.getByLabelText(/Pages \(optional\)/i);
+    const uploadBtn = screen.getByRole("button", { name: /Upload a drawing set/i });
+
+    fireEvent.change(pagesInput, { target: { value: "banana" } });
+    expect(pagesInput).toHaveAttribute("aria-invalid", "true");
+    expect(uploadBtn).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Enter page numbers or ranges/i);
+
+    fireEvent.change(pagesInput, { target: { value: "10-5" } });
+    expect(pagesInput).toHaveAttribute("aria-invalid", "true");
+    expect(uploadBtn).toBeDisabled();
+
+    fireEvent.change(pagesInput, { target: { value: "7-9,15-21" } });
+    expect(pagesInput).toHaveAttribute("aria-invalid", "false");
+    expect(uploadBtn).toBeEnabled();
+
+    const pdfFile = new File(["%PDF-1.4"], "plan.pdf", { type: "application/pdf" });
+    fireEvent.change(fileInput, { target: { files: [pdfFile] } });
+    expect(onSelectPdf).toHaveBeenCalledWith(pdfFile);
   });
 });

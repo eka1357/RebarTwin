@@ -1,5 +1,5 @@
 import { useReducedMotion } from "motion/react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { selectCalloutFindings } from "../../lib/calloutLayout";
 import { DURATION_MS } from "../../lib/motion";
 import { useMediaQuery } from "../../lib/useMediaQuery";
@@ -253,7 +253,7 @@ export function Viewport({ bundle, ifcUrl }: ViewportProps) {
     }
   }, [activeScene, bundle.joint.id, bundle.report.seismic_zone, isWorkingsActive, reduced]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const ctrl = controllerRef.current;
     if (!ctrl) return;
     ctrl.setCalloutIndicators(activeFindings, labelMode, selectedFindingIndex);

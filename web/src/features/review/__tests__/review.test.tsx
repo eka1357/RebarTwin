@@ -208,8 +208,14 @@ describe("W9 To Check & Callout Grammar", () => {
 
     expect(await screen.findByText("Blocks all joints")).toBeInTheDocument();
 
-    // Key J skips to item 2 (tc_top), key 2 accepts Parser ("5-20")
+    // Key J skips to item 2 (tc_top); pressing 1 while a button has focus must NOT resolve
     fireEvent.keyDown(window, { key: "j" });
+    const editBtn = screen.getAllByRole("button", { name: /Type value \(E\)/i })[1];
+    editBtn.focus();
+    fireEvent.keyDown(editBtn, { key: "1" });
+    expect(resolveCalls).toEqual([]);
+
+    // Key 2 on window accepts Parser ("5-20")
     fireEvent.keyDown(window, { key: "2" });
 
     await screen.findByText(/Confirmed: 5-20/i);

@@ -191,6 +191,8 @@ export function JointInspector({
                   ).map(([key, label]) => (
                     <Button
                       key={key}
+                      type="button"
+                      aria-pressed={filter === key}
                       variant={filter === key ? "default" : "outline"}
                       size="sm"
                       className="h-6 px-2 text-xs"

@@ -2,8 +2,8 @@ import { Skeleton } from "./ui/skeleton";
 
 export function RouteFallback() {
   return (
-    <main className="flex flex-1 p-6">
-      <h1 className="sr-only">Loading route</h1>
+    <main role="status" aria-live="polite" className="flex flex-1 flex-col gap-3 p-6">
+      <p className="font-num text-xs text-muted-foreground">Loading route...</p>
       <Skeleton className="h-48 w-full" />
     </main>
   );

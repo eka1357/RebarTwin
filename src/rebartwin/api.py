@@ -19,6 +19,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
@@ -93,11 +94,14 @@ def _web_dist_dir() -> Path:
     return Path.cwd() / "web" / "dist"
 
 
-def _static_file_response(path: Path) -> FileResponse:
+def _static_file_response(path: Path, rel: str = "") -> FileResponse:
     media = _EXTRA_MEDIA_TYPES.get(path.suffix.lower())
     if not media:
         media, _ = mimetypes.guess_type(str(path))
-    return FileResponse(path, media_type=media)
+    headers: dict[str, str] = {"X-Content-Type-Options": "nosniff"}
+    if rel.startswith(("assets/", "wasm/")):
+        headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return FileResponse(path, media_type=media, headers=headers)
 
 
 def _serve_spa_path(full_path: str) -> FileResponse:
@@ -110,12 +114,16 @@ def _serve_spa_path(full_path: str) -> FileResponse:
         if not candidate.is_relative_to(dist_root):
             raise ProblemError(400, "Invalid path", "Path escapes web bundle root.")
         if candidate.is_file():
-            return _static_file_response(candidate)
+            return _static_file_response(candidate, rel)
         if rel.startswith(("assets/", "wasm/")):
             raise ProblemError(404, "Asset not found", f"Static asset /{rel} was not found.")
     index_file = dist_root / "index.html"
     if index_file.is_file():
-        return FileResponse(index_file, media_type="text/html; charset=utf-8")
+        return FileResponse(
+            index_file,
+            media_type="text/html; charset=utf-8",
+            headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "no-cache"},
+        )
     raise ProblemError(404, "Not found", f"Path /{rel} was not found.")
 
 
@@ -1044,6 +1052,7 @@ def create_app(
                         pass
         return await call_next(request)
 
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

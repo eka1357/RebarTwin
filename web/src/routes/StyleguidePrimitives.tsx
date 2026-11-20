@@ -234,11 +234,11 @@ export function StyleguidePrimitives() {
             <CommandEmpty>No matches.</CommandEmpty>
             <CommandGroup heading="Findings">
               <CommandItem onSelect={() => setCmdOpen(false)}>
-                <span>IS 456 cl. 26.3.2 — B12 top spacing</span>
+                <span>IS 456 cl. 26.3.2 · B12 top spacing</span>
                 <span className="font-num text-xs text-fail">16 mm</span>
               </CommandItem>
               <CommandItem onSelect={() => setCmdOpen(false)}>
-                <span>Geometry — C4/V4 and B12/T1-3</span>
+                <span>Geometry · C4/V4 and B12/T1-3</span>
                 <span className="font-num text-xs text-fail">18 mm overlap</span>
               </CommandItem>
             </CommandGroup>

@@ -1,7 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router";
+import { ErrorBoundary, RouteErrorFallback } from "../components/ErrorBoundary";
 import { RouteFallback } from "../components/RouteFallback";
+import { NotFoundRoute } from "../routes/NotFoundRoute";
 import { AppShell } from "./AppShell";
 
 const LandingRoute = lazy(() =>
@@ -30,7 +32,12 @@ const StyleguideRoute = lazy(() =>
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <AppShell />,
+    element: (
+      <ErrorBoundary>
+        <AppShell />
+      </ErrorBoundary>
+    ),
+    errorElement: <RouteErrorFallback />,
     children: [
       {
         index: true,
@@ -111,6 +118,10 @@ export const router = createBrowserRouter([
             <StyleguideRoute />
           </Suspense>
         ),
+      },
+      {
+        path: "*",
+        element: <NotFoundRoute />,
       },
     ],
   },

@@ -94,9 +94,13 @@ export function CalloutResolver() {
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2 font-num text-sm">
-        <span className="max-w-full break-words rounded-[var(--radius-xs)] border border-paper-border bg-paper px-2 py-0.5 text-paper-foreground">
+        <span
+          title="As OCR first read it on the drawing sheet"
+          className="max-w-full break-words rounded-[var(--radius-xs)] border border-paper-border bg-paper px-2 py-0.5 text-paper-foreground"
+        >
           {sample.raw}
         </span>
+        <span className="text-xs text-muted-foreground">(as OCR first read it)</span>
         <span aria-hidden="true" className="text-muted-foreground">
           →
         </span>

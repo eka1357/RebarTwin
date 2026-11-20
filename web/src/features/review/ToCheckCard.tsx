@@ -47,6 +47,11 @@ export const ToCheckCard = forwardRef<HTMLElement, ToCheckCardProps>(function To
   const errorId = useId();
 
   useEffect(() => {
+    setDraft(item.resolution?.value ?? item.parser?.value ?? item.gemini?.value ?? "");
+    setErrorText(null);
+  }, [item.id, item.resolution?.value, item.parser?.value, item.gemini?.value]);
+
+  useEffect(() => {
     if (editing) {
       requestAnimationFrame(() => inputRef.current?.focus());
     }

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Compass } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { StatusPill } from "../components/StatusPill";
 import { Button } from "../components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../components/ui/resizable";
@@ -10,6 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { DemoTour } from "../features/demo/DemoTour";
 import { JointInspector } from "../features/workspace/JointInspector";
 import { ReplayUrlSync } from "../features/workspace/ReplayUrlSync";
+import { WorkspaceUrlSync } from "../features/workspace/WorkspaceUrlSync";
 import { demoAssetUrl, fetchDemoBundle, type DemoVariant } from "../lib/demoData";
 import { projectReportPath } from "../lib/routes";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -18,21 +20,34 @@ import { useWorkspaceStore } from "../stores/workspace";
 const LazyViewport = lazy(() => import("../features/workspace/Viewport"));
 
 export function DemoRoute() {
-  const [variant, setVariant] = useState<DemoVariant>("zone2");
-  const [tourOpen, setTourOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const initialVariant: DemoVariant =
+    searchParams.get("zone") === "3" || searchParams.get("variant") === "zone3"
+      ? "zone3"
+      : "zone2";
+  const [variant, setVariantState] = useState<DemoVariant>(initialVariant);
+  const [tourOpen, setTourOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const setStatus = useWorkspaceStore((s) => s.setStatus);
   const chosenOptionByKey = useWorkspaceStore((s) => s.chosenOptionByKey);
-  const selectedFindingIndex = useWorkspaceStore((s) => s.selectedFindingIndex);
-  const selectFinding = useWorkspaceStore((s) => s.selectFinding);
-  const selectBar = useWorkspaceStore((s) => s.selectBar);
   const setMode = useWorkspaceStore((s) => s.setMode);
   const setReplay = useWorkspaceStore((s) => s.setReplay);
   const clearSelection = useWorkspaceStore((s) => s.clearSelection);
+
+  const setVariant = (nextVariant: DemoVariant) => {
+    setVariantState(nextVariant);
+    const next = new URLSearchParams(searchParams);
+    next.delete("variant");
+    if (nextVariant === "zone3") {
+      next.set("zone", "3");
+    } else {
+      next.delete("zone");
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   const {
     data: bundle,
@@ -66,35 +81,6 @@ export function DemoRoute() {
       activity: null,
     });
   }, [bundle, setStatus]);
-
-  // Sync URL ?f= parameter
-  useEffect(() => {
-    const fParam = searchParams.get("f");
-    if (fParam !== null && bundle) {
-      const idx = Number(fParam);
-      if (Number.isInteger(idx) && bundle.report.findings[idx]) {
-        selectFinding(idx);
-        selectBar(bundle.report.findings[idx].bars[0] ?? null);
-      }
-    }
-    // Only hydrate on bundle/param arrival
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle]);
-
-  useEffect(() => {
-    const current = searchParams.get("f");
-    if (selectedFindingIndex !== null) {
-      if (current !== String(selectedFindingIndex)) {
-        const next = new URLSearchParams(searchParams);
-        next.set("f", String(selectedFindingIndex));
-        setSearchParams(next, { replace: true });
-      }
-    } else if (current !== null) {
-      const next = new URLSearchParams(searchParams);
-      next.delete("f");
-      setSearchParams(next, { replace: true });
-    }
-  }, [selectedFindingIndex, searchParams, setSearchParams]);
 
   const reportKey = `c4-b12:${variant}:${bundle?.joint.id ?? "C4xB12"}`;
   const chosenOption = chosenOptionByKey[reportKey] ?? null;
@@ -161,7 +147,12 @@ export function DemoRoute() {
         bundle={bundle}
       />
 
-      {bundle && <ReplayUrlSync totalAttempts={bundle.fix.attempts.length} />}
+      {bundle && (
+        <>
+          <WorkspaceUrlSync bundle={bundle} />
+          <ReplayUrlSync totalAttempts={bundle.fix.attempts.length} />
+        </>
+      )}
 
       {isLoading ? (
         <div className="grid flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_25rem]">
@@ -176,9 +167,11 @@ export function DemoRoute() {
         <div className="flex-1 min-h-0">
           <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0 gap-2">
             <ResizablePanel defaultSize={68} minSize={45} className="flex min-h-0 flex-col">
-              <Suspense fallback={<Skeleton className="h-full w-full" />}>
-                <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
-              </Suspense>
+              <ErrorBoundary compact>
+                <Suspense fallback={<Skeleton className="h-full w-full" />}>
+                  <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
+                </Suspense>
+              </ErrorBoundary>
             </ResizablePanel>
             <ResizableHandle />
             <ResizablePanel defaultSize={32} minSize={24} className="flex min-h-0 flex-col">
@@ -202,9 +195,11 @@ export function DemoRoute() {
       ) : (
         <div className="flex flex-1 flex-col gap-3">
           <div className="min-h-72 md:h-[52vh]">
-            <Suspense fallback={<Skeleton className="h-full w-full" />}>
-              <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
-            </Suspense>
+            <ErrorBoundary compact>
+              <Suspense fallback={<Skeleton className="h-full w-full" />}>
+                <LazyViewport bundle={bundle} ifcUrl={demoAssetUrl(variant, "joint.ifc")} />
+              </Suspense>
+            </ErrorBoundary>
           </div>
           <JointInspector
             bundle={bundle}

@@ -32,7 +32,7 @@ const MODEL_ROLES = [
   {
     component: "Gemini 3.8 Flash",
     role: "Sheet extraction",
-    detail: "Reads structural schedule cells and beam callouts with bounding boxes (`read_v2`).",
+    detail: "Reads structural schedule cells and beam callouts with bounding boxes (read_v2).",
   },
   {
     component: "Cloud Vision OCR",
@@ -42,7 +42,7 @@ const MODEL_ROLES = [
   {
     component: "Gemini 4 Argon",
     role: "Cross-sheet linking & proposals",
-    detail: "Links plans to schedules (`link_v5`) and proposes rebar re-arrangements (`propose_v1`).",
+    detail: "Links plans to schedules (link_v5) and proposes rebar re-arrangements (propose_v1).",
   },
   {
     component: "Closed-form Engine",
